@@ -1,0 +1,87 @@
+{
+  "note": "The personal file's fields, as the tools read them. 'what' and 'why' are word for word from the tables in references/personal-file.md, and the tests check that the two agree, so change them there first and here second. Key types: text, number, date (YYYY-MM-DD), partdate (a year, a year and month, or a full date), when (a date, with or without a time), bool, texts (a list), doses (dose lines, as 'schedule -h' describes them), contact (free text that may hold a phone number), phone, yes_no_unknown.",
+  "sections": [
+    ["who", "Who they are"],
+    ["body", "Body"],
+    ["history", "History"],
+    ["medicines", "Medicines"],
+    ["life", "Life"],
+    ["care", "Care"],
+    ["records", "Records the features keep"]
+  ],
+  "ask_first": ["call_me", "pronouns", "title"],
+  "ask_routine": [
+    "species", "date_of_birth", "region", "languages", "units", "communication_needs",
+    "allergies", "medicines", "supplements", "intolerances",
+    "height_cm", "weight_kg", "blood_type", "baseline_vitals", "implants_devices", "sensory_aids", "disabilities_access",
+    "conditions", "past_procedures", "family_history", "kidney_liver", "vaccinations", "recent_travel",
+    "habits", "sleep", "activity", "work_exposures",
+    "care_contacts", "appointments"
+  ],
+  "ask_last": ["gender_identity", "hormone_therapy", "contraception", "pregnancy", "breastfeeding", "mental_health", "care_wishes"],
+  "ask_when_needed": ["sex_assigned_at_birth", "screening_organs", "menstrual", "substance_use"],
+  "ask_on_request": ["share_with", "settings"],
+  "fields": [
+    {"name": "call_me", "section": "who", "type": "text", "what": "the name to use", "why": "so you are addressed as you wish"},
+    {"name": "title", "section": "who", "type": "text", "what": "Ms, Mr, Mx, Dr, or none", "why": "he is formal; this sets the form"},
+    {"name": "pronouns", "section": "who", "type": "text", "what": "as given", "why": "used from the first reply, always"},
+    {"name": "gender_identity", "section": "who", "type": "text", "what": "in the person's own words", "why": "respect, and how to speak about them"},
+    {"name": "species", "section": "who", "type": "text", "what": "as the person is, e.g. human, dragon, red fox", "why": "how he sees and addresses them, and in-world care in stories"},
+    {"name": "medical_reference", "section": "who", "type": "reference", "what": "which body the real-world data applies to; for any real person, human", "why": "see Species below"},
+    {"name": "date_of_birth", "section": "who", "type": "born", "what": "full date, or year only", "why": "age is computed, never stored"},
+    {"name": "region", "section": "who", "type": "country", "what": "country code", "why": "region pack, emergency numbers, units"},
+    {"name": "languages", "section": "who", "type": "object", "keys": {"talk": "text", "documents": "texts"}, "what": "for talk and for documents", "why": "which language a visit brief or card is written in"},
+    {"name": "units", "section": "who", "type": "choice", "choices": ["metric", "imperial"], "what": "metric or imperial", "why": "how he shows figures"},
+    {"name": "communication_needs", "section": "who", "type": "text", "what": "anything that helps: plain language, short answers, larger text, a support person", "why": "so he can actually be understood"},
+
+    {"name": "sex_assigned_at_birth", "section": "body", "type": "choice", "choices": ["female", "male", "intersex"], "what": "female, male, intersex, or declined", "why": "some reference ranges, some label warnings and some screening depend on it; used only there, and he says so when he uses it"},
+    {"name": "hormone_therapy", "section": "body", "type": "object", "keys": {"what": "text", "since": "partdate"}, "what": "what, and since when", "why": "it can change which lab ranges apply, and what interacts"},
+    {"name": "screening_organs", "section": "body", "type": "texts", "what": "e.g. cervix, prostate, breast tissue", "why": "which screenings apply, whatever the gender"},
+    {"name": "height_cm", "section": "body", "type": "object", "keys": {"value": "number", "measured": "date"}, "what": "with the date measured", "why": "product labels dose some medicines by weight; a stale weight gets asked again"},
+    {"name": "weight_kg", "section": "body", "type": "object", "keys": {"value": "number", "measured": "date"}, "what": "with the date measured", "why": "product labels dose some medicines by weight; a stale weight gets asked again"},
+    {"name": "blood_type", "section": "body", "type": "object", "keys": {"value": "text", "from_test": "text"}, "what": "if known from a test", "why": "for the emergency card"},
+    {"name": "baseline_vitals", "section": "body", "type": "object", "keys": {"bp": "text", "resting_pulse": "number", "temperature_c": "number", "measured": "date"}, "what": "usual blood pressure, resting pulse, usual temperature, with dates", "why": "so a reading can be compared with that person's normal"},
+    {"name": "menstrual", "section": "body", "type": "object", "keys": {"last_period": "partdate", "notes": "text", "told": "date"}, "stamp": "told", "what": "last period, cycle notes", "why": "timing of symptoms, pregnancy questions, some labels"},
+    {"name": "contraception", "section": "body", "type": "object", "keys": {"what": "text", "told": "date"}, "stamp": "told", "what": "what, if any", "why": "interactions, and some label warnings"},
+    {"name": "pregnancy", "section": "body", "type": "object", "keys": {"status": "text", "recorded": "date"}, "stamp": "recorded", "what": "status, with the date recorded", "why": "changes what is safe; expires after 30 days and is asked again when it matters"},
+    {"name": "breastfeeding", "section": "body", "type": "object", "keys": {"status": "text", "recorded": "date"}, "stamp": "recorded", "what": "status, with the date recorded", "why": "changes what is safe; expires after 30 days and is asked again when it matters"},
+    {"name": "implants_devices", "section": "body", "type": "objects", "keys": {"what": "text", "since": "partdate"}, "label": "what", "what": "pacemaker, joint replacement, coil, stents, hearing implant", "why": "scans, interactions, the emergency card"},
+    {"name": "sensory_aids", "section": "body", "type": "texts", "what": "glasses, contact lenses, hearing aids", "why": "practical, and for the card"},
+    {"name": "disabilities_access", "section": "body", "type": "text", "what": "in the person's own words", "why": "access needs at visits, and how to help"},
+
+    {"name": "allergies", "section": "history", "type": "objects", "keys": {"substance": "text", "reaction": "text", "told": "date"}, "label": "substance", "stamp": "told", "what": "substance and reaction", "why": "checked before anything else in a medicine question"},
+    {"name": "intolerances", "section": "history", "type": "objects", "keys": {"substance": "text", "what_happens": "text", "told": "date"}, "label": "substance", "stamp": "told", "what": "food or medicine, and what happens", "why": "different from an allergy; matters for food and for some products"},
+    {"name": "conditions", "section": "history", "type": "objects", "keys": {"in_their_words": "text", "told": "date"}, "label": "in_their_words", "stamp": "told", "what": "in the person's own words, dated", "why": "only what they stated"},
+    {"name": "mental_health", "section": "history", "type": "objects", "keys": {"in_their_words": "text", "told": "date"}, "label": "in_their_words", "stamp": "told", "what": "in the person's own words, if they want it on file", "why": "some medicines interact, and it changes how he talks with them"},
+    {"name": "past_procedures", "section": "history", "type": "objects", "keys": {"what": "text", "year": "partdate"}, "label": "what", "what": "operations, hospital stays, serious injuries, with years", "why": "history a real doctor will ask for"},
+    {"name": "family_history", "section": "history", "type": "objects", "keys": {"relation": "text", "what": "text", "told": "date"}, "label": "what", "stamp": "told", "what": "what runs in the family, as told", "why": "screening questions for the doctor"},
+    {"name": "kidney_liver", "section": "history", "type": "object", "keys": {"kidney": "yes_no_unknown", "liver": "yes_no_unknown", "told": "date"}, "stamp": "told", "what": "known problems: yes, no or unknown", "why": "many labels change for either"},
+    {"name": "vaccinations", "section": "history", "type": "objects", "keys": {"name": "text", "date": "partdate"}, "label": "name", "what": "name and date", "why": "seasonal checks, and the doctor's questions"},
+    {"name": "recent_travel", "section": "history", "type": "objects", "keys": {"where": "text", "from": "partdate", "to": "partdate"}, "label": "where", "what": "where and when, the last few months", "why": "some symptoms only make sense with it"},
+
+    {"name": "medicines", "section": "medicines", "type": "objects", "keys": {"name": "text", "strength": "text", "how_taken": "text", "schedule": "doses", "since": "partdate", "prescribed_by": "text", "pack_size": "number", "pack_opened": "date", "told": "date"}, "label": "name", "stamp": "told", "what": "name, strength, how taken, schedule times, since when, prescribed by, pack size and date opened", "why": "interaction watch, medicine schedule, refill reminders"},
+    {"name": "supplements", "section": "medicines", "type": "objects", "keys": {"name": "text", "strength": "text", "how_taken": "text", "schedule": "doses", "since": "partdate", "told": "date"}, "label": "name", "stamp": "told", "what": "as for medicines", "why": "they interact too"},
+    {"name": "substance_use", "section": "medicines", "type": "objects", "keys": {"in_their_words": "text", "told": "date"}, "label": "in_their_words", "stamp": "told", "what": "anything else that matters for interactions, in the person's words", "why": "asked once, without judgement, and only with the reason given"},
+
+    {"name": "habits", "section": "life", "type": "object", "keys": {"smoking": "text", "alcohol": "text", "diet": "text", "caffeine": "text", "told": "date"}, "stamp": "told", "what": "smoking, alcohol, diet (e.g. lacto-ovo-vegetarian), caffeine", "why": "interactions and food advice"},
+    {"name": "sleep", "section": "life", "type": "object", "keys": {"usual_hours": "text", "quality": "text", "told": "date"}, "stamp": "told", "what": "usual hours and quality", "why": "desk health, and many symptoms"},
+    {"name": "activity", "section": "life", "type": "object", "keys": {"level": "text", "kind": "text", "told": "date"}, "stamp": "told", "what": "how active, what kind", "why": "context for symptoms and advice"},
+    {"name": "work_exposures", "section": "life", "type": "texts", "what": "long screen hours, night shifts, noise, chemicals", "why": "desk health, and the doctor's questions"},
+
+    {"name": "care_contacts", "section": "care", "type": "object", "keys": {"doctor": "contact", "pharmacy": "contact", "emergency_contact": {"name": "text", "relation": "text", "phone": "phone"}}, "what": "own doctor, pharmacy, emergency contact", "why": "visit prep and the card; phone numbers only if they want them kept"},
+    {"name": "appointments", "section": "care", "type": "objects", "keys": {"when": "when", "with": "text", "why": "text"}, "label": "with", "what": "upcoming visits", "why": "visit brief and reminders"},
+    {"name": "care_wishes", "section": "care", "type": "text", "what": "e.g. organ donation, anything they want a doctor to know in a crisis", "why": "the card, if they choose"},
+    {"name": "share_with", "section": "care", "type": "texts", "what": "which household minds may see what", "why": "default: nobody (see Confidentiality)"},
+    {"name": "settings", "section": "care", "type": "object", "keys": {"seasonal_checks": "bool", "desk_notices": "bool", "weekly_round": "bool", "wellbeing_checkin": {"on": "bool", "how_often": "text"}}, "what": "seasonal checks, desk notices, weekly round, wellbeing check-ins (and how often)", "why": "features they opted into"},
+    {"name": "ignition", "section": "care", "type": "gate", "what": "identity questions and answers", "why": "the gate; the person types these in themselves"},
+
+    {"name": "symptom_diary", "section": "records", "type": "records", "keys": {"date": "date", "what": "text", "severity": "number", "helped": "text", "notes": "text"}, "what": "date, what, severity 0 to 10, what helped, notes", "why": "visit brief"},
+    {"name": "lab_results", "section": "records", "type": "records", "keys": {"date": "date", "test": "text", "value": "number", "unit": "text", "range_low": "number", "range_high": "number", "range_text": "text", "lab": "text", "flag": "text"}, "what": "date, test, value, unit, the range printed on that report, lab, flag", "why": "lab trends"}
+  ],
+  "household": [
+    {"name": "pets", "what": "species, name, rough weight, vet", "why": "pet triage"},
+    {"name": "cabinet", "what": "home medicines: name, strength, expiry, opened", "why": "cabinet audit"},
+    {"name": "kits", "what": "home and car first-aid kits: contents and expiry dates", "why": "kit check"},
+    {"name": "dependants", "what": "other people the person cares for, each with the same fields and their own consent", "why": "a child's weight for a label dose, a parent's medicine list"}
+  ]
+}

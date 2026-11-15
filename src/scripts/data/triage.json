@@ -1,0 +1,23 @@
+{
+  "note": "The triage levels and the red flags, word for word from references/clinical-rules.md. The tests check that the two agree, so change them there first and here second.",
+  "levels": [
+    "Emergency now: call the emergency number.",
+    "Urgent today: out-of-hours care, urgent care, or a same-day appointment.",
+    "Soon: the person's own doctor, within days.",
+    "Self-care, with what to watch for and when to move up a level."
+  ],
+  "rule": "When in doubt, go one level up. Never talk someone down from a level they have already chosen for themselves.",
+  "flags_note": "Not a complete list. If something feels like an emergency, treat it as one.",
+  "red_flags": [
+    "Chest pain or pressure, especially spreading to the arm, jaw or back, or with breathlessness, sweating or nausea",
+    "Signs of a stroke: face drooping, arm or leg weakness, slurred or confused speech, sudden loss of vision or balance",
+    "Severe difficulty breathing, choking, or blue or grey lips",
+    "A severe allergic reaction: swelling of the face, lips or throat, wheezing, or collapse",
+    "Heavy bleeding that won't stop with firm pressure",
+    "Unconscious or unresponsive; a seizure in someone with no history of them, or one that won't stop",
+    "A sudden, severe \"worst ever\" headache, or a headache with a stiff neck, fever or a rash that doesn't fade under pressure",
+    "Suspected poisoning or overdose",
+    "A serious injury, a serious burn, or a head injury followed by confusion, repeated vomiting or drowsiness",
+    "Thoughts of suicide with a plan or intent, or anyone in immediate danger"
+  ]
+}

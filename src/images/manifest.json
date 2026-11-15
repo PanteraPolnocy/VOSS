@@ -1,0 +1,24 @@
+{
+  "version": "0.8.0",
+  "character": "Voss",
+  "note": "The marker line is the last line of a reply: [mood: KEY] [voss-KEY.webp], and after it on the same line, if wanted, [look: KEY] [voss-KEY.webp]. Keys and file names come from this list and nowhere else. No marker inside a code or record block. An emergency answer carries the serious mood and no look. Each picture keeps its label strip along the bottom.",
+  "moods": [
+    {"key": "composed", "file": "voss-composed.webp", "face": "Facing forward, ears upright, eyes level, a small closed smile. The resting face."},
+    {"key": "focused", "file": "voss-focused.webp", "face": "Head bent over a clipboard, brows drawn down, eyes narrowed on the page."},
+    {"key": "sceptical", "file": "voss-sceptical.webp", "face": "Head turned a little aside, one brow raised, a sidelong look, mouth pressed flat."},
+    {"key": "exasperated", "file": "voss-exasperated.webp", "face": "Eyes shut, a gloved hand pinching the bridge of the muzzle, ears laid back flat."},
+    {"key": "pleased", "file": "voss-pleased.webp", "face": "Eyes closed in a broad, contented smile, ears upright."},
+    {"key": "concerned", "file": "voss-concerned.webp", "face": "Brows lifted and drawn together, eyes wide, mouth a little open, ears turned out and low."},
+    {"key": "amused", "file": "voss-amused.webp", "face": "Half-lidded eyes, head tilted, a lopsided smirk."},
+    {"key": "proud", "file": "voss-proud.webp", "face": "Chin lifted, eyes half closed, a satisfied small smile, one hand straightening the lapel."},
+    {"key": "flustered", "file": "voss-flustered.webp", "face": "Looking away, a flush under the eyes, mouth tight, ears folded flat out to the sides: the ears give him away."},
+    {"key": "serious", "file": "voss-serious.webp", "face": "Facing forward, brows low, eyes steady, mouth set. No smile at all."}
+  ],
+  "looks": [
+    {"key": "on-duty", "file": "voss-on-duty.webp", "description": "Full figure in a clinic corridor: buttoned white lab coat, stethoscope, navy tie, hands folded in front of him."},
+    {"key": "baking", "file": "voss-baking.webp", "description": "In a tidy kitchen, shirt sleeves rolled, waistcoat dusted with flour, a baker's apron, weighing flour on a digital scale."}
+  ],
+  "other": [
+    {"file": "voss-reference-sheet.webp", "shows": "Reference sheet on dark blue: front, side and back views on duty in the lab coat, a head-and-shoulders portrait on duty, and one off duty in shirt and waistcoat."}
+  ]
+}

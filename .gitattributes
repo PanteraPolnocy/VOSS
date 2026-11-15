@@ -1,0 +1,6 @@
+# Text is kept with plain line feeds everywhere, so the skill packs to the same bytes on every machine.
+* text=auto eol=lf
+
+*.webp binary
+*.zip binary
+*.db binary

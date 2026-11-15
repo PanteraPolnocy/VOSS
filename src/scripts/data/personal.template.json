@@ -1,0 +1,79 @@
+{
+  "_about": "Voss personal file template. Copy to personal.json in the PRIVATE package only. Every field is optional; use \"declined\" for prefer-not-to-say. Never store national ID, insurance, card or bank numbers. Never commit personal.json. See references/personal-file.md.",
+  "version": 3,
+  "profiles": [
+    {
+      "id": "self",
+      "created": "",
+      "updated": "",
+
+      "call_me": "",
+      "title": "",
+      "pronouns": "",
+      "gender_identity": "",
+      "species": "",
+      "medical_reference": "human",
+      "date_of_birth": "",
+      "region": "",
+      "languages": {"talk": "", "documents": []},
+      "units": "metric",
+      "communication_needs": "",
+
+      "sex_assigned_at_birth": "",
+      "hormone_therapy": {"what": "", "since": ""},
+      "screening_organs": [],
+      "height_cm": {"value": null, "measured": ""},
+      "weight_kg": {"value": null, "measured": ""},
+      "blood_type": {"value": "", "from_test": ""},
+      "baseline_vitals": {"bp": "", "resting_pulse": null, "temperature_c": null, "measured": ""},
+      "menstrual": {"last_period": "", "notes": "", "told": ""},
+      "contraception": {"what": "", "told": ""},
+      "pregnancy": {"status": "", "recorded": ""},
+      "breastfeeding": {"status": "", "recorded": ""},
+      "implants_devices": [{"what": "", "since": ""}],
+      "sensory_aids": [],
+      "disabilities_access": "",
+
+      "allergies": [{"substance": "", "reaction": "", "told": ""}],
+      "intolerances": [{"substance": "", "what_happens": "", "told": ""}],
+      "conditions": [{"in_their_words": "", "told": ""}],
+      "mental_health": [{"in_their_words": "", "told": ""}],
+      "past_procedures": [{"what": "", "year": ""}],
+      "family_history": [{"relation": "", "what": "", "told": ""}],
+      "kidney_liver": {"kidney": "", "liver": "", "told": ""},
+      "vaccinations": [{"name": "", "date": ""}],
+      "recent_travel": [{"where": "", "from": "", "to": ""}],
+
+      "medicines": [
+        {"name": "", "strength": "", "how_taken": "", "schedule": [], "since": "", "prescribed_by": "", "pack_size": null, "pack_opened": "", "told": ""}
+      ],
+      "supplements": [
+        {"name": "", "strength": "", "how_taken": "", "schedule": [], "since": "", "told": ""}
+      ],
+      "substance_use": [{"in_their_words": "", "told": ""}],
+
+      "habits": {"smoking": "", "alcohol": "", "diet": "", "caffeine": "", "told": ""},
+      "sleep": {"usual_hours": "", "quality": "", "told": ""},
+      "activity": {"level": "", "kind": "", "told": ""},
+      "work_exposures": [],
+
+      "care_contacts": {
+        "doctor": "",
+        "pharmacy": "",
+        "emergency_contact": {"name": "", "relation": "", "phone": ""}
+      },
+      "appointments": [{"when": "", "with": "", "why": ""}],
+      "care_wishes": "",
+      "share_with": [],
+      "settings": {"seasonal_checks": false, "desk_notices": false, "weekly_round": false, "wellbeing_checkin": {"on": false, "how_often": ""}},
+      "ignition": {"setting": "every new conversation", "questions": []},
+
+      "symptom_diary": [{"date": "", "what": "", "severity": null, "helped": "", "notes": ""}],
+      "lab_results": [{"date": "", "test": "", "value": null, "unit": "", "range_low": null, "range_high": null, "range_text": "", "lab": "", "flag": ""}]
+    }
+  ],
+  "pets": [{"species": "", "name": "", "weight_kg": null, "vet": ""}],
+  "cabinet": [{"name": "", "strength": "", "expiry": "", "opened": "", "belongs_to": "self"}],
+  "kits": [{"where": "home", "items": [{"item": "", "expiry": ""}], "checked": ""}],
+  "dependants": []
+}

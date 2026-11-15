@@ -1,0 +1,83 @@
+{
+  "_about": "Made-up patients for the test suite. Nobody here exists, and nothing here is anyone's real data.",
+  "version": 3,
+  "profiles": [
+    {
+      "id": "self",
+      "created": "2026-10-01",
+      "updated": "2026-11-02",
+      "call_me": "Wren",
+      "title": "Mx",
+      "pronouns": "they/them",
+      "species": "red squirrel",
+      "medical_reference": "human",
+      "date_of_birth": "1988-02-29",
+      "region": "GB",
+      "languages": {"talk": "en", "documents": ["en"]},
+      "units": "metric",
+      "sex_assigned_at_birth": "declined",
+      "height_cm": {"value": 172, "measured": "2025-09-30"},
+      "weight_kg": {"value": 68.5, "measured": "2025-09-30"},
+      "blood_type": {"value": "O positive", "from_test": "a donor card"},
+      "pregnancy": {"status": "not pregnant", "recorded": "2026-09-01"},
+      "implants_devices": [{"what": "", "since": ""}],
+      "allergies": [{"substance": "penicillin", "reaction": "a rash", "told": "2026-10-01"}],
+      "conditions": [{"in_their_words": "asthma since school", "told": "2026-10-01"}],
+      "recent_travel": [{"where": "Lisbon", "from": "2026-06", "to": "2026-06"}],
+      "medicines": [
+        {"name": "Salbutamol inhaler", "strength": "100 micrograms", "how_taken": "two puffs when wheezy", "schedule": [], "since": "2009", "prescribed_by": "the asthma nurse", "pack_size": null, "pack_opened": "", "told": "2026-10-01"},
+        {"name": "Ibuprofen", "strength": "200 mg", "how_taken": "one or two when needed, with food", "schedule": [], "since": "", "prescribed_by": "", "pack_size": null, "pack_opened": "", "told": "2026-10-01"},
+        {"name": "Metformin", "strength": "500 mg", "how_taken": "one tablet with food", "schedule": ["08:00", "20:00"], "since": "2024-03", "prescribed_by": "Dr Hale", "pack_size": 60, "pack_opened": "2026-11-01", "told": "2026-10-01"},
+        {"name": "Methotrexate", "strength": "2.5 mg", "how_taken": "six tablets once a week", "schedule": ["mon 08:00 x6"], "since": "2023", "prescribed_by": "the rheumatology clinic", "pack_size": 24, "pack_opened": "2026-11-02", "told": "2025-10-01"}
+      ],
+      "supplements": [
+        {"name": "Vitamin D", "strength": "25 micrograms", "how_taken": "one a day", "schedule": ["08:00"], "since": "2025", "told": "2026-10-01"}
+      ],
+      "care_contacts": {
+        "doctor": "Dr Hale, the Elm Street surgery",
+        "pharmacy": "",
+        "emergency_contact": {"name": "Sorrel", "relation": "sister", "phone": "+44 20 7946 0123"}
+      },
+      "care_wishes": "organ donor",
+      "share_with": [],
+      "settings": {"seasonal_checks": false, "desk_notices": true, "weekly_round": false, "wellbeing_checkin": {"on": false, "how_often": ""}},
+      "ignition": {
+        "setting": "every new conversation",
+        "questions": [
+          {"q": "What was the name of the first boat?", "a": ["Kittiwake"]},
+          {"q": "Which hill did the kite get lost on?", "a": ["Pendle", "Pendle Hill"]},
+          {"q": "What colour was the garden gate?", "a": ["bottle green", "butelkowa zielen"]},
+          {"q": "Which instrument lives under the stairs?", "a": ["the cello"]}
+        ]
+      }
+    },
+    {
+      "id": "rowan",
+      "created": "2026-10-20",
+      "updated": "2026-10-20",
+      "call_me": "Rowan",
+      "pronouns": "he/him",
+      "medical_reference": "human",
+      "date_of_birth": "1961",
+      "ignition": {"setting": "every new conversation", "questions": []}
+    }
+  ],
+  "pets": [{"species": "", "name": "", "weight_kg": null, "vet": ""}],
+  "cabinet": [{"name": "Paracetamol", "strength": "500 mg", "expiry": "2027-03", "opened": "", "belongs_to": "self"}],
+  "kits": [],
+  "dependants": [
+    {
+      "id": "pip",
+      "carer": "self",
+      "consent": {"note": "their parent agreed for them; Pip is six", "recorded": "2026-10-01"},
+      "created": "2026-10-01",
+      "updated": "2026-10-20",
+      "call_me": "Pip",
+      "pronouns": "she/her",
+      "medical_reference": "human",
+      "date_of_birth": "2020-05-17",
+      "weight_kg": {"value": 21, "measured": "2026-10-20"},
+      "allergies": [{"substance": "peanuts", "reaction": "hives", "told": "2026-10-01"}]
+    }
+  ]
+}

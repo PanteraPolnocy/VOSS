@@ -1,0 +1,23 @@
+{
+  "note": "Lists for getting ready to see a doctor. General advice written for this skill: no medical claim in it, and no database behind it. The diary columns are the ones references/features.md gives for the symptom diary.",
+  "first": "Decide the one thing you most want from the visit, and say it first.",
+  "questions": [
+    "What do you think is causing this, and what else could it be?",
+    "Do I need any tests? What will they show, and when do I get the results?",
+    "What are my options, and what happens if we wait and watch?",
+    "What should I look out for, and when should I come back or get urgent help?",
+    "Does anything change with the medicines I already take?",
+    "Is there anything I should do, or stop doing, in the meantime?",
+    "Who do I contact if it gets worse, or if it has not improved by when it should?"
+  ],
+  "bring": [
+    "The symptom diary, filled in",
+    "A list of every medicine and supplement: name, strength, how you take it",
+    "Your allergies, and what happens",
+    "Earlier results, letters or discharge notes that bear on this",
+    "Your questions, written down, the most important first",
+    "Whatever papers the clinic asks for at the desk",
+    "Someone you trust, if a second pair of ears helps"
+  ],
+  "diary": ["date", "what", "severity 0 to 10", "what helped", "notes"]
+}
