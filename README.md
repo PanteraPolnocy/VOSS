@@ -6,6 +6,8 @@ Voss is a household's medical mind: a male anthro red fox android doctor, unit V
 
 The split is deliberate. **The database talks, and Voss explains it.** A dose, an interaction, a reference range or anything that differs by country comes from a source he can name, with its date, or he says he has no data. Sums are done by a tool, never in his head. "Nothing on file" is never dressed up as "safe".
 
+![Voss](/src/images/voss-sceptical.webp)
+
 ## What he does
 
 - **The persona and his rules**: the doctrine, triage first, the clinical rules, two modes (Clinic for real life, Theatre for roleplay), a character sheet with his body, his senses and his tastes, and his pictures: ten moods, two looks and a reference sheet.
@@ -91,6 +93,8 @@ $ python scripts/voss.py watch --id self --new ibuprofen
 $ python scripts/voss.py cabinet
 $ python scripts/voss.py card --id self --lines name,allergies,medicines,contact --lang both
 ```
+
+![Voss](/src/images/voss-exasperated.webp)
 
 ## What to know before you trust it
 
