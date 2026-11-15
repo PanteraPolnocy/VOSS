@@ -20,7 +20,11 @@ The usual, of course: a way to make the tools run something they should not, or 
 - a tool that prints a dose, calls a combination "safe" because nothing is on file for it, or answers from a database without naming its source
 - data in this repository that its licence does not allow to be passed on, or a credit line that has gone missing
 
-One thing is by design, and not a vulnerability: the gate on a personal file is a soft lock. The file is plain JSON, and whoever can open it can read it. [docs/limits.md](docs/limits.md) says so at length. Keep the file where only you can reach it.
+Two things are by design, and not vulnerabilities.
+
+The gate on a personal file is a soft lock. The file is plain JSON, and whoever can open it can read it. [docs/limits.md](docs/limits.md) says so at length. Keep the file where only you can reach it.
+
+What he writes and prints for you is plain text too. A page (a card, a passport, a brief, a timetable, a note) is meant to be read by whoever you hand it to, and once a gate is open the tools print what is on file, because reading it back is what they are for. A code scanner reports that as private data stored and logged in clear text. Here it is the feature: a page is written only when you have seen it and asked for it.
 
 ## Keep health data out of reports
 
