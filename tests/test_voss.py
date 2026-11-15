@@ -54,12 +54,13 @@ os.environ.pop("VOSS_BUILD_AGENT", None)
 
 import voss  # noqa: E402
 import vosslib  # noqa: E402
-from vosslib import clinic, core, desk, doses, gate, ical, index, library, personal, record, store, terms  # noqa: E402
+from vosslib import clinic, core, desk, doses, gate, ical, index, labels, library, personal, record, store, terms  # noqa: E402
 
 import build  # noqa: E402
 import build_core  # noqa: E402
 import build_ddinter  # noqa: E402
 import build_icd11  # noqa: E402
+import build_labels  # noqa: E402
 import build_index  # noqa: E402
 import dbtools  # noqa: E402
 
@@ -322,6 +323,101 @@ def sample_ddi():
     return _sample["ddi"]
 
 
+# Product labels in the shape of openFDA's, for medicines that do not exist.
+def _fda(kind, substances, generic, brands, maker, route, application, **more):
+    block = {"product_type": [kind], "substance_name": substances, "generic_name": [generic], "brand_name": brands,
+             "manufacturer_name": [maker], "route": [route], "application_number": [application]}
+    block.update(more)
+    return block
+
+
+LABELS = {"meta": {"disclaimer": "made up for the tests", "results": {"skip": 0, "limit": 9, "total": 9}}, "results": [
+    {"set_id": "set-1", "effective_time": "20250101",
+     "openfda": _fda("HUMAN PRESCRIPTION DRUG", ["WOBBLOL HYDROCHLORIDE"], "WOBBLOL HYDROCHLORIDE", ["Wobblol Hydrochloride"], "Copycat Ltd",
+                     "ORAL", "ANDA000001", pharm_class_epc=["Knee Steadier [EPC]"]),
+     "indications_and_usage": ["1 INDICATIONS Wobblol is for wobbly knees. This is the copy's label."],
+     "adverse_reactions": ["6 ADVERSE REACTIONS Dizziness."]},
+    {"set_id": "set-2", "effective_time": "20260301",
+     "openfda": _fda("HUMAN PRESCRIPTION DRUG", ["WOBBLOL HYDROCHLORIDE"], "WOBBLOL HYDROCHLORIDE", ["Steadyknee"], "Original Pharma Inc",
+                     "ORAL", "NDA000002", pharm_class_epc=["Knee Steadier [EPC]"], is_original_packager=[True]),
+     "boxed_warning": ["WARNING: A MADE-UP RISK Wobblol can make the tests fail."],
+     "indications_and_usage": ["1 INDICATIONS AND USAGE Wobblol is indicated for wobbly knees in adults.   It isn\u2019t a real medicine."],
+     "contraindications": ["4 CONTRAINDICATIONS Do not use in patients with creaky elbows."],
+     "warnings_and_cautions": ["5 WARNINGS AND PRECAUTIONS 5.1 Sniffles Monitor for sniffles."],
+     "adverse_reactions": ["6 ADVERSE REACTIONS The most common adverse reactions (incidence 5% or more) are nausea, pruritus and "
+                           "somnolence. Nausea led to discontinuation in 2% of patients. 6.2 Postmarketing Experience Headache has "
+                           "been reported."],
+     "drug_interactions": ["7 DRUG INTERACTIONS 7.1 Creakazine Increased wobbling. Avoid the combination. 7.2 Elbowmycin No effect."],
+     "pregnancy": ["8.1 Pregnancy There are no data in pregnant women."],
+     "dosage_and_administration": ["2 DOSAGE AND ADMINISTRATION Take 5 mg once daily."],
+     "spl_medguide": ["MEDICATION GUIDE What is the most important information I should know? Wobblol may cause nausea."]},
+    {"set_id": "set-3", "effective_time": "20260201",
+     "openfda": _fda("HUMAN OTC DRUG", ["WOBBLOL"], "WOBBLOL", ["Kneeze Gel", "Shopwise Wobblol Gel", "Knee Relief", "Wobblol Gel 1%"],
+                     "Shelf Goods LLC", "TOPICAL", "M017"),
+     "purpose": ["Purpose Knee steadier"], "active_ingredient": ["Active ingredient Wobblol 1%"],
+     "indications_and_usage": ["Uses temporarily steadies a wobbly knee"], "warnings": ["Warnings For external use only."],
+     "stop_use": ["Stop use and ask a doctor if a rash appears"], "dosage_and_administration": ["Directions apply thinly twice a day"]},
+    {"set_id": "set-4", "effective_time": "20260110",
+     "openfda": _fda("HUMAN PRESCRIPTION DRUG", ["CREAKAZINE", "WOBBLOL HYDROCHLORIDE"], "WOBBLOL AND CREAKAZINE", ["Duoknee"],
+                     "Original Pharma Inc", "ORAL", "NDA000004"),
+     "indications_and_usage": ["1 INDICATIONS AND USAGE Duoknee is indicated for knees and elbows at once."],
+     "adverse_reactions": ["6 ADVERSE REACTIONS Nausea."]},
+    {"set_id": "set-5", "effective_time": "20260101", "indications_and_usage": ["A label FDA has not matched to a product."]},
+    {"set_id": "set-6", "effective_time": "20260101", "openfda": {"product_type": ["PLASMA DERIVATIVE"], "substance_name": ["PLASMOL"]},
+     "indications_and_usage": ["Not a kind of product that is kept."]},
+    # another medicine altogether, sold under a name the wobblol gel also carries
+    {"set_id": "set-7", "effective_time": "20260105",
+     "openfda": _fda("HUMAN OTC DRUG", ["ZIPPERINE"], "ZIPPERINE", ["Knee Relief", "Zippo Warming Rub"], "Shelf Goods LLC", "TOPICAL", "M018"),
+     "purpose": ["Purpose Knee warmer"], "indications_and_usage": ["Uses warms a cold knee"],
+     "warnings": ["Warnings For external use only. Stop use if a rash appears."]},
+    # two labels FDA lists no substances for: one whose generic name reads as a list of them, one that does not
+    {"set_id": "set-8", "effective_time": "20250601",
+     "openfda": _fda("HUMAN PRESCRIPTION DRUG", [], "Wobblol HCl and Creakazine Tablets", ["Duoknee Starter Pack"], "Copycat Ltd", "",
+                     "ANDA000008"),
+     "indications_and_usage": ["1 INDICATIONS The starter pack is for knees and elbows. This is the pack's label."]},
+    {"set_id": "set-9", "effective_time": "20250601",
+     "openfda": _fda("HUMAN PRESCRIPTION DRUG", [], "Knee tonic compound", ["Tonique"], "Copycat Ltd", "ORAL", "ANDA000009"),
+     "indications_and_usage": ["1 INDICATIONS A tonic nobody can place."]},
+]}
+
+
+def label_files(doc=None, indent=1):
+    """A made-up label file and the made-up names file on disk; returns ([label path], names path)."""
+    folder = tempfile.mkdtemp(dir=OUTPUTS)
+    path = os.path.join(folder, "drug-label-0001-of-0001.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(LABELS if doc is None else doc, f, indent=indent)
+    names_path = os.path.join(folder, "drug-names.sample.json")
+    with open(names_path, "w", encoding="utf-8") as f:
+        json.dump(DDI_NAMES, f)
+    return [path], names_path
+
+
+def build_labels_db(out, paths, names_path, *extra):
+    """Run the real label builder on made-up files; returns what it printed."""
+    keep = build_labels.MIN_LABELS, build_labels.MIN_NAMES
+    build_labels.MIN_LABELS, build_labels.MIN_NAMES = 2, 2
+    said = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(said):
+            build_labels.main(["--files"] + list(paths) + ["--names", names_path, "--out", out, "--downloads", NO_DATA] + list(extra))
+    finally:
+        build_labels.MIN_LABELS, build_labels.MIN_NAMES = keep
+    return said.getvalue()
+
+
+def sample_labels():
+    """The folder that holds the small label database, built once for the whole run."""
+    if "labels" not in _sample:
+        folder = os.path.join(OUTPUTS, "sample-labels")
+        os.makedirs(folder)
+        clock()
+        paths, names_path = label_files()
+        _sample["labels-said"] = build_labels_db(folder, paths, names_path, "--retrieved", "2026-11-10", "--terms-read", "2026-11-10")
+        _sample["labels"] = folder
+    return _sample["labels"]
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         clock()
@@ -399,7 +495,7 @@ class SourcesTests(Base):
     def test_nothing_installed(self):
         out = ok("sources")
         self.assertIn("SOURCES    no database installed (looked in ", out)
-        for stem in ("core-pd", "icd11", "ddinter"):
+        for stem in ("core-pd", "icd11", "ddinter", "labels-us"):
             self.assertIn("NOT HERE   %s.db" % stem, out)
         self.assertIn("nothing is fetched while the tools run", out)
 
@@ -1569,7 +1665,8 @@ class PackageTests(Base):
                     args = shlex.split(ex)
                     if (not shipped and (name == "term" or "--country" in args)) or (
                             name == "code" and not os.path.isfile(os.path.join(REAL_DATA, "icd11.db"))) or (
-                            name in ("interact", "watch") and not os.path.isfile(os.path.join(REAL_DATA, "ddinter.db"))):
+                            name in ("interact", "watch") and not os.path.isfile(os.path.join(REAL_DATA, "ddinter.db"))) or (
+                            name in ("med", "sidefx") and not os.path.isfile(os.path.join(REAL_DATA, "labels-us.db"))):
                         continue
                     if "CODE" in args:
                         probe = [a for a in args if a not in ("--json", "--package")]
@@ -1634,8 +1731,8 @@ class PackageTests(Base):
     def test_only_the_chosen_commands_exist(self):
         names = [c["name"] for c in index.load()["commands"]]
         self.assertEqual(sorted(names), sorted(["boot", "theatre", "sources", "check", "selftest", "tools", "triage", "visit", "labs",
-                                                "term", "code", "schedule", "refill", "interact", "watch", "ignition", "profile", "intake",
-                                                "rebuild", "forget"]))
+                                                "term", "code", "schedule", "refill", "interact", "watch", "med", "sidefx", "ignition",
+                                                "profile", "intake", "rebuild", "forget"]))
         for name in names:
             for word in UNCHOSEN:
                 self.assertNotIn(word, name)
@@ -1726,13 +1823,14 @@ class IndexTests(Base):
             self.assertEqual(got, first, question)
         for question, first in (("what does this word mean", "term"), ("which number do I call abroad", "triage"),
                                 ("the icd code on my discharge letter", "code"), ("can I take these two tablets together", "interact"),
-                                ("the doctor prescribed something new", "watch")):
+                                ("the doctor prescribed something new", "watch"), ("what is this pill for", "med"),
+                                ("could this be a side effect", "sidefx")):
             self.assertEqual(ok("tools", "--find", *question.split()).splitlines()[1].split()[0], first, question)
         self.assertIn("no command answers that", ok("tools", "--find", "zzzzqq"))
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("20 commands.", ok("tools"))
+        self.assertIn("22 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -2574,6 +2672,353 @@ class InteractTests(Base):
         self.assertTrue(ok("interact", "wobblol", "creakazine").startswith("STALE      ddinter.db: retrieved 2026-11-10"))
 
 
+class LabelBuildTests(Base):
+    """tools/build_labels.py, run on a made-up file in the shape of openFDA's."""
+
+    def test_the_database_it_writes(self):
+        folder = sample_labels()
+        said = _sample["labels-said"]
+        for line in ("4 labels kept of 9 read: 2 prescription, 2 over the counter; 4 substances",
+                     "brand names: 8; left out: 1 label that FDA lists no substances for, and whose generic name does not read as a list of them",
+                     "other names: 3 substances matched to one Wikidata item",
+                     "retrieved: labels 2026-11-10, names 2026-11-10; terms page read 2026-11-10"):
+            self.assertIn(line, said)
+        self.assertEqual(sorted(os.listdir(folder)), ["LICENSE-labels-us.txt", "labels-us.db"])
+        info = library.read(os.path.join(folder, "labels-us.db"))
+        self.assertEqual(info["problems"], [])
+        self.assertEqual(info["sources"][0]["credit"], build_labels.CREDIT)
+        self.assertIn("CC0 1.0", info["sources"][0]["licence"])
+        with open(os.path.join(folder, "LICENSE-labels-us.txt"), encoding="utf-8") as f:
+            licence = f.read()
+        for must in ("https://creativecommons.org/publicdomain/zero/1.0/", "Data provided by the U.S. Food and Drug Administration",
+                     "neither been altered nor verified by FDA", "The dose is left out on purpose", "FDA does not endorse this skill"):
+            self.assertIn(must, licence)
+        con = library.connect(os.path.join(folder, "labels-us.db"))
+        try:
+            rows = con.execute("SELECT id, type, route, substances, brand, maker, application, effective, labels, class FROM label").fetchall()
+            self.assertEqual([r[:4] for r in rows], [(1, "prescription", "oral", "CREAKAZINE; WOBBLOL HYDROCHLORIDE"),
+                                                     (2, "over the counter", "topical", "WOBBLOL"),
+                                                     (3, "prescription", "oral", "WOBBLOL HYDROCHLORIDE"),
+                                                     (4, "over the counter", "topical", "ZIPPERINE")])
+            self.assertEqual(rows[2][4:], ("Steadyknee", "Original Pharma Inc", "NDA000002", "2026-03-01", 2, "Knee Steadier [EPC]"),
+                             "of two labels for one medicine, the original maker's and the newer is kept")
+            self.assertEqual(rows[0][4:9], ("Duoknee", "Original Pharma Inc", "NDA000004", "2026-01-10", 2),
+                             "a label with no list of substances and no route is counted with the product its generic name spells out")
+            kinds = [k for (k,) in con.execute("SELECT kind FROM section WHERE label = 3")]
+            self.assertEqual(sorted(kinds), sorted(["boxed warning", "uses", "do not use", "warnings", "side effects", "interactions",
+                                                    "pregnancy and other groups", "for patients"]))
+            reader = store.Reader(con)
+            everything = b"".join(raw for _, raw in reader.everything()).decode("utf-8")
+            for left_out in ("5 mg once daily", "apply thinly", "copy's label", "not matched to a product", "kind of product",
+                             "pack's label", "nobody can place"):
+                self.assertNotIn(left_out, everything)
+            self.assertIn("It isn't a real medicine.", everything, "tidied, and in this skill's typography")
+            self.assertIn("Stop use and ask a doctor if a rash appears", everything)
+            self.assertEqual(set(con.execute("SELECT folded, label FROM label_name")),
+                             {("steadyknee", 3), ("kneeze_gel", 2), ("shopwise_wobblol_gel", 2), ("knee_relief", 2), ("duoknee", 1),
+                              ("duoknee_starter_pack", 1), ("knee_relief", 4), ("zippo_warming_rub", 4)},
+                             "every brand name is kept but the ones that say no more than the substance: 'Wobblol Hydrochloride', 'Wobblol Gel 1%'")
+            self.assertEqual([n for (n,) in con.execute("SELECT shown FROM label_name WHERE label = 1 ORDER BY place")],
+                             ["Duoknee", "Duoknee Starter Pack"])
+            names = set(con.execute("SELECT n.folded, s.name, n.kind FROM substance_name n JOIN substance s ON s.id = n.substance"))
+            for row in (("wobblol", "WOBBLOL", "substance"), ("wobblol", "WOBBLOL HYDROCHLORIDE", "substance"),
+                        ("woblol", "WOBBLOL HYDROCHLORIDE", "also called (pl)"), ("kreakazyna", "CREAKAZINE", "also called (pl)")):
+                self.assertIn(row, names)
+        finally:
+            con.close()
+
+    def test_a_big_file_is_read_a_piece_at_a_time(self):
+        paths, _ = label_files(indent=None)
+        whole = [x["set_id"] for x in build_labels.labels(paths[0])]
+        self.assertEqual(whole, ["set-%d" % n for n in range(1, 10)])
+        keep = build_labels.CHUNK
+        try:
+            for size in (1, 7, 64, 1000):
+                build_labels.CHUNK = size
+                for indent in (None, 2):
+                    paths, _ = label_files(indent=indent)
+                    self.assertEqual([x["set_id"] for x in build_labels.labels(paths[0])], whole, (size, indent))
+            build_labels.CHUNK = 50
+            short = os.path.join(tempfile.mkdtemp(dir=OUTPUTS), "short.json")
+            with open(paths[0], encoding="utf-8") as f, open(short, "w", encoding="utf-8") as out:
+                out.write(f.read()[:900])
+            with self.assertRaises(SystemExit) as caught:
+                list(build_labels.labels(short))
+            self.assertIn("cut short", str(caught.exception))
+            with open(short, "w", encoding="utf-8") as out:
+                out.write('{"meta": {}, "labels": []}')
+            with self.assertRaises(SystemExit) as caught:
+                list(build_labels.labels(short))
+            self.assertIn("no list of results", str(caught.exception))
+        finally:
+            build_labels.CHUNK = keep
+        self.assertEqual(build_labels.base_name("METFORMIN HYDROCHLORIDE"), "METFORMIN")
+        self.assertIsNone(build_labels.base_name("IBUPROFEN"))
+        self.assertIsNone(build_labels.base_name("SODIUM CHLORIDE"), "a salt that is all salt keeps its name")
+
+    def test_a_generic_name_read_as_a_list(self):
+        read = build_labels.parts_of
+        self.assertEqual(read(["Norgestimate and Ethinyl Estradiol Tablets USP"]), ["NORGESTIMATE", "ETHINYL ESTRADIOL"])
+        self.assertEqual(read(["Acetaminophen, Dextromethorphan HBr, Phenylephrine HCl"]),
+                         ["ACETAMINOPHEN", "DEXTROMETHORPHAN HYDROBROMIDE", "PHENYLEPHRINE HYDROCHLORIDE"])
+        self.assertEqual(read(["acetaminophen/caffeine", "Caffeine"]), ["ACETAMINOPHEN", "CAFFEINE"])
+        self.assertEqual(read(["Acetaminophen Dextromethorphan"]), ["ACETAMINOPHEN DEXTROMETHORPHAN"], "run together, it is not taken apart")
+        self.assertEqual(read(["Kit"]), [])
+        known = {"acetaminophen", "ethinyl_estradiol", "dextromethorphan"}
+        for name, is_one in (("ACETAMINOPHEN", True), ("DEXTROMETHORPHAN HYDROBROMIDE", True), ("ACETAMINOPHEN DEXTROMETHORPHAN", False),
+                             ("NORGESTIMATE", False)):
+            self.assertEqual(build_labels.is_known(name, known), is_one, name)
+
+        def made_of(*labels_in):
+            doc = {"meta": {}, "results": [{"set_id": "s%d" % n, "effective_time": "20260101", "openfda": block,
+                                            "indications_and_usage": ["Uses of pack %d." % n]} for n, block in enumerate(labels_in)]}
+            keep = build_labels.say
+            build_labels.say = lambda *a, **k: None
+            try:
+                best, seen, left_out = build_labels.pick(label_files(doc)[0], frozenset(["wikidol"]))
+            finally:
+                build_labels.say = keep
+            return sorted((key, entry[4]) for key, entry in best.items()), left_out
+
+        def pack(generic, application, route="", kind="HUMAN PRESCRIPTION DRUG"):
+            return _fda(kind, [], generic, ["A Pack"], "Copycat Ltd", route, application)
+        plain = _fda("HUMAN PRESCRIPTION DRUG", ["WOBBLOL"], "WOBBLOL", ["Steadyknee"], "Original Pharma Inc", "ORAL", "NDA000001")
+        rx = "prescription"
+        # a name no list has: three separate approvals agree on it, two do not
+        groups, left_out = made_of(plain, pack("Mysterol and Wobblol", "ANDA000001"), pack("Mysterol and Wobblol", "ANDA000002"),
+                                   pack("Wobblol and Mysterol", "ANDA000003", "ORAL"))
+        self.assertEqual(groups, [((rx, ("MYSTEROL", "WOBBLOL"), "oral"), 3), ((rx, ("WOBBLOL",), "oral"), 1)],
+                         "and the two that give no route are counted with the one that does")
+        self.assertEqual(left_out, [])
+        groups, left_out = made_of(plain, pack("Mysterol and Wobblol", "ANDA000001"), pack("Mysterol and Wobblol", "ANDA000002"),
+                                   pack("Mysterol and Wobblol", "ANDA000002"), pack("Mysterol and Wobblol", "M012"))
+        self.assertEqual(groups, [((rx, ("WOBBLOL",), "oral"), 1)])
+        self.assertEqual(left_out, ["Mysterol and Wobblol"] * 4)
+        # a name Wikidata has is enough; and with no word anywhere on how a pack is taken, the label says so
+        groups, left_out = made_of(plain, pack("Wikidol; wobblol HCl", ""), pack("Wobblol", "", "", "HUMAN OTC DRUG"))
+        self.assertEqual(groups, [(("over the counter", ("WOBBLOL",), "route not given"), 1), ((rx, ("WIKIDOL", "WOBBLOL HYDROCHLORIDE"), "route not given"), 1),
+                                  ((rx, ("WOBBLOL",), "oral"), 1)])
+        says_more = build_labels.says_more
+        own = {"ibuprofen", "sodium"}
+        for name in ("ibuprofen", "ibuprofen_tablets_200_mg", "ibuprofen_sodium_200mg", "ibuprofen_and_ibuprofen_usp", "extra_strength_ibuprofen"):
+            self.assertFalse(says_more(name, own), name)
+        for name in ("motrin_ib", "childrens_ibuprofen", "ibuprofen_pm", "equate_ibuprofen"):
+            self.assertTrue(says_more(name, own), name)
+
+    def test_what_stops_a_build(self):
+        paths, names_path = label_files()
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+
+        def stops(*extra):
+            with self.assertRaises(SystemExit) as caught:
+                build_labels_db(folder, paths, names_path, *extra)
+            self.assertEqual(os.listdir(folder), [], "a build that stops leaves nothing behind")
+            return str(caught.exception)
+        self.assertIn("has no note of when it was downloaded", stops("--terms-read", "2026-11-10"))
+        self.assertIn("openFDA's terms page is not in the downloads folder", stops("--retrieved", "2026-11-10"))
+        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
+            build_labels.main(["--files"] + paths + ["--names", names_path, "--out", folder, "--downloads", NO_DATA,
+                                                      "--retrieved", "2026-11-10", "--terms-read", "2026-11-10"])
+        self.assertIn("only 4 items are in the names file", str(caught.exception))
+        self.assertEqual(os.listdir(folder), [])
+
+
+class MedTests(Base):
+    def setUp(self):
+        Base.setUp(self)
+        os.environ["VOSS_DATA"] = sample_labels()
+
+    def test_what_a_medicine_is(self):
+        out = ok("med", "wobblol")
+        over, rx = out.split("\n\n", 1)
+        for line in ("MEDICINE   WOBBLOL [over the counter; topical] (label 2) - read as WOBBLOL or WOBBLOL HYDROCHLORIDE",
+                     "BRANDS     in the United States, among others: Knee Relief; Kneeze Gel; Shopwise Wobblol Gel",
+                     "PURPOSE    the label's own words", "Purpose Knee steadier",
+                     "Active ingredient Wobblol 1%", "Uses temporarily steadies a wobbly knee", "ALSO HERE  warnings  ('med --id 2 --section NAME')",
+                     "LABEL      filed by Shelf Goods LLC, dated 2026-02-01; the only label on file with FDA for this substance, type and route",
+                     "PAGE       https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=set-3"):
+            self.assertIn(line, over)
+        for line in ("MEDICINE   WOBBLOL HYDROCHLORIDE [prescription; oral] (label 3)", "BRANDS     in the United States, among others: Steadyknee",
+                     "CLASS      Knee Steadier [EPC]", "BOXED WARNING the label's own words", "WARNING: A MADE-UP RISK Wobblol can make the tests fail.",
+                     "1 INDICATIONS AND USAGE Wobblol is indicated for wobbly knees in adults. It isn't a real medicine.",
+                     "ALSO HERE  do not use; warnings; side effects; interactions; pregnancy and other groups; for patients",
+                     "LABEL      filed by Original Pharma Inc, dated 2026-03-01; one of 2 labels on file with FDA",
+                     "SOURCE     openFDA drug labels: product labelling as companies have filed it with the United States Food and Drug "
+                     "Administration, retrieved 2026-11-10 [sourced: labels-us.db, built 2026-11-15]",
+                     "CREDIT     Data provided by the U.S. Food and Drug Administration (https://open.fda.gov)",
+                     "OTHER      1 more label for the same name", "label 1: CREAKAZINE; WOBBLOL HYDROCHLORIDE [prescription; oral]",
+                     "RULE       an American label, as the company filed it. FDA has not verified it",
+                     "there is no dose in this file, on purpose"):
+            self.assertIn(line, rx)
+        self.assertNotIn("5 mg", out)
+        self.assertEqual(desk.check_text(out), [])
+        self.assertFalse([ln for ln in out.splitlines() if ln != ln.rstrip()])
+
+    def test_names_it_is_found_under(self):
+        def first(*words):
+            return field(ok("med", *words), "MEDICINE")
+        self.assertIn("(label 3) - read as Steadyknee [a brand name in the United States]", first("steadyknee"))
+        self.assertIn("(label 2) - read as Kneeze Gel [a brand name in the United States]", first("Kneeze", "gel"))
+        self.assertIn("read as WOBBLOL or WOBBLOL HYDROCHLORIDE [found under \"woblol\", another name for it, from Wikidata (pl)]", first("woblol"))
+        self.assertIn("CREAKAZINE; WOBBLOL HYDROCHLORIDE [prescription; oral] (label 1) - read as CREAKAZINE", first("kreakazyna"))
+        self.assertIn("(label 3)", first("wobblol", "hydrochloride"))
+        self.assertNotIn("CHECK", ok("med", "Wobblol 5 mg tablets"))
+        self.assertNotIn("CHECK", ok("med", "extra strength steadyknee 5mg"))
+        self.assertIn("CHECK      only part of that name was used (\"carbonate\" was not)", ok("med", "wobblol", "carbonate"))
+        out = ok("med", "childrens", "wobblol")
+        self.assertIn("read as WOBBLOL or WOBBLOL HYDROCHLORIDE", field(out, "MEDICINE"))
+        self.assertIn("CHECK      only part of that name was used (\"childrens\" was not): make sure this is the medicine meant", out)
+        self.assertEqual(field(ok("med", "--id", "1"), "MEDICINE"), "CREAKAZINE; WOBBLOL HYDROCHLORIDE [prescription; oral] (label 1)")
+        out = ok("med", "mysterol")
+        self.assertIn("MEDICINE   nothing on file under that name", out)
+        self.assertIn("which holds American labels only", out)
+        for nothing in (["500", "mg"], ["extra", "strength"], ["and"], ["x"]):
+            self.assertIn("nothing on file under that name", ok("med", *nothing), nothing)
+
+    def test_a_brand_by_part_of_its_name(self):
+        def first(*words):
+            return field(ok("med", *words), "MEDICINE")
+        self.assertIn("(label 2) - read as Kneeze Gel [a brand name in the United States, found by part of it]", first("kneeze"))
+        self.assertIn("(label 2) - read as Shopwise Wobblol Gel [a brand name in the United States, found by part of it]", first("shopwise"))
+        self.assertIn("(label 1) - read as Duoknee [a brand name in the United States]", first("duoknee"))
+        self.assertIn("(label 1) - read as Duoknee Starter Pack [a brand name in the United States]", first("Duoknee", "starter", "pack"))
+        self.assertIn("(label 1) - read as Duoknee Starter Pack [a brand name in the United States, found by part of it]", first("starter", "pack"))
+        self.assertIn("nothing on file", first("duo"), "a piece of a word is not a word")
+        self.assertIn("nothing on file", first("ze"))
+        con = library.connect(os.path.join(sample_labels(), "labels-us.db"))
+        try:
+            rows, how, unused, one, names = labels.resolve(con, "rub zippo 2%")
+            self.assertEqual(([r[0] for r in rows], unused, one), ([4], [], True), "every word is in the one name, in another order")
+            self.assertEqual(how, "Zippo Warming Rub [a brand name in the United States, found by part of it]")
+            self.assertEqual(names, {4: [(2, "Zippo Warming Rub")]})
+            self.assertEqual(labels.resolve(con, "zippo relief")[0], [], "two words from two names of one label are not a name")
+            self.assertEqual(labels.resolve(con, "kneeze mysterol")[0], [], "part of a name is not trusted beside a word nobody can place")
+            self.assertEqual([r[0] for r in labels.resolve(con, "kneeze 10 g")[0]], [2])
+            rows, how, unused, one, names = labels.resolve(con, "steadyknee mysterol")
+            self.assertEqual(([r[0] for r in rows], unused), ([3], ["mysterol"]), "a whole name is, and the word is reported")
+            rows, how, unused, one, names = labels.resolve(con, "duoknee pack 28 tablets")
+            self.assertEqual(([r[0] for r in rows], how, unused), ([1], "Duoknee [a brand name in the United States]", []),
+                             "a word from a longer name of the same label is no surprise")
+            rows, how, unused, one, names = labels.resolve(con, "steadyknee wobblol 5 mg")
+            self.assertEqual(([r[0] for r in rows], how, unused, names), ([3], "Steadyknee [a brand name in the United States]", [], {}),
+                             "a brand with its own substance after it")
+            self.assertEqual(labels.resolve(con, ""), ([], "", [], True, {}))
+            self.assertEqual(labels.resolve(con, " ".join(["mysterol"] * 40))[0], [], "a long line of nothing is still nothing")
+            unused = labels.resolve(con, " ".join(["wobblol"] + ["mysterol"] * 14))[2]
+            self.assertEqual(len(unused), 14, "what was typed beyond the name is reported, all of it")
+        finally:
+            con.close()
+
+    def test_a_name_on_packs_of_different_medicines(self):
+        out = ok("med", "knee", "relief")
+        for line in ("MEDICINE   not one medicine: 2 labels of different medicines carry that name (read as Knee Relief [a brand name in "
+                     "the United States])",
+                     "label 2: WOBBLOL [over the counter; topical], 1 label on file with FDA",
+                     "label 4: ZIPPERINE [over the counter; topical], 1 label on file with FDA",
+                     "RULE       do not choose one for the person. The active ingredient is printed on the pack"):
+            self.assertIn(line, out)
+        for never in ("PURPOSE", "USES", "Knee steadier", "Knee warmer", "SOURCE"):
+            self.assertNotIn(never, out, "none of them is read out")
+        self.assertEqual(desk.check_text(out), [])
+        self.assertIn("none of that type or route", ok("med", "knee", "relief", "--rx"))
+        self.assertIn("nothing on file", ok("med", "knee", "relief", "mysterol"), "such a name counts only when all of it matched")
+        self.assertIn("MEDICINE   not one medicine", ok("med", "knee", "relief", "gel", "10", "g"), "a strength or a form changes nothing")
+        out = ok("sidefx", "--med", "knee", "relief", "--symptom", "rash")
+        self.assertIn("carry that name, so nothing was searched (read as Knee Relief", out)
+        self.assertNotIn("WARNINGS", out)
+        self.assertIn("(label 4) - read as Zippo Warming Rub [a brand name in the United States, found by part of it]",
+                      field(ok("sidefx", "--med", "zippo", "rub", "--symptom", "rash"), "MEDICINE"))
+
+    def test_two_substances_in_one_product(self):
+        for words in (["wobblol", "with", "creakazine"], ["creakazine", "and", "wobblol"], ["wobblol/creakazine"], ["Wobblol", "creakazine", "5", "mg"],
+                      ["kreakazyna", "plus", "woblol"]):
+            out = ok("med", *words)
+            self.assertIn("CREAKAZINE; WOBBLOL HYDROCHLORIDE [prescription; oral] (label 1) - read as", field(out, "MEDICINE"), words)
+            self.assertNotIn("CHECK", out, words)
+            self.assertEqual(out.count("MEDICINE "), 1, words)
+        self.assertIn("read as WOBBLOL or WOBBLOL HYDROCHLORIDE together with CREAKAZINE",
+                      field(ok("med", "wobblol", "with", "creakazine"), "MEDICINE"))
+        self.assertIn("(label 1) - read as CREAKAZINE", field(ok("med", "creakazine", "and", "wobblol"), "MEDICINE"))
+        self.assertNotIn("together", ok("med", "creakazine", "and", "wobblol"), "creakazine is only sold with it: nothing was narrowed")
+        out = ok("med", "wobblol", "and", "zipperine")
+        self.assertIn("read as WOBBLOL or WOBBLOL HYDROCHLORIDE", field(out, "MEDICINE"))
+        self.assertNotIn("together", out)
+        self.assertIn("CHECK      only part of that name was used (\"and zipperine\" was not)", out, "no label holds both, and none is made up")
+        out = ok("med", "steadyknee", "and", "creakazine")
+        self.assertIn("(label 3) - read as Steadyknee [a brand name in the United States]", field(out, "MEDICINE"))
+        self.assertIn("CHECK      only part of that name was used (\"and creakazine\" was not)", out, "two products are not turned into a third")
+        out = ok("med", "wobblol", "knee", "relief")
+        self.assertIn("WOBBLOL [over the counter; topical] (label 2) - read as WOBBLOL or WOBBLOL HYDROCHLORIDE, sold as Knee Relief "
+                      "[a brand name in the United States]", field(out, "MEDICINE"), "the substance says which of the two Knee Reliefs")
+        self.assertNotIn("CHECK", out)
+        self.assertEqual(out.count("MEDICINE "), 1)
+        out = ok("med", "knee", "relief", "zipperine")
+        self.assertTrue(field(out, "MEDICINE").endswith("(label 4) - read as ZIPPERINE"), "zipperine has the one label: the name narrows nothing")
+        self.assertNotIn("CHECK", out)
+
+    def test_choosing_a_label_and_a_section(self):
+        self.assertEqual(ok("med", "wobblol", "--rx").count("MEDICINE "), 1)
+        self.assertIn("(label 2)", field(ok("med", "wobblol", "--otc"), "MEDICINE"))
+        self.assertIn("(label 2)", field(ok("med", "wobblol", "--route", "topical"), "MEDICINE"))
+        self.assertIn("and none of that type or route", ok("med", "wobblol", "--route", "rectal"))
+        out = ok("med", "wobblol", "--rx", "--section", "side")
+        self.assertIn("SIDE EFFECTS the label's own words", out)
+        self.assertIn("are nausea, pruritus and somnolence", out)
+        self.assertNotIn("INDICATIONS", out)
+        self.assertIn("SIDE EFFECTS this label has no such section", ok("med", "wobblol", "--otc", "--section", "side effects"))
+        out = ok("med", "wobblol", "--rx", "--section", "interactions", "--find", "creakazine")
+        self.assertIn("INTERACTIONS 1 place on the label under those words", out)
+        self.assertIn("7.1 Creakazine Increased wobbling.", out)
+        self.assertNotIn("Elbowmycin", out)
+        self.assertIn("0 places on the label under those words: the label may use another word for it",
+                      ok("med", "wobblol", "--rx", "--section", "warn", "--find", "liver"))
+        self.assertIn("--section is one of", fails("med", "wobblol", "--section", "dose"))
+        self.assertIn("--rx or --otc, not both", fails("med", "wobblol", "--rx", "--otc"))
+        self.assertIn("no label has that number", fails("med", "--id", "99"))
+        self.assertIn("name the medicine", fails("med"))
+        os.environ["VOSS_DATA"] = NO_DATA
+        self.assertIn("labels-us.db is not installed", fails("med", "wobblol"))
+
+    def test_a_long_section_is_cut_and_says_so(self):
+        text = "A sentence about the knee. " * 400
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            labels._print_text(text, 500, False)
+        said = out.getvalue()
+        self.assertLess(len(said.splitlines()[0]), 520)
+        self.assertTrue(said.splitlines()[0].endswith("knee."))
+        self.assertIn("more characters of this section: --all prints the whole of it", said)
+
+    def test_is_this_symptom_on_the_label(self):
+        out = ok("sidefx", "--med", "wobblol", "--rx", "--symptom", "nausea")
+        for line in ("MEDICINE   WOBBLOL HYDROCHLORIDE [prescription; oral] (label 3)", "SIDE EFFECTS 1 place under those words",
+                     "are nausea, pruritus and somnolence. Nausea led to discontinuation in 2% of patients.",
+                     "FOR PATIENTS 1 place under those words", "Wobblol may cause nausea.",
+                     "RULE       listed is not caused. A symptom on the label may have another cause",
+                     "Never \"stop taking it\": that goes to the prescriber or the pharmacist, today if it matters",
+                     "an American label, as the company filed it"):
+            self.assertIn(line, out)
+        self.assertNotIn("Headache", out, "only the sentences that mention it")
+        out = ok("sidefx", "--med", "wobblol", "--rx", "--symptom", "itching")
+        self.assertIn("NOT FOUND  none of those words is on this label", out)
+        self.assertIn("itching is pruritus", out)
+        self.assertIn("not on the label is not the same as not caused by the medicine", out)
+        self.assertIn("pruritus and somnolence", ok("sidefx", "--med", "wobblol", "--rx", "--symptom", "itching", "pruritus"))
+        out = ok("sidefx", "--med", "wobblol", "--symptom", "rash")
+        self.assertIn("WARNINGS   1 place under those words", out)
+        self.assertIn("Stop use and ask a doctor if a rash appears", out)
+        self.assertIn("OTHER      1 more label for the same name was not searched", out)
+        self.assertEqual(labels.passages("One two three. Four five six. Seven eight nine.", ["five"]), (["Four five six."], 1))
+        long = "word " * 200 + "needle " + "word " * 200
+        found, total = labels.passages(long, ["needle"])
+        self.assertTrue(found[0].startswith("... word") and found[0].endswith("word ..."), "a long run is cut at a space, and says so")
+        self.assertLess(len(found[0]), 2 * labels.WINDOW + 30)
+        self.assertIn("nothing on file under that name, so nothing was checked", ok("sidefx", "--med", "mysterol", "--symptom", "nausea"))
+        self.assertIn("name the medicine", fails("sidefx", "--symptom", "nausea"))
+        self.assertIn("say what to look for", fails("sidefx", "--med", "wobblol"))
+        self.assertEqual(desk.check_text(ok("sidefx", "--med", "wobblol", "--symptom", "nausea")), [])
+
+
 class ShippedDataTests(Base):
     """A look at the databases that ship with the skill. Skipped in a copy that carries none."""
 
@@ -2623,6 +3068,42 @@ class ShippedDataTests(Base):
         finally:
             con.close()
         self.assertIn("Poland (PL): 112", field(ok("triage", "--country", "poland"), "NUMBERS"))
+
+    def test_the_label_data(self):
+        if "labels-us.db" not in self.files:
+            self.skipTest("labels-us.db does not ship in this copy")
+        con = library.connect(os.path.join(REAL_DATA, "labels-us.db"))
+        try:
+            counts = dict(con.execute("SELECT type, COUNT(*) FROM label GROUP BY type"))
+            self.assertGreater(counts["prescription"], 2000)
+            self.assertGreater(counts["over the counter"], 2000)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM section WHERE kind NOT IN (%s)" % ",".join("?" * len(labels.KINDS)),
+                                         labels.KINDS).fetchone()[0], 0, "no section but the ones the tool knows, and so no dose")
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM label l WHERE NOT EXISTS (SELECT 1 FROM section s WHERE s.label = l.id)")
+                             .fetchone()[0], 0)
+        finally:
+            con.close()
+        out = ok("med", "metformin", "--rx")
+        self.assertIn("METFORMIN HYDROCHLORIDE [prescription; oral]", out)
+        self.assertIn("BOXED WARNING", out)
+        self.assertIn("CREDIT     " + build_labels.CREDIT, out)
+        self.assertIn("read as ACETAMINOPHEN [found under", field(ok("med", "paracetamol", "--otc"), "MEDICINE"))
+        first = field(ok("med", "advil", "200", "mg"), "MEDICINE")
+        self.assertIn("IBUPROFEN [over the counter; oral]", first)
+        self.assertIn("read as Advil [a brand name in the United States]", first)
+        # a name that is on more than one medicine is never read as one of them, whatever the day's file holds
+        out = ok("med", "tylenol", "--max", "40")
+        self.assertIn("ACETAMINOPHEN [over the counter; oral]", out)
+        if "not one medicine" in out:
+            self.assertNotIn("USES", out)
+            self.assertIn("RULE       do not choose one for the person", out)
+        self.assertIn("not one medicine", field(ok("med", "pain", "relief"), "MEDICINE"))
+        self.assertIn("ACETAMINOPHEN; CODEINE PHOSPHATE [prescription; oral]", field(ok("med", "acetaminophen", "with", "codeine"), "MEDICINE"))
+        self.assertIn("ETHINYL ESTRADIOL", field(ok("med", "norgestimate"), "MEDICINE"), "a pill FDA lists no substances for is in all the same")
+        self.assertIn("nothing on file under that name", ok("med", "lorem", "ipsum", "dolor", "sit", "amet"))
+        self.assertRegex(ok("sidefx", "--med", "metformin", "--rx", "--symptom", "diarrhea"), r"SIDE EFFECTS \d+ places? under those words")
+        with open(os.path.join(REAL_DATA, "LICENSE-labels-us.txt"), encoding="utf-8") as f:
+            self.assertIn("https://creativecommons.org/publicdomain/zero/1.0/", f.read())
 
     def test_the_interaction_data(self):
         if "ddinter.db" not in self.files:

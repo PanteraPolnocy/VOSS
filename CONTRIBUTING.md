@@ -28,6 +28,7 @@ python tools/build_core.py --fetch        downloads the sources of core-pd.db an
 python tools/build_icd11.py --fetch       downloads WHO's release file and builds icd11.db again
 python tools/build_icd11.py --verify      checks that icd11.db still gives WHO's file back, byte for byte
 python tools/build_ddinter.py --fetch     downloads DDInter's files and the medicine names, and builds ddinter.db again
+python tools/build_labels.py --fetch      downloads openFDA's label files (1.8 GB) and builds labels-us.db again
 ```
 
 ## The public build, the private build and the leak check

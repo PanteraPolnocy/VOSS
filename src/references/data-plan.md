@@ -1,6 +1,6 @@
 # Data plan
 
-The databases Voss answers from. The first part of the toolkit, the core database, ICD-11 and the interaction data are built (package 0.8.0); the others are not yet. Licence facts marked "verified" were checked on 14 November 2026, and those of the core data again on 15 November 2026, on each source's own page; everything marked "to check" must be confirmed before that source ships. Where a source's terms do not clearly allow its data to be passed on in a public repository and in the packed skill, the data stays out. [maker]
+The databases Voss answers from. The first part of the toolkit, the core database, ICD-11, the interaction data and the American product labels are built (package 0.8.0); the Poland pack is not yet. Licence facts marked "verified" were checked on 14 November 2026, and those of the core data again on 15 November 2026, on each source's own page; everything marked "to check" must be confirmed before that source ships. Where a source's terms do not clearly allow its data to be passed on in a public repository and in the packed skill, the data stays out. [maker]
 
 ## Principles
 
@@ -21,7 +21,7 @@ What every database carries: a `meta` table with one row for each source (`sourc
 | ICD-11 (WHO) | diagnosis codes and titles | CC BY-ND 3.0 IGO: verbatim only, attribution, no implied WHO endorsement; crosswalks to other code systems need a separate WHO agreement | verified; WHO's licence document read again 15 November 2026; built into icd11.db |
 | DDInter 2.0 | drug-drug, drug-food and drug-disease interactions, therapeutic duplications | CC BY-NC-SA 4.0: attribution, non-commercial, share-alike | confirmed on DDInter's own terms page, 15 November 2026; its download files built into ddinter.db. The downloads hold drug-drug pairs with a grade and nothing else: see below |
 | RxNorm (NLM) | drug name normalisation | free API; licence of the bulk files to check (some RxNorm sources need a UMLS licence) | to check |
-| DailyMed / openFDA labels | US product labels | US government data; terms to check | to check |
+| DailyMed / openFDA labels | US product labels | openFDA: CC0 1.0 unless a data set is marked otherwise, and the label data set is not; FDA asks for a credit line and that no endorsement be implied | checked on openFDA's own pages, 15 November 2026; built into labels-us.db |
 | Rejestr Produktów Leczniczych (Poland) | Polish medicines: substance, strength, Rx or OTC, ATC code | public search exists; bulk export format and terms of use to check | to check |
 | NFZ API Terminy Leczenia (Poland) | waiting-list sizes and first free appointment dates per provider | open data via dane.gov.pl; terms to check | to check |
 | Emergency numbers | per-country numbers, with what each is for where the source says | Wikidata (CC0), property P2852 | checked 15 November 2026; built into core-pd.db |
@@ -33,6 +33,8 @@ Facts worth keeping:
 - NLM's drug-drug interaction API was discontinued on 2 January 2024. Old tutorials still point at it.
 - DDInter 2.0 covers 302,516 drug-drug interactions, 857 drug-food interactions, 8,359 drug-disease interactions and 6,033 therapeutic duplications across 2,310 drugs. Its literature stops at May 2023. Its non-commercial term also covers extraction and reuse of the contents.
 - DDInter, from the check of 15 November 2026. What anyone may download is much less than the website shows: eight CSV files, one for each of the ATC groups A, B, D, H, L, P, R and V, each row a pair of medicines and a grade (Major, Moderate, Minor, Unknown). 160,235 distinct pairs of 1,939 medicines. There is no mechanism and no management text in them, nothing on food or illnesses, and no list of duplicated treatments; and a pair of two medicines from the other six groups (the heart and circulation, the nervous system and anti-infectives among them) is not there at all. Nothing is taken from the website's pages. So `interact` gives a grade and says plainly what the file cannot say. The files themselves show which medicines are outside the eight groups: one whose pairs are spread over several files, with no file holding them all. A pair of two such medicines is reported as out of the file's reach, not as unlisted. Supersedes, for now: mechanism, management, food, disease and duplication data, and "distinct texts stored once" (there are no texts).
+- Product labels, from the check of 15 November 2026. openFDA publishes every label companies have filed with FDA: 264,748 of them, 1.8 GB zipped. A third are human medicines that FDA has matched to a product, with names and a type; those are the usable ones. One label is kept for each substance, type and route (9,168), with the sections a person asks about, and every brand name the labels of that kind carry (37,460). The dose is left out on purpose: it comes from the label of the product in the person's hand. FDA says of the labels that it has neither altered nor verified them, and that they may not be the labelling on products now sold; the tools repeat it. They are American labels, and the tools say that too.
+- European and Polish product information is not in it. EMA's product information comes as PDF documents, which the standard library cannot read; the Polish register is part of the Poland pack.
 - Medicine names. DDInter has one name for each medicine, sometimes the American one. Other names for the same substance come from Wikidata (CC0): English and Polish labels and aliases of items with an ATC code, matched to a DDInter name letter for letter, and left out where a name fits more than one item.
 - Lab reference ranges: deliberately none. They differ between labs and methods; Voss reads the range on the person's own report.
 - MedlinePlus, from the check of 15 November 2026: the same page offers five small "Definitions of Health Terms" files, each term with the NIH body it comes from; they are in the core database beside the topics. The topic file's links to other organisations' pages, its Spanish topics and its pictures are left out. MedlinePlus's medical test pages are public domain as well, but there is no file of them, only the pages: not taken.
@@ -58,10 +60,12 @@ voss/
       core-pd.db             MedlinePlus summaries (public domain)
       icd11.db               ICD-11, verbatim
       ddinter.db             DDInter 2.0
+      labels-us.db           product labels from the United States (openFDA)
       region-pl.db           Poland pack
       LICENSE-core-pd.txt
       LICENSE-icd11.txt
       LICENSE-ddinter.txt
+      LICENSE-labels-us.txt
       LICENSE-region-pl.txt
 ```
 
@@ -84,6 +88,7 @@ Keeping the files small. SQLite has no compression of its own, so the build does
 |---|---|
 | region packs (registers, waiting lists) | 1 month |
 | ddinter.db | 12 months, or when a new DDInter release appears |
+| labels-us.db | 6 months |
 | core-pd.db | 6 months |
 | icd11.db | when WHO publishes a new annual release |
 
@@ -96,7 +101,8 @@ Keeping the files small. SQLite has no compression of its own, so the build does
 | theatre | none | switches mode and prints the banner |
 | term | core-pd | plain-English topic summary with its credit line |
 | code | icd11 | verbatim code and title |
-| med | core-pd, region | substance, class, use; never a dose |
+| med | labels-us, region | substance, class, use, and any section of the label on request; never a dose |
+| sidefx | labels-us | a symptom looked for in a label's side effects, warnings and text for patients |
 | interact | ddinter | the grade the source gives a pair, and the source; "not listed" worded as exactly that, with what the file cannot say. No mechanism or management: the downloads have none |
 | watch | ddinter, personal | something new checked against the medicines and supplements on file |
 | labs | none | explains a test; compares a value only to a range the person supplies |
@@ -115,7 +121,7 @@ Keeping the files small. SQLite has no compression of its own, so the build does
 
 Feature commands (diary, brief, refill, result, trend, watch, firstaid, desk, translate, card, pet, recipe, scale, season, myth) and the sources they still need are in `features.md`.
 
-Built in 0.8.0: boot, theatre, term, code, interact, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill and watch from the feature commands and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
+Built in 0.8.0: boot, theatre, term, code, med, interact, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill, watch and sidefx from the feature commands and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
 
 ## Build order (cheapest first)
 
@@ -123,7 +129,8 @@ Built in 0.8.0: boot, theatre, term, code, interact, labs, triage, visit, schedu
 2. Core (built, 0.8.0): MedlinePlus summaries and definitions, and emergency numbers. Small, public domain and CC0. `tools/build_core.py`.
 3. ICD-11 (built, 0.8.0): WHO's Simple Tabulation, whole and unchanged. `tools/build_icd11.py`.
 4. DDInter (built, 0.8.0), its terms confirmed on its own page: the download files, with other names from Wikidata. `tools/build_ddinter.py`.
-5. Poland pack, after confirming the register's and NFZ's terms.
+5. Product labels (built, 0.8.0): the American ones, from openFDA. `tools/build_labels.py`.
+6. Poland pack, after confirming the register's and NFZ's terms.
 
 ## Source pages consulted (14 November 2026)
 
@@ -150,6 +157,14 @@ Built in 0.8.0: boot, theatre, term, code, interact, labs, triage, visit, schedu
 - Wikidata copyright: https://www.wikidata.org/wiki/Wikidata:Copyright
 - Wikidata, emergency phone number (P2852): https://www.wikidata.org/wiki/Property:P2852
 - European Commission, 112: https://digital-strategy.ec.europa.eu/en/policies/112
+
+## Source pages consulted (15 November 2026, for the product labels)
+
+- openFDA terms of service: https://open.fda.gov/terms/
+- openFDA data licence: https://open.fda.gov/license/
+- openFDA drug labels, with FDA's disclaimer: https://open.fda.gov/apis/drug/label/
+- The downloads: https://open.fda.gov/apis/drug/label/download/ and https://api.fda.gov/download.json
+- CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
 
 ## Source pages consulted (15 November 2026, for the interaction data)
 

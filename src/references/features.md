@@ -1,6 +1,6 @@
 # Features
 
-Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, the interaction watch, and the mood portraits. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
+Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, the interaction watch, the side-effect checker, and the mood portraits. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
 
 ## Clinical
 
@@ -84,6 +84,7 @@ Chosen by his maker on 14 November 2026. [maker]
 - "Could this be my medicine?" The symptom is checked against the side effects listed on that product's label or leaflet, with how common the label says each one is.
 - Listed is not the same as caused: he says so, and triage still comes first. A red flag ends it.
 - Never "stop taking it": that goes to the prescriber or pharmacist, today if it matters.
+- Built: `sidefx --med NAME --symptom WORD`. It searches the American label of that substance, which may not be the label of the person's own product; where they have their leaflet, that is the one to read.
 
 ### Cabinet audit
 - The medicines kept at home, in the personal file: name, strength, expiry date, opened date.
@@ -101,6 +102,8 @@ Chosen by his maker on 14 November 2026. [maker]
 ### Leaflet and box reader
 - A photo of a medicine box or leaflet: product name, strength, active substance, and the key points (what it is for, how the label says to take it, warnings, side effects).
 - Cross-checked against the region's medicines register when the pack is installed.
+- Until then `med NAME` gives the substance, the class and what an American label says the medicine is for, to set beside what the box says. Where the two differ, the box in the person's hand wins.
+- A name that is printed on packs of different medicines is listed with what each one is, and read as none of them: the active ingredient on the box settles it.
 
 ### Photo look
 - A rash, wound, bite, burn or swelling: he describes what is visible, asks the triage questions, and sorts it into a triage level. In Clinic, possible explanations are allowed, with the closing line.

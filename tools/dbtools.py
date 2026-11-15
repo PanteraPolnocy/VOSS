@@ -83,6 +83,41 @@ def fetch(url, name, accept="*/*", folder=None):
     return path
 
 
+def fetch_big(url, name, folder=None, expect=None):
+    """Download a large file into downloads/NAME a piece at a time, so that it never sits in memory whole.
+    A file that is already there at the size expected is left alone. Returns the path."""
+    folder = folder or DOWNLOADS
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, name)
+    if os.path.isfile(path) and os.path.isfile(path + NOTE) and (expect is None or abs(os.path.getsize(path) - expect) <= expect * 0.02):
+        say("have      %s (%s)" % (name, size_words(os.path.getsize(path))))
+        return path
+    part, total = path + ".part", 0
+    for attempt in range(1, 4):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": AGENT})
+            with urllib.request.urlopen(req, timeout=180) as r, open(part, "wb") as f:
+                modified = r.headers.get("Last-Modified") or ""
+                total = 0
+                while True:
+                    chunk = r.read(1 << 20)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    total += len(chunk)
+            break
+        except (urllib.error.URLError, OSError) as e:
+            if attempt == 3:
+                sys.exit("could not fetch %s: %s" % (url, e))
+            time.sleep(10 * attempt)
+    os.replace(part, path)
+    with open(path + NOTE, "w", encoding="utf-8", newline="\n") as f:
+        json.dump({"url": url, "retrieved": core.today().isoformat(), "last_modified": modified}, f, indent=1)
+        f.write("\n")
+    say("fetched   %s (%s)" % (name, size_words(total)))
+    return path
+
+
 def save(path, data, url, modified=""):
     """Write a download and its note. The file appears whole or not at all."""
     part = path + ".part"

@@ -37,6 +37,14 @@ Interactions:
 - `interact`: the grade for each pair among the medicines named, or everything on file for one medicine. `watch`: something new against the medicines and supplements in a person's file. Both say what each name was read as, and both say every time what the file cannot say. "Not listed" is never worded as "safe", and a pair of two medicines from groups the downloads leave out is reported as out of the file's reach.
 - Other names for a medicine, in English and Polish, from Wikidata (CC0), so that it is found under the name a person knows.
 
+Product labels:
+- `labels-us.db`: the labels companies have filed with the United States Food and Drug Administration, from openFDA: one for each substance, type and route, 9,168 of them, with the sections on what a medicine is for, its boxed warning, who must not take it, warnings, side effects, interactions, pregnancy and other groups, and the texts for patients. CC0 under openFDA's terms, read on its own pages on 15 November 2026; FDA's credit line goes with every answer.
+- The dose is left out on purpose. It comes from the label of the product in the person's hand.
+- `med`: what a medicine is, by substance or by brand name: its class, what its label says it is for, and any other section on request. `sidefx`: a symptom looked for in a label's side effects, warnings and text for patients. Both say that these are American labels which FDA has not verified, and that the person's own leaflet is the authority.
+- A medicine is never guessed from its name. All 37,460 brand names on the labels are kept, and a name is found whole, by part of it ("tylenol"), with a strength or a form around it, or by two substances for the product that holds both ("acetaminophen with codeine"). The answer says what the name was read as and which words were not used. A name printed on packs of different medicines ("Pain Relief", and more famous ones) gets a list of them with what each is sold as, and is read as none.
+- Packs for which FDA lists no substances, contraceptive pills among them, are kept where their generic name reads as a list of known substances. 276 labels that do not are left out and counted.
+- European and Polish product information is not in it yet.
+
 ## 0.7.0 - 14 November 2026
 
 The design, as it was handed over for building. The drafts of that day are folded in here, oldest first.

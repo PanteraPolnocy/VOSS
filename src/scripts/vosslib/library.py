@@ -18,6 +18,7 @@ EXPECTED = (
     ("core-pd", "MedlinePlus health topic summaries and emergency numbers", 6, "6 months"),
     ("icd11", "ICD-11 codes and titles, verbatim", None, "when WHO publishes a new annual release"),
     ("ddinter", "DDInter 2.0 interactions", 12, "12 months, or when a new DDInter release appears"),
+    ("labels-us", "product labels of medicines sold in the United States", 6, "6 months"),
 )
 REGION_PREFIX = "region-"
 REGION_LIMIT = (1, "1 month")
