@@ -25,6 +25,8 @@ python tools/build.py --private --out DIR also packs the private build into DIR,
 python tools/build_index.py               rewrites the command index after a command is added or re-described
 python tools/ascii_escape.py              puts non-ASCII characters in Python sources back into escapes
 python tools/build_core.py --fetch        downloads the sources of core-pd.db and builds it again
+python tools/build_icd11.py --fetch       downloads WHO's release file and builds icd11.db again
+python tools/build_icd11.py --verify      checks that icd11.db still gives WHO's file back, byte for byte
 ```
 
 ## The public build, the private build and the leak check
@@ -47,6 +49,8 @@ A database lives in `src/scripts/data/` as a single SQLite file, with its licenc
 The banner shows the oldest `built`; a file's age is counted from its oldest `retrieved`. One database per licence family, so that a share-alike or no-derivatives licence never spreads to a file it does not belong to. No file in this repository may be larger than 49 MB, and the build refuses one that is; it prints the size of every database it packs.
 
 Each database has a builder in `tools/` (`build_core.py` is the first) that names every address it downloads from, keeps the downloads in `downloads/` (which git ignores) with a note of the day beside each, and can be run again by anyone. `tools/dbtools.py` holds what the builders share. Before a source goes in, read its terms on its own page, and write what you found and the date into `SOURCES.md`. If the terms do not clearly allow the data to be passed on in a public repository and inside the packed skill, it stays out: ship the builder without the data, and say so.
+
+`icd11.db` has rules of its own, because WHO's licence allows no adaptation. Nothing in it may be reworded, shortened, re-ordered, translated or mapped to another code system, and nothing may be added to an entry that is not marked as not WHO's. Do not add a translated title, an ICD-10 column or a "plain English" gloss to that file, however useful it looks: put such a thing somewhere else, under its own source and licence, or leave it out.
 
 Long text is not stored row by row. The builder packs it into blocks, compresses each block with whichever of zlib, bz2 and lzma makes it smallest, and stores where each piece sits; `vosslib/store.py` reads it back. That is why a database here is a fraction of the size of its text.
 

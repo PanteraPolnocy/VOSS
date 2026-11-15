@@ -8,11 +8,12 @@ The split is deliberate. **The database talks, and Voss explains it.** A dose, a
 
 ## Where the build stands
 
-He is being built in stages. The skeleton is in, and so is the first database.
+He is being built in stages. The skeleton is in, and so are the first two databases.
 
 Working now:
 - **The persona and his rules**: the doctrine, triage first, the clinical rules, two modes (Clinic for real life, Theatre for roleplay), and his pictures: ten moods, two looks and a reference sheet.
 - **Medical words in plain English**: about a thousand health topics and some eighty short definitions, in the source's own words, each with its credit and the day it was retrieved.
+- **ICD-11 codes**: what a code on a letter or a referral means, word for word from the World Health Organization's classification.
 - **Triage**: the four levels and the red-flag checklist, and the emergency numbers of about two hundred countries.
 - **Getting ready for a doctor**: what to ask, what to bring, a symptom diary to fill in.
 - **Lab values**: a result read against the range printed on your own report, and against nothing else.
@@ -20,7 +21,7 @@ Working now:
 - **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so.
 - **A check on his own replies**: typography, and his own rules of form.
 
-Not built yet: the other databases (ICD-11, medicine interactions, product labels, a pack for Poland) and the commands that read them, and most of the features in [src/references/features.md](src/references/features.md). For anything the files do not hold, he looks it up with whatever tools the assistant has and cites it, or says he has no data.
+Not built yet: the other databases (medicine interactions, product labels, a pack for Poland) and the commands that read them, and most of the features in [src/references/features.md](src/references/features.md). For anything the files do not hold, he looks it up with whatever tools the assistant has and cites it, or says he has no data.
 
 ## Requirements
 
@@ -52,13 +53,14 @@ A household can also give him a private `references/household.md`: who made him,
 | Group | Commands |
 |---|---|
 | Desk | `boot`, `theatre`, `sources`, `check`, `selftest`, `tools` |
-| Clinic | `term`, `triage`, `visit`, `labs` |
+| Clinic | `term`, `code`, `triage`, `visit`, `labs` |
 | Medicines | `schedule`, `refill` |
 | The personal file | `ignition`, `intake`, `profile`, `rebuild`, `forget` |
 
 ```
 $ python scripts/voss.py boot
 $ python scripts/voss.py term "atrial fibrillation"
+$ python scripts/voss.py code BA41.0
 $ python scripts/voss.py triage --country PL
 $ python scripts/voss.py labs --test "Potassium" --value 5,4 --unit mmol/L --range "3.5-5.1" --flag H
 $ python scripts/voss.py schedule --med "Metformin 500 mg: 08:00, 20:00" --ics auto
@@ -69,7 +71,8 @@ $ python scripts/voss.py check --reply --text "It measures how well your kidneys
 ## What to know before you trust it
 
 - **He is not a doctor.** He is a reference with a bedside manner, and says so. Possible explanations come in three tiers, always naming what must not be missed, and never as a verdict.
-- **The one database so far explains words.** `term` prints what MedlinePlus says a thing is, written for readers in the United States. It is not about you, and it is not a diagnosis. Nothing he says about a medicine, an interaction or a code comes from the toolkit yet.
+- **The databases so far explain words and codes.** `term` prints what MedlinePlus says a thing is, written for readers in the United States; `code` prints the title the World Health Organization gives an ICD-11 code. Neither is about you, and neither is a diagnosis. Nothing he says about a medicine or an interaction comes from the toolkit yet.
+- **ICD-11 only.** There is no ICD-10 in it, and no table between the two: WHO's licence keeps those for a written agreement.
 - **Emergency numbers are listed as Wikidata has them**, and were not verified one by one. If you already know your number, use it.
 - **`labs` knows no reference ranges, on purpose.** It compares the two numbers you give it. Ranges differ between labs and methods.
 - **`schedule` and `refill` repeat a schedule; they never set one.** The refill sum assumes every dose was taken, because it cannot know otherwise.
@@ -105,12 +108,13 @@ tools/                  build.py packs the skill; build_core.py and its kind fet
 - Voss, the VOSS-01 design and the pictures: Pantera Północy.
 - Health topic summaries and definitions of health terms. Source: MedlinePlus, National Library of Medicine. Public domain. The National Library of Medicine does not endorse this skill, and the copy here is as old as the day it was retrieved.
 - Emergency numbers by country: Wikidata, CC0. That 112 works throughout the European Union: the European Commission.
+- International Classification of Diseases, Eleventh Revision (ICD-11), World Health Organization (WHO) 2019 https://icd.who.int/browse11. Licensed under the Creative Commons Attribution-NoDerivatives 3.0 IGO licence (CC BY-ND 3.0 IGO). It is here whole and unchanged. WHO does not endorse this skill.
 - Each database carries its own licence text (`src/scripts/data/LICENSE-*.txt`) and is listed in [src/scripts/data/SOURCES.md](src/scripts/data/SOURCES.md), with the day its licence was last checked. A credit line stays with every answer that draws on it.
 
 ## Licence
 
 MIT for the code and for everything written for this skill. See `LICENSE`.
 
-The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0.
+The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system.
 
 ![Voss](/src/images/voss-reference-sheet.webp)

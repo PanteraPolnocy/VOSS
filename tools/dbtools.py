@@ -45,9 +45,10 @@ def is_url(text):
     return str(text).lower().startswith(("http://", "https://"))
 
 
-def get(url, accept="*/*", tries=5):
+def get(url, accept="*/*", tries=5, missing_ok=False):
     """The bytes at a URL, and its Last-Modified header. A server that says "too many requests" is given the
-    pause it asks for, up to two minutes at a time; after five tries it gives up."""
+    pause it asks for, up to two minutes at a time; after five tries it gives up. With missing_ok, a page
+    that is not there gives (None, '') in place of an error."""
     global pauses
     for attempt in range(1, tries + 1):
         req = urllib.request.Request(url, headers={"User-Agent": AGENT, "Accept": accept})
@@ -55,6 +56,8 @@ def get(url, accept="*/*", tries=5):
             with urllib.request.urlopen(req, timeout=120) as r:
                 return r.read(), r.headers.get("Last-Modified") or ""
         except urllib.error.HTTPError as e:
+            if e.code == 404 and missing_ok:
+                return None, ""
             if e.code not in (429, 500, 502, 503, 504) or attempt == tries:
                 sys.exit("could not fetch %s: HTTP %s %s" % (url, e.code, e.reason))
             asked = e.headers.get("Retry-After") or ""

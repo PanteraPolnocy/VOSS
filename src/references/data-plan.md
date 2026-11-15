@@ -1,6 +1,6 @@
 # Data plan
 
-The databases Voss answers from. The first part of the toolkit and the core database are built (package 0.8.0); the others are not yet. Licence facts marked "verified" were checked on 14 November 2026, and those of the core data again on 15 November 2026, on each source's own page; everything marked "to check" must be confirmed before that source ships. Where a source's terms do not clearly allow its data to be passed on in a public repository and in the packed skill, the data stays out. [maker]
+The databases Voss answers from. The first part of the toolkit, the core database and ICD-11 are built (package 0.8.0); the others are not yet. Licence facts marked "verified" were checked on 14 November 2026, and those of the core data again on 15 November 2026, on each source's own page; everything marked "to check" must be confirmed before that source ships. Where a source's terms do not clearly allow its data to be passed on in a public repository and in the packed skill, the data stays out. [maker]
 
 ## Principles
 
@@ -18,7 +18,7 @@ What every database carries: a `meta` table with one row for each source (`sourc
 | Source | Gives | Licence | Status |
 |---|---|---|---|
 | MedlinePlus health topic XML (NLM) | plain-English health topic summaries, synonyms, MeSH terms | health topic summaries are public domain; credit "Source: MedlinePlus, National Library of Medicine" | verified; checked again 15 November 2026; built into core-pd.db |
-| ICD-11 (WHO) | diagnosis codes and titles | CC BY-ND 3.0 IGO: verbatim only, attribution, no implied WHO endorsement; crosswalks to other code systems need a separate WHO agreement | verified |
+| ICD-11 (WHO) | diagnosis codes and titles | CC BY-ND 3.0 IGO: verbatim only, attribution, no implied WHO endorsement; crosswalks to other code systems need a separate WHO agreement | verified; WHO's licence document read again 15 November 2026; built into icd11.db |
 | DDInter 2.0 | drug-drug, drug-food and drug-disease interactions, therapeutic duplications | CC BY-NC-SA 4.0: attribution, non-commercial, share-alike | verified via the BioThings plugin's note; confirm on DDInter's own terms page |
 | RxNorm (NLM) | drug name normalisation | free API; licence of the bulk files to check (some RxNorm sources need a UMLS licence) | to check |
 | DailyMed / openFDA labels | US product labels | US government data; terms to check | to check |
@@ -29,6 +29,7 @@ What every database carries: a `meta` table with one row for each source (`sourc
 Facts worth keeping:
 - MedlinePlus: the A.D.A.M. Medical Encyclopedia and the ASHP drug monographs are copyrighted and licensed to NLM only; they must never be ingested. Topics come in English and Spanish only, so Voss explains them in other languages himself.
 - ICD-11: converting it into SQLite counts as a change of format, which no Creative Commons licence treats as an adaptation. Rewording it or making a translation of our own does count. Polish paperwork probably still uses ICD-10: to check before the Polish pack.
+- ICD-11, from the reading of 15 November 2026. WHO publishes a "Simple Tabulation" of the MMS linearization with each yearly release, as a file that needs no account: 37,052 records in release 2026-01, with code, title, URI and structure, and no descriptions. WHO's terms of use say that building the classification into software is not an adaptation as long as it keeps its name and attribution and every entry keeps its code, title and URI; that translations and tables to other code systems need a written agreement; and that anything added must be marked as not WHO's. So the whole file goes in, unchanged: the build proves it by putting the file back together from the database, byte for byte. There is no ICD-10 in it and no table between the two, and none may be added. WHO's API needs an account and is not used. WHO is preparing an updated licence: the build stops if the licence document is no longer the one that was read.
 - NLM's drug-drug interaction API was discontinued on 2 January 2024. Old tutorials still point at it.
 - DDInter 2.0 covers 302,516 drug-drug interactions, 857 drug-food interactions, 8,359 drug-disease interactions and 6,033 therapeutic duplications across 2,310 drugs. Its literature stops at May 2023. Its non-commercial term also covers extraction and reuse of the contents.
 - Lab reference ranges: deliberately none. They differ between labs and methods; Voss reads the range on the person's own report.
@@ -111,13 +112,13 @@ Keeping the files small. SQLite has no compression of its own, so the build does
 
 Feature commands (diary, brief, refill, result, trend, watch, firstaid, desk, translate, card, pet, recipe, scale, season, myth) and the sources they still need are in `features.md`.
 
-Built in 0.8.0: boot, theatre, term, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill from the feature commands and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
+Built in 0.8.0: boot, theatre, term, code, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill from the feature commands and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
 
 ## Build order (cheapest first)
 
 1. Skeleton (built, 0.8.0): `voss.py`, `boot`, `sources`, `triage`, `visit`, `labs`, `schedule`, and the personal file (`ignition`, `intake`, `profile`, `rebuild`, `forget`). No downloads. The public build refuses `personal.json` and `household.md`, and runs the leak check (household.md's leak words against every public file).
 2. Core (built, 0.8.0): MedlinePlus summaries and definitions, and emergency numbers. Small, public domain and CC0. `tools/build_core.py`.
-3. ICD-11.
+3. ICD-11 (built, 0.8.0): WHO's Simple Tabulation, whole and unchanged. `tools/build_icd11.py`.
 4. DDInter, after confirming its terms.
 5. Poland pack, after confirming the register's and NFZ's terms.
 
@@ -146,3 +147,10 @@ Built in 0.8.0: boot, theatre, term, labs, triage, visit, schedule, sources, che
 - Wikidata copyright: https://www.wikidata.org/wiki/Wikidata:Copyright
 - Wikidata, emergency phone number (P2852): https://www.wikidata.org/wiki/Property:P2852
 - European Commission, 112: https://digital-strategy.ec.europa.eu/en/policies/112
+
+## Source pages consulted (15 November 2026, for ICD-11)
+
+- WHO, Terms of Use and License Agreement for the classifications: https://icd.who.int/en/docs/icd11-license.pdf
+- CC BY-ND 3.0 IGO: https://creativecommons.org/licenses/by-nd/3.0/igo/
+- ICD-11 releases: https://icd.who.int/browse/releases/mms/en
+- The release file: https://icdcdn.who.int/static/releasefiles/2026-01/SimpleTabulation-ICD-11-MMS-en.zip

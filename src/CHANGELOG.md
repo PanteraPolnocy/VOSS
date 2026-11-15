@@ -26,6 +26,11 @@ The core data:
 - Text in a database is stored packed, about four times smaller, with the standard library alone. No file in the repository may be larger than 49 MB; one that would be is cut into parts. [maker]
 - Nothing goes into the repository or the packed skill unless its licence clearly allows it to be passed on there. [maker]
 
+ICD-11:
+- `icd11.db`: ICD-11 for Mortality and Morbidity Statistics, release 2026-01, from the Simple Tabulation file the World Health Organization publishes. Every record is in it whole and unchanged, with its code, its title and its URI; the build puts WHO's file back together from the database and compares the two byte for byte before it writes anything. CC BY-ND 3.0 IGO with WHO's terms of use, read on WHO's own document on 15 November 2026; the licence text sits beside the file, which is not under the code's licence.
+- `code`: what a code means, word for word, with where it sits in the classification, what is under it, its URI and WHO's citation; `--find` looks through the titles. A code that is not in the release is said to be so, and one with the shape of ICD-10 is named as that.
+- No translation of the classification, and no table between ICD-11 and any other code system: WHO's licence allows neither without a written agreement. He quotes a title as it is and explains it in his own words.
+
 ## 0.7.0 - 14 November 2026
 
 The design, as it was handed over for building. The drafts of that day are folded in here, oldest first.

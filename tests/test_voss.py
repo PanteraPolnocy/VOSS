@@ -58,6 +58,7 @@ from vosslib import clinic, core, desk, doses, gate, ical, index, library, perso
 
 import build  # noqa: E402
 import build_core  # noqa: E402
+import build_icd11  # noqa: E402
 import build_index  # noqa: E402
 import dbtools  # noqa: E402
 
@@ -188,6 +189,68 @@ def sample_data():
         _sample["said"] = build_sample(folder, "--retrieved", "2026-11-10")
         _sample["folder"] = folder
     return _sample["folder"]
+
+
+ICD_HEAD = "\ufeff" + "\t".join(build_icd11.COLUMNS + ("Version:2026 Jan 01 - 00:00 UTC",))
+
+
+def icd_record(number, code="", block="", title="", kind="category", depth=1, residual=False, chapter="01", leaf=True,
+               note="", parent=None, tail=""):
+    """One record in the shape of WHO's tabulation, about something that does not exist."""
+    entity = "" if residual else "http://id.example.org/icd/entity/%d" % number
+    uri = "http://id.example.org/icd/release/11/mms/%s" % (tail or number)
+    link = '"=hyperlink(""https://example.org/browse#%s"",""browser"")"' % (tail or number)
+    return "\t".join([entity, uri, code, block, '"%s"' % title.replace('"', '""'), kind, str(depth), str(residual), chapter, link,
+                      str(leaf), "", "", "", "", "", "", note, "http://id.example.org/icd/entity/%d" % parent if parent else ""])
+
+
+ICD_RECORDS = [
+    icd_record(1, title="Made-up conditions of the tests", kind="chapter", leaf=False),
+    icd_record(2, block="BlockL1-ZA0", title="- Wobbles", kind="block", leaf=False, parent=1),
+    icd_record(3, code="ZA00", title="- - Wobbly knee", leaf=False, parent=2),
+    icd_record(4, code="ZA00.0", title="- - - Wobbly knee, left", depth=2, parent=3,
+               note='"Code also the ""cause"", if known\nand the side it is on"'),
+    icd_record(3, code="ZA00.Y", title="- - - Other specified wobbly knee", depth=2, residual=True, parent=3, tail="3/other"),
+    icd_record(3, code="ZA00.Z", title="- - - Wobbly knee, unspecified", depth=2, residual=True, parent=3, tail="3/unspecified"),
+    icd_record(5, code="ZA01", title="- - Creaky elbow", parent=2),
+    icd_record(6, code="ZA02", title="- - Sj\u00f6gren-like dryness \u2013 of the tests", parent=2),
+    icd_record(9, title="Extension codes of the tests", kind="chapter", chapter="X", leaf=False),
+    icd_record(10, code="XZ01", title="- Left", chapter="X", parent=9),
+]
+
+
+def icd_file(records=None, head=ICD_HEAD, name="SimpleTabulation-sample.txt"):
+    """A made-up tabulation on disk, with the line ends and the byte order mark WHO's file has."""
+    path = os.path.join(tempfile.mkdtemp(dir=OUTPUTS), name)
+    with open(path, "wb") as f:
+        f.write(("\r\n".join([head] + list(ICD_RECORDS if records is None else records)) + "\r\n").encode("utf-8"))
+    return path
+
+
+def build_icd(out, tabulation, *extra):
+    """Run the real ICD-11 builder on a made-up tabulation; returns what it printed."""
+    keep = build_icd11.MIN_RECORDS
+    build_icd11.MIN_RECORDS = 5
+    said = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(said):
+            build_icd11.main(["--tabulation", tabulation, "--out", out, "--downloads", NO_DATA] + list(extra))
+    finally:
+        build_icd11.MIN_RECORDS = keep
+    return said.getvalue()
+
+
+def sample_icd():
+    """The folder that holds the small ICD database, built once for the whole run."""
+    if "icd" not in _sample:
+        folder = os.path.join(OUTPUTS, "sample-icd")
+        os.makedirs(folder)
+        clock()
+        _sample["icd-file"] = icd_file()
+        _sample["icd-said"] = build_icd(folder, _sample["icd-file"], "--release", "2026-01", "--retrieved", "2026-11-10",
+                                        "--licence-read", "2026-11-10")
+        _sample["icd"] = folder
+    return _sample["icd"]
 
 
 class Base(unittest.TestCase):
@@ -1435,7 +1498,8 @@ class PackageTests(Base):
                 self.assertTrue(examples, "%s has no examples" % name)
                 for ex in examples:
                     args = shlex.split(ex)
-                    if not shipped and (name == "term" or "--country" in args):
+                    if (not shipped and (name == "term" or "--country" in args)) or (
+                            name == "code" and not os.path.isfile(os.path.join(REAL_DATA, "icd11.db"))):
                         continue
                     if "CODE" in args:
                         probe = [a for a in args if a not in ("--json", "--package")]
@@ -1500,7 +1564,7 @@ class PackageTests(Base):
     def test_only_the_chosen_commands_exist(self):
         names = [c["name"] for c in index.load()["commands"]]
         self.assertEqual(sorted(names), sorted(["boot", "theatre", "sources", "check", "selftest", "tools", "triage", "visit", "labs",
-                                                "term", "schedule", "refill", "ignition", "profile", "intake", "rebuild", "forget"]))
+                                                "term", "code", "schedule", "refill", "ignition", "profile", "intake", "rebuild", "forget"]))
         for name in names:
             for word in UNCHOSEN:
                 self.assertNotIn(word, name)
@@ -1589,13 +1653,14 @@ class IndexTests(Base):
                                 ("who is speaking", "ignition")):
             got = ok("tools", "--find", *question.split()).splitlines()[1].split()[0]
             self.assertEqual(got, first, question)
-        for question, first in (("what does this word mean", "term"), ("which number do I call abroad", "triage")):
+        for question, first in (("what does this word mean", "term"), ("which number do I call abroad", "triage"),
+                                ("the icd code on my discharge letter", "code")):
             self.assertEqual(ok("tools", "--find", *question.split()).splitlines()[1].split()[0], first, question)
         self.assertIn("no command answers that", ok("tools", "--find", "zzzzqq"))
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("17 commands.", ok("tools"))
+        self.assertIn("18 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -2064,6 +2129,177 @@ class NumbersTests(CoreData):
         self.assertIn("SELFTEST   17 of 17 passed; data: 2026-11-15", out)
 
 
+class IcdBuildTests(Base):
+    """tools/build_icd11.py, run on a made-up tabulation in the shape of WHO's."""
+
+    def test_the_file_goes_in_whole_and_comes_out_the_same(self):
+        folder = sample_icd()
+        said = _sample["icd-said"]
+        for line in ("release 2026-01 (2026 Jan 01 - 00:00 UTC): 2 chapters, 1 blocks, 7 categories",
+                     "checked: the records in the database put WHO's file back together, byte for byte",
+                     "retrieved 2026-11-10; licence document read 2026-11-10"):
+            self.assertIn(line, said)
+        self.assertEqual(sorted(os.listdir(folder)), ["LICENSE-icd11.txt", "icd11.db"])
+        path = os.path.join(folder, "icd11.db")
+        with open(_sample["icd-file"], "rb") as f:
+            original = f.read()
+        con = library.connect(path)
+        try:
+            self.assertEqual(build_icd11.rebuilt(con), original, "every byte of the source file, the byte order mark included")
+            facts = dict(con.execute("SELECT key, value FROM build"))
+            self.assertEqual((facts["release"], facts["records"], facts["licence-read"]), ("2026-01", "10", "2026-11-10"))
+            self.assertEqual(con.execute("SELECT title, parent, residual FROM entity WHERE code = 'ZA00.Y'").fetchone(),
+                             ("Other specified wobbly knee", 3, 1))
+            self.assertEqual(con.execute("SELECT title FROM entity WHERE code = 'ZA02'").fetchone()[0],
+                             "Sj\u00f6gren-like dryness \u2013 of the tests", "not a character of a title is touched")
+        finally:
+            con.close()
+        self.assertEqual(build_icd11.verify(path, _sample["icd-file"]), "")
+        self.assertEqual(build_icd11.verify(path), "")
+        info = library.read(path)
+        self.assertEqual(info["problems"], [])
+        self.assertEqual(info["sources"][0]["credit"], build_icd11.CITATION)
+        self.assertIn("CC BY-ND 3.0 IGO", info["sources"][0]["licence"])
+        with open(os.path.join(folder, "LICENSE-icd11.txt"), encoding="utf-8") as f:
+            licence = f.read()
+        for must in (build_icd11.CITATION, "https://creativecommons.org/licenses/by-nd/3.0/igo/", "NOT under the licence of the code",
+                     "There is no translation and no such table here", "WHO does not", "Not from WHO: three helper columns"):
+            self.assertIn(must, licence)
+
+    def test_a_record_out_of_place_is_caught(self):
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        path = os.path.join(folder, "icd11.db")
+        shutil.copyfile(os.path.join(sample_icd(), "icd11.db"), path)
+        con = sqlite3.connect(path)
+        first, second = con.execute("SELECT start, length FROM entity WHERE id IN (3, 7) ORDER BY id").fetchall()
+        con.execute("UPDATE entity SET start = ?, length = ? WHERE id = 3", second)
+        con.execute("UPDATE entity SET start = ?, length = ? WHERE id = 7", first)
+        con.commit()
+        con.close()
+        self.assertIn("no longer add up to the checksum", build_icd11.verify(path))
+        other = icd_file(ICD_RECORDS[:-1])
+        self.assertIn("not the file the database was built from", build_icd11.verify(os.path.join(sample_icd(), "icd11.db"), other))
+
+    def stops(self, tabulation, *extra):
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as caught:
+            build_icd(folder, tabulation, *extra)
+        self.assertEqual(os.listdir(folder), [], "a build that stops leaves nothing behind")
+        return str(caught.exception)
+
+    def test_what_stops_a_build(self):
+        good = ("--release", "2026-01", "--retrieved", "2026-11-10", "--licence-read", "2026-11-10")
+        sample = icd_file()
+        self.assertIn("say which release", self.stops(sample, "--retrieved", "2026-11-10", "--licence-read", "2026-11-10"))
+        self.assertIn("has no note of when it was downloaded", self.stops(sample, "--release", "2026-01", "--licence-read", "2026-11-10"))
+        self.assertIn("WHO's licence document is not in the downloads folder", self.stops(sample, "--release", "2026-01", "--retrieved", "2026-11-10"))
+        self.assertIn("--release looks like 2026-01", self.stops(sample, "--release", "eleven"))
+        self.assertIn("columns are not the ones this script knows", self.stops(icd_file(head=ICD_HEAD.replace("Title", "Name")), *good))
+        self.assertIn("has 18 fields, not 19", self.stops(icd_file(ICD_RECORDS + [ICD_RECORDS[-1].rsplit("\t", 1)[0]]), *good))
+        twice = ICD_RECORDS + [icd_record(11, code="ZA01", title="- - A second entry under one code", parent=2)]
+        self.assertIn("a code used twice", self.stops(icd_file(twice), *good))
+        orphan = ICD_RECORDS + [icd_record(12, code="ZA09", title="- - An entry with no such parent", parent=77)]
+        self.assertIn("names a parent that is not in the file", self.stops(icd_file(orphan), *good))
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
+            build_icd11.main(["--tabulation", sample, "--out", folder, "--downloads", NO_DATA] + list(good))
+        self.assertIn("only 10 records were read", str(caught.exception))
+        # the licence document must be the one that was read
+        downloads = tempfile.mkdtemp(dir=OUTPUTS)
+        dbtools.save(os.path.join(downloads, build_icd11.LICENCE_FILE), b"a licence that somebody has rewritten", build_icd11.LICENCE_URL)
+        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
+            build_icd11.main(["--tabulation", sample, "--out", folder, "--downloads", downloads, "--release", "2026-01",
+                              "--retrieved", "2026-11-10"])
+        self.assertIn("WHO's licence document has changed since it was read", str(caught.exception))
+        self.assertEqual(os.listdir(folder), [])
+
+
+class CodeTests(Base):
+    def setUp(self):
+        Base.setUp(self)
+        os.environ["VOSS_DATA"] = sample_icd()
+
+    def test_a_code_word_for_word(self):
+        out = ok("code", "ZA00.0")
+        for line in ("CODE       ZA00.0 [ICD-11 MMS, release 2026-01]", "TITLE      Wobbly knee, left", "KIND       category, with no subdivisions",
+                     "IN         chapter 01  Made-up conditions of the tests", "BlockL1-ZA0  Wobbles", "ZA00  Wobbly knee",
+                     "NOTE       Code also the \"cause\", if known and the side it is on",
+                     "URI        http://id.example.org/icd/release/11/mms/4  (foundation: http://id.example.org/icd/entity/4)",
+                     "BROWSE     https://example.org/browse#4",
+                     "SOURCE     ICD-11 for Mortality and Morbidity Statistics (MMS), release 2026-01: the Simple Tabulation, World Health "
+                     "Organization, retrieved 2026-11-10 [sourced: icd11.db, built 2026-11-15]",
+                     "CREDIT     " + build_icd11.CITATION,
+                     "RULE       code and title are WHO's, character for character: pass them on as printed",
+                     "do not turn a code into one of another code system", "It is not a diagnosis of anyone, and WHO does not endorse this tool"):
+            self.assertIn(line, out)
+        self.assertEqual(desk.check_text(out), [])
+        self.assertFalse([ln for ln in out.splitlines() if ln != ln.rstrip()])
+
+    def test_what_is_under_it_and_over_it(self):
+        out = ok("code", "za00")
+        self.assertIn("KIND       category, with subdivisions", out)
+        self.assertIn("UNDER IT   3 entries", out)
+        for child in ("ZA00.0  Wobbly knee, left", "ZA00.Y  Other specified wobbly knee", "ZA00.Z  Wobbly knee, unspecified"):
+            self.assertIn(child, out)
+        out = ok("code", "ZA00.Y")
+        self.assertIn("KIND       category, a residual one (other specified or unspecified), with no subdivisions", out)
+        self.assertIn("URI        http://id.example.org/icd/release/11/mms/3/other", out)
+        self.assertNotIn("foundation", out)
+        self.assertIn("TITLE      Wobbly knee, left", ok("code", "ZA000"), "a code typed without its dot")
+        out = ok("code", "blockl1-za0", "--max", "2")
+        self.assertIn("CODE       BlockL1-ZA0 [ICD-11 MMS, release 2026-01]", out)
+        self.assertIn("KIND       block, a grouping without a code of its own", out)
+        self.assertIn("and 1 more: 'code BlockL1-ZA0 --max 3' lists them all", out)
+        out = ok("code", "--chapter", "1")
+        self.assertIn("CODE       chapter 01 [ICD-11 MMS, release 2026-01]", out)
+        self.assertIn("TITLE      Made-up conditions of the tests", out)
+        self.assertIn("TITLE      Extension codes of the tests", ok("code", "--chapter", "x"))
+        self.assertIn("there is no such chapter", fails("code", "--chapter", "99"))
+
+    def test_a_title_is_never_altered(self):
+        out = ok("code", "ZA02")
+        self.assertIn("TITLE      Sj\u00f6gren-like dryness \u2013 of the tests", out, "WHO's dash and WHO's accent, untouched")
+
+    def test_several_codes_and_a_cluster(self):
+        out = ok("code", "ZA01", "ZA00.0&XZ01")
+        self.assertEqual(re.findall(r"(?m)^TITLE\s+(.+)$", out), ["Creaky elbow", "Wobbly knee, left", "Left"])
+        self.assertEqual(out.count("RULE "), 1)
+
+    def test_a_code_that_is_not_there(self):
+        out = ok("code", "I21")
+        self.assertIn("CODE       not in this release of ICD-11", out)
+        self.assertIn("it has the shape of an ICD-10 code. This file holds ICD-11 only, and no table between the two", out)
+        self.assertNotIn("RULE", out)
+        out = ok("code", "ZA00.7")
+        self.assertIn("the nearest entry above it: ZA00  Wobbly knee", out)
+        out = ok("code", "QQ99")
+        self.assertIn("CODE       not in this release of ICD-11", out)
+        self.assertNotIn("nearest", out)
+        self.assertIn("check the code against the document it came from", out)
+
+    def test_looking_through_the_titles(self):
+        out = ok("code", "--find", "wobbly", "knee")
+        self.assertIn("MATCHES    4 entries whose titles hold those words", out)
+        listed = re.findall(r"(?m)^\s+(ZA\S+)  ", out)
+        self.assertEqual(listed, ["ZA00", "ZA00.0", "ZA00.Z", "ZA00.Y"], "the shortest title first")
+        self.assertIn("A title that matches some words is not a diagnosis", out)
+        self.assertIn("CREDIT     " + build_icd11.CITATION, out)
+        self.assertIn("and 2 more", ok("code", "--find", "wobbly", "--max", "2"))
+        self.assertIn("ZA02  Sj\u00f6gren-like dryness", ok("code", "--find", "sjogren"), "found with or without the accent")
+        self.assertIn("ZA01  Creaky elbow", ok("code", "--find", "what", "is", "the", "code", "for", "creaky", "elbow"))
+        out = ok("code", "--find", "zygomorphic")
+        self.assertIn("CODE       no title in this release holds those words", out)
+        self.assertIn("WHO's wording may differ from the words given", out)
+
+    def test_what_it_refuses(self):
+        self.assertIn("give a code", fails("code"))
+        self.assertIn("leave out the code and --chapter", fails("code", "ZA00", "--find", "knee"))
+        self.assertIn("--max is 1 to 2000", fails("code", "ZA00", "--max", "0"))
+        self.assertIn("say which words to look for", fails("code", "--find", "the", "of"))
+        os.environ["VOSS_DATA"] = NO_DATA
+        self.assertIn("icd11.db is not installed, so there is nothing on file for ICD-11 codes", fails("code", "ZA00"))
+
+
 class ShippedDataTests(Base):
     """A look at the databases that ship with the skill. Skipped in a copy that carries none."""
 
@@ -2113,6 +2349,29 @@ class ShippedDataTests(Base):
         finally:
             con.close()
         self.assertIn("Poland (PL): 112", field(ok("triage", "--country", "poland"), "NUMBERS"))
+
+    def test_the_icd11_data(self):
+        if "icd11.db" not in self.files:
+            self.skipTest("icd11.db does not ship in this copy")
+        path = os.path.join(REAL_DATA, "icd11.db")
+        self.assertEqual(build_icd11.verify(path), "", "the records must still add up to WHO's file")
+        con = library.connect(path)
+        try:
+            counts = dict(con.execute("SELECT kind, COUNT(*) FROM entity GROUP BY kind"))
+            self.assertGreater(counts["category"], 30000)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM entity WHERE block IS NULL OR title = ''").fetchone()[0], 0)
+            facts = dict(con.execute("SELECT key, value FROM build"))
+            self.assertRegex(facts["release"], r"^\d{4}-\d{2}$")
+            self.assertEqual(facts["licence-sha256"], build_icd11.LICENCE_SHA256)
+        finally:
+            con.close()
+        out = ok("code", "1A00")
+        self.assertIn("TITLE      Cholera", out)
+        self.assertIn("URI        http://id.who.int/icd/release/11/mms/", out)
+        self.assertIn("CREDIT     " + build_icd11.CITATION, out)
+        self.assertIn("the shape of an ICD-10 code", ok("code", "I21"))
+        with open(os.path.join(REAL_DATA, "LICENSE-icd11.txt"), encoding="utf-8") as f:
+            self.assertIn("https://creativecommons.org/licenses/by-nd/3.0/igo/", f.read())
 
 
 if __name__ == "__main__":

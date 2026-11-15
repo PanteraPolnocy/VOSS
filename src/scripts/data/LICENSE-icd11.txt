@@ -1,0 +1,31 @@
+icd11.db: what it is, and on what terms
+
+This file holds ICD-11 for Mortality and Morbidity Statistics (MMS), release 2026-01, as the World
+Health Organization publishes it in its "Simple Tabulation" file: every record, whole and unchanged.
+
+  International Classification of Diseases, Eleventh Revision (ICD-11), World Health Organization (WHO) 2019 https://icd.who.int/browse11. Licensed under the Creative Commons Attribution-NoDerivatives 3.0 IGO licence (CC BY-ND 3.0 IGO).
+
+Licence: Creative Commons Attribution-NoDerivatives 3.0 IGO
+  https://creativecommons.org/licenses/by-nd/3.0/igo/
+with WHO's terms of use for the classifications: https://icd.who.int/en/docs/icd11-license.pdf
+
+This file is NOT under the licence of the code it ships with. It may be copied and passed on, unchanged,
+with the citation above. Under WHO's terms:
+  - it may not be adapted. Nothing in it has been: the classification was not reworded, shortened,
+    re-ordered or renamed, and every entry keeps its code, its title and its URI. What was done is a change
+    of file format, which the licence allows.
+  - it may not be translated, and no table between ICD-11 and another code system may be made from it or
+    added to it, without a written agreement with WHO. There is no translation and no such table here.
+  - it is not to be used to develop or promote a different standard.
+  - WHO's name appears here to say where the classification comes from, and for nothing else. WHO does not
+    endorse this skill, its author or anything it says, and is not affiliated with it.
+
+Not from WHO: three helper columns in the table "entity" exist so that a record can be found (its position
+in WHO's file, the position of its parent, and where the record sits in the packed text), together with a
+copy of each title without the quoting and the leading "- " marks the file uses to show depth. They add
+nothing to the classification and change nothing in it.
+
+The records can be put back together into WHO's file, byte for byte: "python tools/build_icd11.py --verify"
+does so and compares the result with the download. The checksum of WHO's file is in the table "build".
+
+Source file: https://icdcdn.who.int/static/releasefiles/2026-01/SimpleTabulation-ICD-11-MMS-en.zip
