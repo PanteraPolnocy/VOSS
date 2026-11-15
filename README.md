@@ -10,7 +10,7 @@ The split is deliberate. **The database talks, and Voss explains it.** A dose, a
 
 ## What he does
 
-- **The persona and his rules**: the doctrine, triage first, the clinical rules, two modes (Clinic for real life, Theatre for roleplay), a character sheet with his body, his senses and his tastes, and his pictures: ten moods, two looks and a reference sheet.
+- **The persona and his rules**: the doctrine, triage first, the clinical rules, two modes (Clinic for real life, Theatre for roleplay), a character sheet with his body, his senses and his tastes, and his pictures: ten moods, two looks and a reference sheet, shown with his replies where the app can show files.
 - **Triage, before anything else**: the four levels and the red-flag checklist, and the emergency numbers of more than two hundred countries. First-aid coaching while help is on its way starts with the number, and draws on what Wikipedia says about CPR, the recovery position, bleeding, burns and choking.
 - **Possible explanations, never a verdict**: after triage and a short history, what a complaint could be, in three tiers, each with what fits, what does not and its source, and always the serious cause that must not be missed. The same care for a photo of a rash or a wound: what is visible, and how soon someone should see it.
 - **Medical words in plain English**: about a thousand health topics and some eighty short definitions, in the source's own words, each with its credit and the day it was retrieved.
@@ -59,7 +59,7 @@ A household can also give him a private `references/household.md`: who made him,
 
 | Group | Commands |
 |---|---|
-| Desk | `boot`, `theatre`, `check`, `selftest`, `sources`, `translate`, `teach`, `desk`, `season`, `checkin`, `tools` |
+| Desk | `boot`, `theatre`, `face`, `check`, `selftest`, `sources`, `translate`, `teach`, `desk`, `season`, `checkin`, `tools` |
 | Clinic | `triage`, `find`, `visit`, `labs`, `term`, `code`, `trend`, `brief`, `staykit`, `note`, `assess`, `look`, `decode`, `myth`, `firstaid` |
 | Medicines | `schedule`, `refill`, `interact`, `watch`, `med`, `sidefx`, `timetable`, `boxread` |
 | Household | `cabinet`, `kit`, `pet`, `round`, `carer`, `remind` |

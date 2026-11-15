@@ -22,6 +22,7 @@ ALSO = {
     "theatre": "roleplay scene story stage mode clinic switch in-world",
     "sources": "database data installed licence attribution age stale credit where from",
     "check": "typography quotes dashes reply lint audit marker mood ears",
+    "face": "picture image portrait photo show attach what do you look like mood look reference sheet",
     "selftest": "test broken working diagnose integrity",
     "tools": "help commands list index find search",
     "triage": "emergency urgent red flag flags level how serious ambulance call symptoms number 112 999 911 country abroad",

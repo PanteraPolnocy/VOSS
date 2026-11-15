@@ -130,6 +130,42 @@ def plan(entry, kinds, weekday, hour, minute, every, today):
     return out
 
 
+BY = ("task", "email")
+
+
+def _task_words(kind, when, address):
+    """What a scheduled task is told, word for word: one reminder, the words it carries, and nothing more."""
+    title, words = KINDS[kind][2], KINDS[kind][3]
+    if address is None:
+        return "%s: post this message and nothing else: \"%s\" Open no personal file." % (when, words)
+    return ("%s: send an e-mail to %s. Subject: \"%s\". Body: \"%s\" Send that and nothing else, and open no personal file. If "
+            "no e-mail can be sent when this runs, say so in one line where this task reports, and do not let that line "
+            "stand in for the e-mail." % (when, address, title, words))
+
+
+def by(how, planned, wish, a):
+    """What it takes to remind by a scheduled task or by e-mail, and the instructions to give the task."""
+    address = None
+    if how == "email":
+        given = (a.address or "").strip() or str(wish.get("address") or "").strip()
+        address = core.one_line(given, "the address", 120) if given else "the address they give for this"
+        rec("EMAIL", "an e-mail arrives only if three things are true. Check each before you promise one:")
+        more("1. you have a tool here that sends mail. One that only writes a draft does not send")
+        more("2. there is an address: %s" % (address if given else "none is on file, so ask for one, for this and nothing else"))
+        more("3. something runs on the day. A reminder that lives only in this conversation is never sent: it takes a "
+             "scheduled task, and the task's own instructions have to say \"send this e-mail\"")
+        more("with one of the three missing, say which, in one line, before anything is set, and offer what does work: a task "
+             "that reports in the app, or the calendar file")
+    rec("TASK", "what to tell a scheduled task, word for word, one task for each reminder:")
+    for name, when, entries in planned:
+        more(_task_words(name, when, address))
+    rec("SAY FIRST", "where the reminder will turn up. A scheduled task reports as a message in the app unless its instructions "
+                     "send it somewhere else, and a send that waits for the person's approval does not go out while nobody is "
+                     "there. \"I will e-mail you\" is said only when all of that has been checked")
+    rec("AFTER", "say what was set, as the tool confirmed it, and what could not be done. A message in the chat never stands in "
+                 "for an e-mail without that being said first")
+
+
 def cmd_remind(a):
     kind, entry = personal.pick(personal.need(), a.id)
     today = core.today()
@@ -178,17 +214,22 @@ def cmd_remind(a):
                                                               "reminder invites them to something that says it is off]"))
         more("the entry is called \"%s\"" % KINDS[name][2])
         more("the words a reminder may carry: %s" % KINDS[name][3])
+    how = (a.by or "").strip().lower()
+    if how and how not in BY:
+        die("--by is one of: %s (a calendar file is --ics)" % ", ".join(BY))
+    if how:
+        by(how, planned, wish, a)
     if a.ics:
         ical.deliver(a.ics, [e for _, _, entries in planned for e in entries], "reminders-%s" % entry["id"])
         more("it repeats until the person deletes it from their calendar: say so, and that importing it twice gives each "
              "entry twice on some calendars")
     rec("WAYS", "look at the tools you have here, and offer only what one of them can really do:")
     more("1. a scheduled task or a reminder, where this platform gives you a tool that sets one. Say what will run, when, "
-         "and how to stop it, and set it only on their yes")
+         "where it will report, and how to stop it, and set it only on their yes ('--by task' gives its instructions)")
     more("2. a calendar entry, where you have a tool or a card that adds one to their calendar")
     more("3. a calendar file, wherever a file can be handed over: this command with --ics auto. It works on any phone")
     more("4. a message by e-mail, only where you have a tool that sends one, to an address they gave for this, and after "
-         "saying once that e-mail is not private")
+         "saying once that e-mail is not private ('--by email' says what it takes)")
     more("with none of those, say so plainly, and suggest they put it in their own calendar by hand")
     rec("RULE", "a reminder is an invitation and nothing else. It never names a medicine, a condition, a result or anything "
                 "else from the personal file: it is read on lock screens and in inboxes, where nobody passes a gate. Use the "
@@ -205,11 +246,13 @@ def cmd_remind(a):
 def register(sub):
     p = command(sub, "household", "remind", cmd_remind,
                 "reminders of a round, a seasonal check or a check-in: the words one may carry, and a calendar file that repeats it",
-                ["remind --id self", "remind --id self --what round --day mon --at 09:00",
+                ["remind --id self", "remind --id self --what round --day mon --at 09:00", "remind --id self --what round --by email",
                  "remind --id self --what round,season --ics auto"])
     p.add_argument("--id", help="whose reminders (default: the only profile on file)")
     p.add_argument("--what", metavar="KIND,KIND", help="what to be reminded of: %s (default: what is switched on in the file)" % ", ".join(ORDER))
     p.add_argument("--day", help="the day of the week for the weekly round: %s (default: mon, or as on file)" % ", ".join(DAYS))
     p.add_argument("--at", metavar="HH:MM", help="the time of day for a reminder (default: 09:00, or as on file)")
     p.add_argument("--every", metavar="PERIOD", help="how often the check-in comes round, where the file does not say: 2 weeks, 1 month")
+    p.add_argument("--by", help="what it takes to remind this way, and the instructions to give: task (a scheduled task) or email")
+    p.add_argument("--address", help="with --by email: the address they gave for this, where none is on file")
     ical.add_option(p, "the reminders")

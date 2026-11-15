@@ -75,7 +75,7 @@ REAL_DATA = os.path.join(SCRIPTS, "data")
 ANSWERS = ("kittiwake", "pendle", "bottle", "butelkowa", "cello")
 # every feature command of references/features.md, by the name its table gives it
 FEATURE_COMMANDS = ("diary", "brief", "result", "trend", "labread", "decode", "look", "passport", "card", "firstaid", "desk", "translate",
-                    "pet", "recipe", "scale", "season", "round", "remind", "reading", "followup", "timetable", "note", "checkin", "carer", "staykit", "teach", "kit", "myth", "assess", "cabinet",
+                    "pet", "recipe", "scale", "season", "round", "remind", "face", "reading", "followup", "timetable", "note", "checkin", "carer", "staykit", "teach", "kit", "myth", "assess", "cabinet",
                     "boxread")
 UNCHOSEN = ("travel", "secondopinion", "opinion", "logbook", "casebook", "screening", "booster", "sleep", "sleepdiary")
 
@@ -1857,7 +1857,7 @@ class IndexTests(Base):
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("54 commands.", ok("tools"))
+        self.assertIn("55 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -4068,6 +4068,30 @@ class RemindTests(Base):
             self.assertNotIn(private.lower(), text.lower(), "a reminder carries nothing from the personal file")
         self.assertIn("inside a git repository", fails("remind", "--id", "self", "--ics", ROOT))
 
+    def test_an_email_is_promised_only_when_one_can_be_sent(self):
+        copy_fixture(reminded(weekly_round=True, reminders={"how": "e-mail", "when": "mon 09:00", "address": "wren@example.org"}))
+        out = ok("remind", "--id", "self", "--by", "email")
+        for line in ("EMAIL      an e-mail arrives only if three things are true. Check each before you promise one:",
+                     "1. you have a tool here that sends mail. One that only writes a draft does not send",
+                     "2. there is an address: wren@example.org", "3. something runs on the day",
+                     "with one of the three missing, say which, in one line, before anything is set",
+                     "TASK       what to tell a scheduled task, word for word, one task for each reminder:",
+                     "every Mon at 09:00: send an e-mail to wren@example.org. Subject: \"Voss: weekly round\".",
+                     "Send that and nothing else, and open no personal file.", "do not let that line stand in for the e-mail",
+                     "SAY FIRST  where the reminder will turn up. A scheduled task reports as a message in the app",
+                     "AFTER      say what was set, as the tool confirmed it, and what could not be done"):
+            self.assertIn(line, out)
+        self.assertNotIn("Metformin", out, "nothing from the file goes into what a task is told")
+        out = ok("remind", "--id", "self", "--by", "task")
+        self.assertIn("every Mon at 09:00: post this message and nothing else: \"Your weekly round with Voss is due.", out)
+        self.assertNotIn("EMAIL", out)
+        copy_fixture(reminded(weekly_round=True))
+        out = ok("remind", "--id", "self", "--by", "email")
+        self.assertIn("2. there is an address: none is on file, so ask for one, for this and nothing else", out)
+        self.assertIn("send an e-mail to the address they give for this.", out)
+        self.assertIn("send an e-mail to robin@example.org.", ok("remind", "--id", "self", "--by", "email", "--address", "robin@example.org"))
+        self.assertIn("--by is one of: task, email", fails("remind", "--id", "self", "--by", "pigeon"))
+
     def test_what_they_chose_is_kept_and_not_asked_twice(self):
         copy_fixture(reminded(weekly_round=True))
         self.assertIn("REMINDER   nothing reminds them of the round between conversations: offer a reminder, once ('remind --id self')",
@@ -4378,6 +4402,43 @@ class KeepingTests(Base):
         self.assertEqual(interactions.NAME_KINDS[3], "also called (fr)")
         self.assertEqual(labels.NAME_KINDS[-1], "also called (la)")
         self.assertEqual(build_ddinter.LANGUAGES, core.NAME_LANGUAGES)
+
+
+class FaceTests(Base):
+    def test_a_picture_is_put_where_it_can_be_shown(self):
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        out = ok("face", "amused", "--look", "baking", "--to", folder)
+        for line in ("FACE       amused. Half-lidded eyes, head tilted, a lopsided smirk.",
+                     "PICTURE    %s" % os.path.join(folder, "voss-amused.webp"), "LOOK       baking. In a tidy kitchen",
+                     "PICTURE    %s" % os.path.join(folder, "voss-baking.webp"),
+                     "NEXT       present the file with the reply: attach it or link it, whichever this environment does",
+                     "RULE       a picture with the first reply, and after that only when the face or the look changes",
+                     "None with an emergency answer: nothing delays the number"):
+            self.assertIn(line, out)
+        self.assertEqual(sorted(os.listdir(folder)), ["voss-amused.webp", "voss-baking.webp"])
+        with open(os.path.join(folder, "voss-amused.webp"), "rb") as copy, open(os.path.join(SRC, "images", "voss-amused.webp"), "rb") as kept:
+            self.assertEqual(copy.read(), kept.read())
+        out = ok("face", "--all", "--to", folder)
+        self.assertIn("PICTURES   13, put where this environment hands files over from", out)
+        self.assertIn("the reference sheet: %s" % os.path.join(folder, "voss-reference-sheet.webp"), out)
+        self.assertEqual(len(os.listdir(folder)), 13)
+        self.assertIn("SHEET      Reference sheet on dark blue", ok("face", "--sheet", "--to", folder))
+        self.assertIn("say which: face composed", fails("face"))
+        self.assertIn("the mood is one of: composed, focused", fails("face", "furious"))
+        self.assertIn("--look is one of: on-duty, baking", fails("face", "amused", "--look", "pyjamas"))
+        self.assertIn("--to must be a folder that exists", fails("face", "amused", "--to", os.path.join(folder, "nowhere")))
+
+    def test_with_nowhere_to_hand_a_file_over_it_is_shown_from_where_it_is_kept(self):
+        kept = os.environ.pop("VOSS_OUTPUTS")
+        try:
+            with swapped(desk, HANDED_OVER=os.path.join(OUTPUTS, "no-such-folder")):
+                out = ok("face", "composed")
+                self.assertIn("PICTURE    %s" % os.path.join(SRC, "images", "voss-composed.webp"), out)
+                self.assertIn("PICTURES   13, shown from where they are kept: there is no outputs folder here, and nothing was copied",
+                              ok("face", "--all"))
+        finally:
+            os.environ["VOSS_OUTPUTS"] = kept
+        self.assertIn("where this environment can show a file, the face is shown too: 'face --all' once", ok("boot", "--seed", "1"))
 
 
 class KitchenTests(Base):

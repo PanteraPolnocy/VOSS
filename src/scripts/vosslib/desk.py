@@ -3,6 +3,7 @@ the self-test."""
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -108,6 +109,8 @@ def cmd_boot(a):
         more("moods: %s" % ", ".join(m["key"] for m in pictures["moods"]))
         more("looks: %s" % ", ".join(m["key"] for m in pictures.get("looks") or []))
         more("never a file name that is not on that list, and no marker inside a code or record block")
+        more("where this environment can show a file, the face is shown too: 'face --all' once, then present the picture of "
+             "the mood with the first reply and whenever the face changes")
         if EMERGENCY_MOOD in [m["key"] for m in pictures["moods"]]:
             more("an emergency answer carries [mood: %s] [voss-%s.webp] and no look" % (EMERGENCY_MOOD, EMERGENCY_MOOD))
     else:
@@ -134,6 +137,82 @@ def cmd_theatre(a):
     rec("STAYS 3", "nothing from Theatre goes into the personal file, nothing from a story is presented as real, and real advice "
                    "never shares an answer with in-world medicine")
     rec("METHOD", "playbooks/theatre.md")
+
+
+# ---- the pictures
+
+HANDED_OVER = "/mnt/user-data/outputs"
+
+
+def _show_folder(to):
+    """Where a picture is put so that it can be shown: the folder named, or with 'auto' the folder this
+    environment hands files over from, if it has one. None where it has none: then a picture is shown from
+    where it is kept, and nothing is copied."""
+    if not to or str(to).lower() == "auto":
+        named = os.environ.get("VOSS_OUTPUTS")
+        if named and os.path.isdir(named):
+            return named
+        return HANDED_OVER if os.path.isdir(HANDED_OVER) else None
+    if not os.path.isdir(to):
+        die("--to must be a folder that exists, or 'auto'")
+    return to
+
+
+def _put(name, folder):
+    """The path a picture can be shown from: a copy in the folder, made once."""
+    kept = os.path.join(IMAGES, name)
+    if not os.path.isfile(kept):
+        die("a picture the manifest names is not in this package")
+    if not folder or core.within(folder, IMAGES):
+        return kept
+    path = os.path.join(folder, name)
+    try:
+        if not os.path.isfile(path) or os.path.getsize(path) != os.path.getsize(kept):
+            shutil.copyfile(kept, path)
+    except OSError as e:
+        die("the picture could not be put in that folder: %s" % (e.strerror or e))
+    return path
+
+
+def cmd_face(a):
+    pictures = manifest()
+    if not pictures:
+        die("this package carries no pictures: leave the marker line out, and show none")
+    moods = dict((m["key"], m) for m in pictures["moods"])
+    looks = dict((m["key"], m) for m in pictures.get("looks") or [])
+    sheet = next((m for m in pictures.get("other") or [] if "reference" in m["file"]), None)
+    folder = _show_folder(a.to)
+    if a.all:
+        rows = [("mood %s" % k, m["file"]) for k, m in moods.items()] + [("look %s" % k, m["file"]) for k, m in looks.items()]
+        if sheet:
+            rows.append(("the reference sheet", sheet["file"]))
+        rec("PICTURES", "%d, %s" % (len(rows), "put where this environment hands files over from" if folder else
+                                    "shown from where they are kept: there is no outputs folder here, and nothing was copied"))
+        for what, name in rows:
+            more("%s: %s" % (what, _put(name, folder)))
+    else:
+        if not (a.mood or a.look or a.sheet):
+            die("say which: face composed, face amused --look baking, face --sheet, or face --all")
+        if a.mood:
+            if a.mood not in moods:
+                die("the mood is one of: %s" % ", ".join(moods))
+            rec("FACE", "%s. %s" % (a.mood, moods[a.mood]["face"]))
+            rec("PICTURE", _put(moods[a.mood]["file"], folder))
+        if a.look:
+            if a.look not in looks:
+                die("--look is one of: %s" % ", ".join(looks))
+            rec("LOOK", "%s. %s" % (a.look, looks[a.look]["description"]))
+            rec("PICTURE", _put(looks[a.look]["file"], folder))
+        if a.sheet:
+            if not sheet:
+                die("this package carries no reference sheet")
+            rec("SHEET", sheet["shows"])
+            rec("PICTURE", _put(sheet["file"], folder))
+    rec("NEXT", "present the file with the reply: attach it or link it, whichever this environment does. The marker line stays "
+                "the last line. If this environment cannot show files, the marker line stands alone, and nothing is said of it")
+    rec("RULE", "a picture with the first reply, and after that only when the face or the look changes: the same face is not "
+                "shown twice running. None with an emergency answer: nothing delays the number. Fewer, or none, as soon as "
+                "the person asks")
 
 
 # ---- typography check
@@ -493,6 +572,15 @@ def register(sub):
                 "switch to Theatre (roleplay) or back to Clinic: the banner to show, and what never changes on stage",
                 ["theatre", "theatre --off"])
     p.add_argument("--off", action="store_true", help="back to Clinic")
+
+    p = command(sub, "desk", "face", cmd_face,
+                "the picture of a mood or a look, put where this environment can show it; shown when the face changes",
+                ["face composed", "face amused --look baking", "face --sheet", "face --all"])
+    p.add_argument("mood", nargs="?", help="the mood whose picture is wanted")
+    p.add_argument("--look", help="a look as well: on-duty or baking")
+    p.add_argument("--sheet", action="store_true", help="the reference sheet")
+    p.add_argument("--all", action="store_true", help="every picture at once, so that each can be presented later without another call")
+    p.add_argument("--to", help="where to put them: 'auto' (default: the folder this environment hands files over from), or a folder")
 
     p = command(sub, "desk", "check", cmd_check,
                 "the typography rule (curly quotes, long dashes, emojis; ASCII-only for code), and a drafted reply against your own rules",

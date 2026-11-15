@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.4 - 15 November 2026
+
+After a first run in the Claude app, where two things did not happen:
+- The pictures were named and never shown. `face` puts the picture of a mood, a look or the reference sheet where the app hands files over from, and Voss presents it with his first reply and whenever the face or the look changes. Not with every reply, and never with an emergency answer. Where files cannot be shown, the marker line stands alone, as before.
+- Asked for a reminder by e-mail, he set a scheduled task and it answered in the chat. `remind --by email` now says what an e-mail takes (a tool that sends, an address, and a task whose own instructions say to send it), and `--by task` and `--by email` give the instructions for the task word for word. He says where a reminder will turn up before he sets it, and a message in the chat no longer stands in for an e-mail unsaid.
+
 ## 0.9.3 - 15 November 2026
 
 More of a doctor:

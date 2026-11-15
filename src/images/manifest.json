@@ -1,5 +1,5 @@
 {
-  "version": "0.9.3",
+  "version": "0.9.4",
   "character": "Voss",
   "note": "The marker line is the last line of a reply: [mood: KEY] [voss-KEY.webp], and after it on the same line, if wanted, [look: KEY] [voss-KEY.webp]. Keys and file names come from this list and nowhere else. No marker inside a code or record block. An emergency answer carries the serious mood and no look. Each picture keeps its label strip along the bottom.",
   "moods": [
