@@ -38,7 +38,7 @@ def numbers(text):
                 if names[hit] not in near:
                     near.append(names[hit])
             rec("NUMBERS", "nothing on file for that country%s" % (": did you mean %s?" % " or ".join(near[:3]) if near else ""))
-            more("--country takes a two-letter code (PL, GB) or a name. If the person may be in danger now, do not wait on "
+            more("--country takes a two-letter code (DE, GB) or a name. If the person may be in danger now, do not wait on "
                  "this: tell them to call their local emergency number")
             return
         code, name, eu = row
@@ -88,7 +88,7 @@ def cmd_triage(a):
             rec("NUMBERS", "none on file: %s.db is not installed. Use the list in references/clinical-rules.md, and check a "
                            "number is current before quoting it" % NUMBERS_DB)
         else:
-            rec("NUMBERS", "by country: 'triage --country PL' takes a two-letter code or a name, and prints that country's "
+            rec("NUMBERS", "by country: 'triage --country DE' takes a two-letter code or a name, and prints that country's "
                            "numbers with their source")
 
 
@@ -309,14 +309,14 @@ def cmd_labs(a):
 def register(sub):
     p = command(sub, "clinic", "triage", cmd_triage,
                 "the four triage levels, the red-flag checklist, and a country's emergency numbers",
-                ["triage", "triage --flags", "triage --level 2", "triage --country PL", "triage --country \"new zealand\""])
+                ["triage", "triage --flags", "triage --level 2", "triage --country DE", "triage --country \"new zealand\""])
     p.add_argument("--level", type=int, help="one level only, 1 to 4")
     p.add_argument("--flags", action="store_true", help="the red-flag checklist only")
     p.add_argument("--country", metavar="CC", help="the emergency numbers of one country: a two-letter code or its name")
 
     p = command(sub, "clinic", "find", cmd_find,
                 "where to get care in a country: no file holds that, so this is what to look up and how to cite it",
-                ["find", "find night care --country PL"])
+                ["find", "find night care --country IE"])
     p.add_argument("words", nargs="*", help="what is wanted, in a word or two: it heads the record")
     p.add_argument("--country", metavar="CC", help="add the numbers 'triage' has on file for this country: a two-letter code or its name")
 

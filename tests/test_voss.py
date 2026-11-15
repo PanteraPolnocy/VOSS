@@ -55,12 +55,14 @@ os.environ.pop("VOSS_BUILD_AGENT", None)
 
 import voss  # noqa: E402
 import vosslib  # noqa: E402
-from vosslib import (clinic, codes, core, desk, doses, forms, gate, ical, index, interactions, labels, library, personal, record,  # noqa: E402
+from vosslib import (advice, clinic, codes, core, desk, doses, forms, gate, ical, index, interactions, labels, library, personal, record,  # noqa: E402
                      store, terms)
 
 import build  # noqa: E402
+import build_advice  # noqa: E402
 import build_core  # noqa: E402
 import build_ddinter  # noqa: E402
+import build_firstaid  # noqa: E402
 import build_icd11  # noqa: E402
 import build_labels  # noqa: E402
 import build_index  # noqa: E402
@@ -72,7 +74,7 @@ REAL_DATA = os.path.join(SCRIPTS, "data")
 ANSWERS = ("kittiwake", "pendle", "bottle", "butelkowa", "cello")
 # every feature command of references/features.md, by the name its table gives it
 FEATURE_COMMANDS = ("diary", "brief", "result", "trend", "labread", "decode", "look", "passport", "card", "firstaid", "desk", "translate",
-                    "pet", "recipe", "scale", "season", "round", "checkin", "carer", "staykit", "teach", "kit", "myth", "assess", "cabinet",
+                    "pet", "recipe", "scale", "season", "round", "remind", "checkin", "carer", "staykit", "teach", "kit", "myth", "assess", "cabinet",
                     "boxread")
 UNCHOSEN = ("travel", "secondopinion", "opinion", "logbook", "casebook", "screening", "booster", "sleep", "sleepdiary")
 
@@ -1852,7 +1854,7 @@ class IndexTests(Base):
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("49 commands.", ok("tools"))
+        self.assertIn("50 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -2299,7 +2301,7 @@ class NumbersTests(CoreData):
 
     def test_it_sits_with_the_rest_of_triage(self):
         out = ok("triage")
-        self.assertIn("NUMBERS    by country: 'triage --country PL'", out)
+        self.assertIn("NUMBERS    by country: 'triage --country DE'", out)
         out = ok("triage", "--flags", "--country", "AU")
         self.assertIn("RED FLAGS", out)
         self.assertIn("Australia (AU): 000", out)
@@ -3453,14 +3455,21 @@ class PapersTests(Base):
         self.assertNotIn("penicillin", out, "the list of what could go on it gives nothing away")
         self.assertIn("--lines names what goes on the page, from: name, born", fails("card", "--id", "self", "--lines", "name,shoe_size"))
         self.assertIn("nothing is on file for the lines that were chosen", fails("card", "--id", "self", "--lines", "devices"))
-        self.assertIn("--lang is one of: en, pl, both", fails("card", "--id", "self", "--all", "--lang", "de"))
+        self.assertIn("HEADINGS   in English. For a reader of another language, give each heading in it as well: --heading KEY=TEXT", out)
+        self.assertIn("--heading is KEY=TEXT, the heading in the reader's language, where KEY is one of: title, name, born",
+                      fails("card", "--id", "self", "--all", "--heading", "shoe_size=Schuhe"))
+        self.assertIn("--heading is KEY=TEXT", fails("card", "--id", "self", "--all", "--heading", "Allergien"))
 
     def test_a_card_read_back_and_then_written(self):
-        command = ["card", "--id", "self", "--lines", "name,allergies,contact", "--lang", "both"]
+        # the second language is the reader's, whichever it is: Voss gives the headings, and the tool sets them beside the English
+        command = ["card", "--id", "self", "--lines", "name,allergies,contact", "--heading", "title=Notfallausweis", "--heading",
+                   "name=Name", "--heading", "allergies=Allergien", "--heading", "contact=Notfallkontakt", "--foot",
+                   "Keine Krankenakte."]
         out = ok(*command)
-        for line in ("READ BACK  the card for self, as it would be written. Nothing is written yet", "MEDICAL ID / KARTA RATUNKOWA",
-                     "Name / Imi\u0119:", "  Wren", "Allergies / Alergie:", "  penicillin: a rash", "Emergency contact / Kontakt w nag\u0142ym wypadku:",
-                     "  Sorrel, sister, +44 20 7946 0123", "Not a medical record.", "To nie jest dokumentacja medyczna. 2026-11-15"):
+        for line in ("READ BACK  the card for self, as it would be written. Nothing is written yet", "MEDICAL ID / NOTFALLAUSWEIS",
+                     "Name / Name:", "  Wren", "Allergies / Allergien:", "  penicillin: a rash", "Emergency contact / Notfallkontakt:",
+                     "  Sorrel, sister, +44 20 7946 0123", "Not a medical record. Keine Krankenakte. 2026-11-15",
+                     "HEADINGS   the second language is your translation, and no tool has checked it"):
             self.assertIn(line, out)
         self.assertNotIn("Metformin", out, "a line that was not chosen is not on it")
         code = field(out, "CONFIRM")
@@ -3473,7 +3482,7 @@ class PapersTests(Base):
         self.assertIn("laid out for a phone's medical ID or emergency screen", out)
         with open(os.path.join(folder, "voss-card-self.txt"), encoding="utf-8") as f:
             text = f.read()
-        self.assertTrue(text.startswith("MEDICAL ID / KARTA RATUNKOWA\n\nName / Imi\u0119:\n  Wren\n"))
+        self.assertTrue(text.startswith("MEDICAL ID / NOTFALLAUSWEIS\n\nName / Name:\n  Wren\n"))
         with open(os.path.join(folder, "voss-card-self.html"), encoding="utf-8") as f:
             page = f.read()
         self.assertIn("<li>penicillin: a rash</li>", page)
@@ -3492,11 +3501,11 @@ class PapersTests(Base):
             self.assertIn("<li>Wren &lt;b&gt;&amp; Co&lt;/b&gt;</li>", f.read())
 
     def test_a_passport_and_a_brief(self):
-        out = ok("passport", "--id", "self", "--all", "--lang", "pl")
-        for line in ("PASZPORT ZDROWIA", "Data urodzenia:", "  1988-02-29 (aged 38)", "Leki:", "  Metformin 500 mg: one tablet with food",
-                     "Alergie:", "LEFT OUT   nothing on file for:"):
+        out = ok("passport", "--id", "self", "--all", "--heading", "medicines=M\u00e9dicaments")
+        for line in ("HEALTH PASSPORT", "Date of birth:", "  1988-02-29 (aged 38)", "Medicines / M\u00e9dicaments:",
+                     "  Metformin 500 mg: one tablet with food", "Allergies:", "LEFT OUT   nothing on file for:"):
             self.assertIn(line, out)
-        self.assertNotIn("Medicines", out)
+        self.assertNotIn(" / ", out.replace("Medicines / M\u00e9dicaments", ""), "a heading nobody translated stands in English alone")
         out = ok("brief", "--id", "self", "--lines", "diary,medicines,questions", "--since", "2026-11-05",
                  "--question", "Could the tablets be the cause?", "--question", "Do I need a scan?")
         for line in ("FOR THE DOCTOR", "Symptom diary:", "  2026-11-09  headache again; 4/10; after a long drive", "Questions for the doctor:",
@@ -3735,6 +3744,347 @@ class FormsTests(Base):
         self.assertIn("CHECK-IN   self: switched on in their file, every Sunday", ok("checkin", "--id", "self"))
         code = field(ok("intake", "--id", "rowan", "--set", "settings: wellbeing_checkin.on=yes"), "CONFIRM")
         self.assertTrue(code)
+
+
+@contextlib.contextmanager
+def swapped(module, **values):
+    """A builder's tables changed for the length of a test, and put back after it."""
+    keep = dict((name, getattr(module, name)) for name in values)
+    for name, value in values.items():
+        setattr(module, name, value)
+    try:
+        yield
+    finally:
+        for name, value in keep.items():
+            setattr(module, name, value)
+
+
+ADVICE_PAGE = """<html><head><title>Made-up advice</title></head><body><nav><ul><li>Home</li></ul></nav>
+<h1>Made-up advice</h1>
+<h2>Things a wobbly cat should not eat</h2>
+<p>Some things in a made-up kitchen are bad for a made-up cat:</p>
+<ul><li>Wobbleberries</li><li>Pretend chocolate (it isn&rsquo;t real)</li></ul>
+<h2>Next section</h2><p>Not taken.</p>
+<h2>Breaks from a made-up screen</h2><p>Look away from the screen every now and then.</p>
+<h3>Software</h3><p>Not taken either.</p>
+<h2>A made-up kit</h2><ul><li>plasters</li><li>a bandage</li></ul><p>This is only a suggestion.</p>
+<h2>When the made-up jab is given</h2><p>In the early autumn.</p><p>Page last updated 27 March 2024</p>
+<footer>Updated: 2025-03-20</footer></body></html>"""
+ADVICE_PAGES = {"made": ("made-up.html", "https://example.org/advice", "A made-up body: Made-up advice", "a made-up licence",
+                         "Source: a made-up body", r"Updated:\s*(?P<y>\d{4})-(?P<m>\d{2})-(?P<d>\d{2})")}
+ADVICE_TERMS = (("made-up-terms.html", "https://example.org/terms", ("may be passed on freely",)),)
+ADVICE_PASSAGES = (
+    ("pets", "made", "Things a wobbly cat should not eat", r"^Things a wobbly cat should not eat$", None, ("Wobbleberries",)),
+    ("breaks", "made", "Breaks from a made-up screen", r"^Breaks from a made-up screen$", None, ("Look away",)),
+    ("kit", "made", "A made-up kit", r"^A made-up kit$", None, ("plasters",)),
+    ("flu", "made", "When the made-up jab is given", r"^When the made-up jab is given$", r"^Page last updated", ("early autumn",)),
+)
+AID_ARTICLE = {"title": "Made-up choking", "revision": 111, "timestamp": "2026-11-01T10:00:00Z", "sections": {
+    "": "<div class=\"hatnote\">For other uses, see elsewhere.</div><p>Lead one.<sup class=\"reference\"><a href=\"#n\">[1]</a></sup></p>"
+        "<p>Lead two.</p>",
+    "Back blows": "<h3 id=\"b\">Back blows</h3><p>Slap the made-up back<sup class=\"reference\">[2]</sup> &ldquo;firmly&rdquo;.</p>"
+                  "<ul><li>five times</li></ul><figure><img src=\"x.png\"><figcaption>A picture</figcaption></figure>"
+                  "<table><tr><td>a cell</td></tr></table><h4>Under it</h4><p>Not for the top.</p>"}}
+AID_READ = {"Made-up choking": 111}
+AID_PASSAGES = (
+    ("choking", "Made-up choking", "", 1, ("Lead one",)),
+    ("choking", "Made-up choking", "Back blows", "top", ("Slap the made-up back",)),
+    ("cpr", "Made-up choking", "Back blows", "whole", ("Under it",)),
+)
+AID_TERMS = {"text": "<p>It can be used under the terms of the Creative Commons Attribution Share-Alike license, and changes go under "
+                     "the Creative Commons Attribution-Share-Alike License 4.0 or later.</p>"}
+
+
+def advice_downloads(page=ADVICE_PAGE, terms="<p>Everything here may be passed on&nbsp;freely.</p>"):
+    folder = tempfile.mkdtemp(dir=OUTPUTS)
+    for name, text in (("made-up.html", page), ("made-up-terms.html", terms)):
+        with open(os.path.join(folder, name), "w", encoding="utf-8") as f:
+            f.write(text)
+    return folder
+
+
+def aid_downloads(article=AID_ARTICLE, terms=AID_TERMS):
+    folder = tempfile.mkdtemp(dir=OUTPUTS)
+    for name, doc in ((build_firstaid.file_of("Made-up choking"), article), (build_firstaid.TERMS_FILE, terms)):
+        with open(os.path.join(folder, name), "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+    return folder
+
+
+def build_advice_sample(out, downloads=None, *extra):
+    with swapped(build_advice, PAGES=ADVICE_PAGES, TERMS=ADVICE_TERMS, PASSAGES=ADVICE_PASSAGES, LICENCE="A made-up licence text."):
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            build_advice.main(["--downloads", downloads or advice_downloads(), "--retrieved", "2026-11-09", "--out", out] + list(extra))
+    return said.getvalue()
+
+
+def build_aid_sample(out, downloads=None, *extra, **tables):
+    tables = dict(dict(READ=AID_READ, PASSAGES=AID_PASSAGES, LICENCE="A made-up licence text."), **tables)
+    with swapped(build_firstaid, **tables):
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            build_firstaid.main(["--downloads", downloads or aid_downloads(), "--retrieved", "2026-11-09", "--out", out] + list(extra))
+    return said.getvalue()
+
+
+def passages_data():
+    """The folder that holds the two small databases of passages, built once from the made-up pages."""
+    if "passages" not in _sample:
+        folder = os.path.join(OUTPUTS, "passage-data")
+        os.makedirs(folder)
+        clock()
+        build_advice_sample(folder)
+        build_aid_sample(folder)
+        _sample["passages"] = folder
+    return _sample["passages"]
+
+
+class PassageBuildTests(Base):
+    """tools/build_advice.py and tools/build_firstaid.py, run on made-up pages."""
+
+    def test_a_passage_is_cut_whole_from_under_its_heading(self):
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        said = build_advice_sample(folder)
+        self.assertIn("4 passages on breaks, flu, kit, pets", said)
+        info = library.read(os.path.join(folder, "advice-by.db"))
+        self.assertEqual(info["problems"], [])
+        self.assertEqual([(s["source"], s["licence"], s["credit"]) for s in info["sources"]],
+                         [("A made-up body: Made-up advice", "a made-up licence", "Source: a made-up body")])
+        con = library.connect(info["path"])
+        rows = dict((r[0], r[1:]) for r in con.execute("SELECT topic, title, text, url, dated FROM passage"))
+        con.close()
+        self.assertEqual(rows["pets"], ("Things a wobbly cat should not eat",
+                                        "Some things in a made-up kitchen are bad for a made-up cat:\n\n- Wobbleberries\n"
+                                        "- Pretend chocolate (it isn't real)", "https://example.org/advice", "2025-03-20"))
+        self.assertEqual(rows["breaks"][1], "Look away from the screen every now and then.", "it stops at the next heading")
+        self.assertEqual(rows["flu"][1], "In the early autumn.", "and at the line it was told to stop at")
+        self.assertNotIn("Not taken", json.dumps(rows))
+
+    def test_a_page_that_changed_stops_the_build(self):
+        out = tempfile.mkdtemp(dir=OUTPUTS)
+        for page, words in ((ADVICE_PAGE.replace("A made-up kit", "A kit"), "its heading is not on the page any more"),
+                            (ADVICE_PAGE.replace("Wobbleberries", "Wibbleberries"), "the passage no longer holds \"Wobbleberries\""),
+                            (ADVICE_PAGE.replace("<p>In the early autumn.</p>", ""), "nothing stands under its heading any more")):
+            with self.assertRaises(SystemExit) as stopped:
+                build_advice_sample(out, advice_downloads(page))
+            self.assertIn(words, str(stopped.exception))
+        with self.assertRaises(SystemExit) as stopped:
+            build_advice_sample(out, advice_downloads(terms="<p>All rights reserved.</p>"))
+        self.assertIn("no longer says \"may be passed on freely\"", str(stopped.exception))
+        self.assertEqual(os.listdir(out), [], "and nothing is left behind")
+        self.assertEqual(build_advice.page_date("Page last updated 27 March 2024", build_advice.PAGES["ecdc"][5]), "2024-03-27")
+        self.assertEqual(build_advice.page_date("Content current as of: 02/28/2023", build_advice.PAGES["fda"][5]), "2023-02-28")
+        self.assertEqual(build_advice.page_date("no date here", build_advice.PAGES["fda"][5]), "")
+
+    def test_an_article_as_plain_text(self):
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        said = build_aid_sample(folder)
+        self.assertIn("3 passages on choking, cpr", said)
+        info = library.read(os.path.join(folder, "firstaid-sa.db"))
+        self.assertEqual(info["problems"], [])
+        self.assertEqual(info["sources"][0]["source"], "Wikipedia: \"Made-up choking\", revision 111 of 2026-11-01")
+        self.assertEqual(info["sources"][0]["credit"],
+                         "Wikipedia contributors, \"Made-up choking\" (https://en.wikipedia.org/w/index.php?title=Made-up_choking&oldid=111). "
+                         "CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). An excerpt, as plain text; no wording changed")
+        con = library.connect(info["path"])
+        rows = con.execute("SELECT topic, title, text, url, dated FROM passage ORDER BY part").fetchall()
+        con.close()
+        self.assertEqual(rows[0], ("choking", "Made-up choking (the opening of the article)", "Lead one.",
+                                   "https://en.wikipedia.org/w/index.php?title=Made-up_choking&oldid=111", "2026-11-01"))
+        self.assertEqual(rows[1][1:3], ("Back blows", "Slap the made-up back \"firmly\".\n\n- five times"))
+        self.assertEqual(rows[2][2], "Slap the made-up back \"firmly\".\n\n- five times\n\n## Under it\n\nNot for the top.")
+        for left_out in ("[1]", "[2]", "A picture", "a cell", "For other uses"):
+            self.assertNotIn(left_out, json.dumps(rows))
+
+    def test_only_what_was_read_goes_in(self):
+        out = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as stopped:
+            build_aid_sample(out, aid_downloads(dict(AID_ARTICLE, revision=112)))
+        self.assertIn("is revision 112, and the one that was read is 111", str(stopped.exception))
+        with self.assertRaises(SystemExit) as stopped:
+            build_aid_sample(out, aid_downloads(dict(AID_ARTICLE, revision=112)), "--latest")
+        self.assertIn("--latest is for reading (--show)", str(stopped.exception))
+        self.assertIn("=== choking | Made-up choking, revision 112 |", build_aid_sample(out, aid_downloads(dict(AID_ARTICLE, revision=112)),
+                                                                                      "--latest", "--show"))
+        unsound = dict(AID_ARTICLE, sections=dict(AID_ARTICLE["sections"], **{"": "<p>Lead one. Reach in with a toothpick.</p>"}))
+        with self.assertRaises(SystemExit) as stopped:
+            build_aid_sample(out, aid_downloads(unsound))
+        self.assertIn("holds \"toothpick\", which no first-aid body teaches", str(stopped.exception))
+        with self.assertRaises(SystemExit) as stopped:
+            build_aid_sample(out, aid_downloads(terms={"text": "<p>All rights reserved.</p>"}))
+        self.assertIn("no longer says \"creative commons attribution share-alike license\"", str(stopped.exception))
+        self.assertEqual(os.listdir(out), [])
+
+    def test_the_revisions_that_ship_are_the_ones_that_were_read(self):
+        path = os.path.join(REAL_DATA, "firstaid-sa.db")
+        if not os.path.isfile(path):
+            self.skipTest("firstaid-sa.db does not ship in this copy")
+        named = [s["source"] for s in library.read(path)["sources"]]
+        self.assertEqual(named, ["Wikipedia: \"%s\", revision %d of %s" % (a, r, n.rsplit(" ", 1)[1])
+                                 for (a, r), n in zip(build_firstaid.READ.items(), named)])
+        con = library.connect(path)
+        text = " ".join(r[0] for r in con.execute("SELECT text FROM passage")).lower()
+        con.close()
+        for words in build_firstaid.UNSOUND:
+            self.assertNotIn(words, text)
+
+
+class PassageTests(Base):
+    """The commands that print a passage, against the two small databases built from the made-up pages."""
+
+    def setUp(self):
+        Base.setUp(self)
+        os.environ["VOSS_DATA"] = passages_data()
+
+    def test_what_may_be_dangerous_to_a_pet(self):
+        out = ok("pet", "--poisons")
+        for line in ("POISONS    what FDA's page lists as potentially dangerous to a pet, in its own words",
+                     "something that is not on it is not thereby harmless", "PASSAGE    Things a wobbly cat should not eat",
+                     "- Wobbleberries", "PAGE       https://example.org/advice [the page's own date: 2025-03-20]",
+                     "SOURCE     A made-up body: Made-up advice, retrieved 2026-11-09 [sourced: advice-by.db, built 2026-11-15]",
+                     "CREDIT     Source: a made-up body",
+                     "RULE       on the list or not, something that may be a poison is a call to the vet now"):
+            self.assertIn(line, out)
+        out = ok("pet", "--species", "dog", "--problem", "ate something off the floor", "--when", "tomorrow", "--poison")
+        self.assertIn("VET        call the vet now", out)
+        self.assertIn("- Wobbleberries", out)
+        out = ok("pet", "--species", "dog", "--problem", "limping", "--when", "today")
+        self.assertIn("POISONS    a list of what may be dangerous to a pet is on file: 'pet --poisons' prints it", out)
+        self.assertNotIn("Wobbleberries", out)
+        # a pet's trouble needs no personal file; the pets that are on file do
+        use_personal(None)
+        self.assertIn("VET        ring the vet today", ok("pet", "--species", "cat", "--problem", "limping", "--when", "today"))
+        self.assertIn("- Wobbleberries", ok("pet", "--poisons"))
+        fails("pet")
+
+    def test_a_kit_a_break_and_a_season(self):
+        copy_fixture(with_records)
+        out = ok("kit")
+        for line in ("CONTENTS   two published lists, in their sources' own words", "PASSAGE    A made-up kit", "- plasters",
+                     "This is only a suggestion.", "CREDIT     Source: a made-up body", "CAR        nothing on file about what any country's law"):
+            self.assertIn(line, out)
+        self.assertNotIn("no published list", out)
+        out = ok("desk", "--id", "self", "--asked")
+        for line in ("BREAKS     what the Health and Safety Executive says about breaks from a screen", "Look away from the screen every now and then.",
+                     "RULE       the figure for breaks is the Health and Safety Executive's: say whose it is, and give no other"):
+            self.assertIn(line, out)
+        out = ok("season", "--id", "self", "--asked")
+        for line in ("FLU        what ECDC says about when the flu vaccination is given", "In the early autumn.",
+                     "Outside Europe the passage does not apply"):
+            self.assertIn(line, out)
+        self.assertNotIn("PASSAGE", ok("checkin", "--id", "self", "--asked"))
+        self.assertNotIn("PASSAGE", ok("season", "--id", "self"), "a notice that is off prints nothing")
+
+    def test_first_aid_from_the_passages(self):
+        out = ok("firstaid", "--what", "choking")
+        for line in ("CALL       the local emergency number, now, before anything else",
+                     "for someone who has stopped responding: 'firstaid --what cpr'",
+                     "ON FILE    what Wikipedia's articles say, in their own words, at the revisions named: an encyclopaedia's account",
+                     "PASSAGE    Made-up choking (the opening of the article)", "Lead one.", "PASSAGE    Back blows", "- five times",
+                     "PAGE       https://en.wikipedia.org/w/index.php?title=Made-up_choking&oldid=111 [the page's own date: 2026-11-01]",
+                     "SOURCE     Wikipedia: \"Made-up choking\", revision 111 of 2026-11-01, retrieved 2026-11-09 [sourced: firstaid-sa.db",
+                     "CREDIT     Wikipedia contributors, \"Made-up choking\"",
+                     "GUIDELINE  coach from those passages in your own short lines, one action each, and say that they are Wikipedia's",
+                     "ANSWER     this is an emergency answer"):
+            self.assertIn(line, out)
+        self.assertLess(out.index("CALL "), out.index("ON FILE"), "the number comes before anything else")
+        out = ok("firstaid", "--what", "burns")
+        self.assertIn("GUIDELINE  none is on file", out, "nothing on file for that one in the made-up data")
+        self.assertNotIn("PASSAGE", out)
+
+    def test_the_two_files_say_where_they_come_from_and_grow_old(self):
+        out = ok("sources")
+        for line in ("FILE       advice-by.db", "FILE       firstaid-sa.db", "licence text: LICENSE-advice-by.txt", "warn after 12 months"):
+            self.assertIn(line, out)
+        self.assertNotIn("not a file this version knows", out)
+        clock("2027-11-20T10:00")
+        self.assertTrue(ok("pet", "--poisons").startswith("STALE      advice-by.db"))
+        self.assertTrue(ok("firstaid", "--what", "choking").index("STALE      firstaid-sa.db") < ok("firstaid", "--what", "choking").index("ON FILE"))
+        self.assertEqual((advice.passages("advice-by", "nothing")[1], advice.have("firstaid-sa", "burns")), ([], False))
+
+
+def reminded(**settings):
+    def change(data):
+        data["profiles"][0]["settings"].update(settings)
+    return change
+
+
+class RemindTests(Base):
+    def test_nothing_to_be_reminded_of(self):
+        out = ok("remind", "--id", "self")
+        self.assertIn("REMIND     self: none of the weekly round, seasonal checks and wellbeing check-ins is switched on in their file", out)
+        self.assertIn("a reminder needs something to be reminded of", out)
+        self.assertIn("ALSO       a medicine's times and the day a pack runs out have calendar files of their own", out)
+        self.assertNotIn("WAYS", out)
+
+    def test_the_plan_and_the_words(self):
+        copy_fixture(reminded(weekly_round=True, seasonal_checks=True, wellbeing_checkin={"on": True, "how_often": "every 2 weeks"}))
+        out = ok("remind", "--id", "self")
+        for line in ("REMIND     self: switched on in their file: the weekly round, seasonal checks, wellbeing check-ins",
+                     "ROUND      every Mon at 09:00", "the entry is called \"Voss: weekly round\"",
+                     "the words a reminder may carry: Your weekly round with Voss is due.",
+                     "SEASON     four times a year, on the first of March, June, September and December, at 09:00",
+                     "CHECKIN    every 2 weeks at 09:00, from 2026-11-29",
+                     "WAYS       look at the tools you have here, and offer only what one of them can really do:",
+                     "1. a scheduled task or a reminder, where this platform gives you a tool that sets one",
+                     "3. a calendar file, wherever a file can be handed over: this command with --ics auto",
+                     "4. a message by e-mail, only where you have a tool that sends one",
+                     "RULE       a reminder is an invitation and nothing else. It never names a medicine, a condition, a result",
+                     "a task that runs with nobody there never opens the personal file",
+                     "never say that a reminder is set unless a tool has confirmed it",
+                     "NEXT       store what they chose, so that it is not asked twice: intake --id self --set \"settings: reminders.how=calendar; "
+                     "reminders.when=mon 09:00\""):
+            self.assertIn(line, out)
+        self.assertNotIn("CALENDAR", out, "nothing is written unless a calendar file is asked for")
+        out = ok("remind", "--id", "self", "--what", "round", "--day", "Thursday", "--at", "18.30")
+        self.assertIn("ROUND      every Thu at 18:30", out)
+        self.assertNotIn("SEASON", out)
+        self.assertIn("--day is a day of the week", fails("remind", "--id", "self", "--day", "someday"))
+        self.assertIn("--what names what to be reminded of, from: round, season, checkin", fails("remind", "--id", "self", "--what", "dinner"))
+        copy_fixture(reminded(wellbeing_checkin={"on": True, "how_often": "now and then"}))
+        self.assertIn("give --every \"2 weeks\"", fails("remind", "--id", "self"))
+        self.assertIn("CHECKIN    every month at 09:00, from 2026-12-15", ok("remind", "--id", "self", "--every", "1 month"))
+
+    def test_a_calendar_file_that_says_nothing_about_anyone(self):
+        copy_fixture(reminded(weekly_round=True, seasonal_checks=True, wellbeing_checkin={"on": True, "how_often": "weekly"}))
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        out = ok("remind", "--id", "self", "--ics", folder)
+        self.assertIn("6 entries; anyone who can see that calendar can read what is in it", out)
+        self.assertIn("it repeats until the person deletes it from their calendar", out)
+        with open(os.path.join(folder, "voss-reminders-self.ics"), encoding="utf-8", newline="") as f:
+            text = f.read()
+        unfolded = text.replace("\r\n ", "")
+        for line in ("SUMMARY:Voss: weekly round", "DTSTART:20261116T090000", "RRULE:FREQ=WEEKLY;BYDAY=MO", "SUMMARY:Voss: seasonal check",
+                     "DTSTART:20261201T090000", "DTSTART:20270301T090000", "DTSTART:20270601T090000", "DTSTART:20270901T090000",
+                     "SUMMARY:Voss: check-in", "DTSTART:20261122T090000", "RRULE:FREQ=WEEKLY\r\n",
+                     "Nothing in this entry is about your health."):
+            self.assertIn(line, unfolded)
+        self.assertEqual(unfolded.count("RRULE:FREQ=YEARLY"), 4)
+        self.assertEqual(unfolded.count("BEGIN:VALARM"), 6)
+        entry = load_json(os.environ["VOSS_PERSONAL"])["profiles"][0]
+        for private in [entry["call_me"]] + [m["name"] for m in entry["medicines"]] + [a["substance"] for a in entry["allergies"]]:
+            self.assertNotIn(private.lower(), text.lower(), "a reminder carries nothing from the personal file")
+        self.assertIn("inside a git repository", fails("remind", "--id", "self", "--ics", ROOT))
+
+    def test_what_they_chose_is_kept_and_not_asked_twice(self):
+        copy_fixture(reminded(weekly_round=True))
+        self.assertIn("REMINDER   nothing reminds them of the round between conversations: offer a reminder, once ('remind --id self')",
+                      ok("round", "--id", "self"))
+        self.assertIn("OFFER      when the questions are done, reminders, once: 'remind --id self' says what can be set, and how",
+                      ok("intake", "--id", "self", "--full"))
+        out = ok("intake", "--id", "self", "--set", "settings: reminders.how=a calendar file; reminders.when=thu 18:30")
+        self.assertIn("SET        settings: reminders.how a calendar file; reminders.when thu 18:30", out)
+        copy_fixture(reminded(weekly_round=True, reminders={"how": "a calendar file", "when": "thu 18:30", "address": ""}))
+        out = ok("remind", "--id", "self")
+        self.assertIn("how they asked to be reminded, as on file: a calendar file, thu 18:30", out)
+        self.assertIn("ROUND      every Thu at 18:30", out)
+        self.assertNotIn("NEXT", out)
+        self.assertNotIn("REMINDER", ok("round", "--id", "self"))
+        self.assertNotIn("OFFER", ok("intake", "--id", "self", "--full"))
+        self.assertIn("a new profile: once it is saved, offer reminders, once ('remind --id robin'",
+                      ok("intake", "--id", "robin", "--new", "--set", "call_me=Robin"))
+        self.assertNotIn("offer reminders", ok("intake", "--id", "kit", "--new", "--carer", "self", "--consent", "their parent agreed",
+                                               "--set", "call_me=Kit"))
+        self.assertEqual(personal.check(load_json(os.path.join(REAL_DATA, "personal.template.json")), core.today()), [])
 
 
 class KitchenTests(Base):

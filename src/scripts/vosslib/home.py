@@ -3,8 +3,9 @@ people someone looks after.
 
 cabinet  the medicines kept at home: what has expired, what was opened too long ago, and what is in there
          twice under two names.
-kit      the first-aid kits at home and in the car, and what the country's law asks for in a car.
-pet      the pets on file, and the record of a pet's trouble: it always ends at a vet, and never at a dose.
+kit      the first-aid kits at home and in the car, with two published lists of what a kit may hold.
+pet      the pets on file, the record of a pet's trouble, and a published list of what may be dangerous to
+         one: it always ends at a vet, and never at a dose.
 round    the weekly round, where the person switched it on: refills, appointments, expiries, and what has
          gone stale in the file. One short message.
 carer    the people in someone's care, and a word for the carer too.
@@ -15,7 +16,7 @@ days, and knows nothing of whether a medicine is still good.
 from datetime import timedelta
 from decimal import Decimal
 
-from . import core, doses, personal, rebuild, record
+from . import advice, core, doses, personal, rebuild, record, remind
 from .core import command, die, fold, more, one_line, rec
 
 SOON_DAYS = 30
@@ -154,8 +155,11 @@ def cmd_kit(a):
                              else " - expires within %d days [derived]" % SOON_DAYS if state == "soon" else ""))
     if not kits:
         more("to add to one: kit --id ID --where home --item \"plasters\" --expiry 2027-05")
-    rec("CONTENTS", "no published list of what a kit should hold is on file. Look one up from a named body, such as a Red "
-                    "Cross society or the national health service, and give its name and date: do not make one up")
+    if not advice.show(advice.ADVICE, "kit", "CONTENTS",
+                       "two published lists, in their sources' own words: one for a home, one for a workplace with low "
+                       "hazards. Each calls itself a suggestion: say whose it is, and add nothing to it from memory"):
+        rec("CONTENTS", "no published list of what a kit should hold is on file. Look one up from a named body, such as a "
+                        "Red Cross society or the national health service, and give its name and date: do not make one up")
     rec("CAR", "nothing on file about what any country's law asks for in a car: look it up for where the car is driven, and "
                "cite it")
     rec("RULE", "a kit is for the first minutes, not for treatment. What has expired is replaced, not used")
@@ -163,8 +167,21 @@ def cmd_kit(a):
 
 # ---- pets
 
+def _poisons():
+    return advice.show(advice.ADVICE, "pets", "POISONS",
+                       "what FDA's page lists as potentially dangerous to a pet, in its own words. It names the more "
+                       "common things and is not complete: something that is not on it is not thereby harmless")
+
+
 def cmd_pet(a):
-    data = personal.need()
+    if a.poisons and not a.problem:
+        if not _poisons():
+            rec("POISONS", "no list of what poisons a cat or a dog is on file. Look the thing up with a named source and "
+                           "its date, or say you have none")
+        rec("RULE", "on the list or not, something that may be a poison is a call to the vet now. %s" % NO_DOSE)
+        return
+    # a pet's trouble needs no personal file, unless the pet is named from one
+    data = personal.need() if a.name or not a.problem else (personal.load() or {})
     today = core.today()
     if a.name and (a.species or a.weight is not None or a.vet):
         kind, entry = personal.pick(data, a.id)
@@ -198,8 +215,14 @@ def cmd_pet(a):
                  "Take the packet or a photo of the plant to the telephone")
         if animal and animal.get("vet"):
             more("their vet, as on file: %s" % animal["vet"])
-        rec("POISONS", "no list of what poisons a cat or a dog is on file. Look the thing up with a named source and its "
-                       "date, or say you have none: do not answer from memory that something is harmless")
+        if not advice.have(advice.ADVICE, "pets"):
+            rec("POISONS", "no list of what poisons a cat or a dog is on file. Look the thing up with a named source and "
+                           "its date, or say you have none: do not answer from memory that something is harmless")
+        elif a.poison or a.poisons:
+            _poisons()
+        else:
+            rec("POISONS", "a list of what may be dangerous to a pet is on file: 'pet --poisons' prints it, and --poison "
+                           "prints it with the record")
         rec("RULE", "it always ends at a vet. %s" % NO_DOSE)
         more("first aid for an animal is keeping it still, warm and away from what hurt it, until the vet says more")
         return
@@ -284,6 +307,8 @@ def cmd_round(a):
         said += 1
     if not said:
         rec("NOTHING", "nothing is due in that time, and nothing on file has gone stale")
+    if settings.get("weekly_round") and not remind.wished(entry):
+        rec("REMINDER", "nothing reminds them of the round between conversations: offer a reminder, once ('remind --id %s')" % entry["id"])
     rec("RULE", "one short message, of what is here and no more. Raise nothing sensitive that the person has not raised "
                 "themselves, and leave out anything they would not want said where others can read it")
 
@@ -334,7 +359,7 @@ def register(sub):
     rebuild.out_options(p)
 
     p = command(sub, "household", "kit", cmd_kit,
-                "the first-aid kits at home and in the car: what is in them and what has expired, by the dates on file",
+                "the first-aid kits at home and in the car: what is in them, what has expired, and two published lists of contents",
                 ["kit", "kit --where car", 'kit --id self --where home --item "plasters" --expiry 2027-05', "kit --id self --where car --checked today"])
     p.add_argument("--id", help="who is adding the entry (default: the only profile on file)")
     p.add_argument("--where", help="which kit: home, car")
@@ -344,9 +369,9 @@ def register(sub):
     rebuild.out_options(p)
 
     p = command(sub, "household", "pet", cmd_pet,
-                "the pets on file, and the record of a pet's trouble: how soon a vet should hear of it, and never a dose",
+                "the pets on file, a pet's trouble and how soon a vet should hear of it, FDA's list of pet dangers, and never a dose",
                 ["pet", 'pet --species cat --problem "limping since this morning" --when today',
-                 'pet --species dog --problem "ate a bar of chocolate" --when now --poison',
+                 'pet --species dog --problem "ate a bar of chocolate" --when now --poison', "pet --poisons",
                  'pet --id self --name Biscuit --species dog --weight 12 --vet "the practice on the corner"'])
     p.add_argument("--id", help="who is adding the entry (default: the only profile on file)")
     p.add_argument("--name", help="the pet's name")
@@ -356,6 +381,7 @@ def register(sub):
     p.add_argument("--problem", help="what is wrong, as the person describes it")
     p.add_argument("--when", help="your reading of how soon a vet should hear of it: %s" % ", ".join(VET_WHEN))
     p.add_argument("--poison", action="store_true", help="something that may be a poison is involved: always a call now")
+    p.add_argument("--poisons", action="store_true", help="print the list on file of what may be dangerous to a pet")
     rebuild.out_options(p)
 
     p = command(sub, "household", "round", cmd_round,

@@ -49,7 +49,7 @@ The answer leads with the number in one line, in plain words, with no wit and no
 
 ## Possible explanations (Clinic)
 
-He may try, as a careful doctor would. [maker]
+He may try, as a careful doctor would.
 
 1. Triage first. A red flag ends it: the emergency number, then help while they wait. No guessing.
 2. A short history: when it started, how long, how bad (0 to 10), what makes it better or worse, what else is going on. Two or three questions at a time. Use the personal file once its gate has passed: age, sex assigned at birth where relevant, medicines, conditions, recent travel.
@@ -72,15 +72,14 @@ Never: "it's probably nothing", a treatment plan, a prescription, a dose change,
 
 Check that a number is current before quoting it.
 
-- 112: emergency number across the European Union, including Poland
+- 112: the European Union
 - 999: United Kingdom
 - 911: United States and Canada
 - 000: Australia
-- Poland: 116 123, adult emotional support line
 - United Kingdom: Samaritans, 116 123
 - United States: 988, Suicide and Crisis Lifeline
 
-The core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country PL`. They are listed as the source has them and were not verified one by one, so the rule above still stands. The support lines are in no file: check them.
+The core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country DE`. They are listed as the source has them and were not verified one by one, so the rule above still stands. The support lines are in no file: check them.
 
 ## Crisis and mental health
 

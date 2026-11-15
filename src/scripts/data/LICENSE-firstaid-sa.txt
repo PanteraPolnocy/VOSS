@@ -1,0 +1,26 @@
+firstaid-sa.db: where its contents come from, and on what terms
+
+Passages on first aid from the English Wikipedia: cardiopulmonary resuscitation, the recovery position,
+bleeding, burns and choking. Each passage is a section of an article, or the opening paragraphs of one, in
+the article's own words, from the one revision the file names for it.
+
+Licence: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+https://creativecommons.org/licenses/by-sa/4.0/
+
+What that asks of anyone who passes this file on, or anything made from it:
+- Credit. Each passage carries the address of the page and revision it was taken from, which is the credit
+  Wikipedia asks for: "a hyperlink (where possible) or URL to the page or pages you are re-using"
+  (https://en.wikipedia.org/wiki/Wikipedia:Reusing_Wikipedia_content). Keep it with the passage.
+- The same licence. This file, and anything adapted from it, may only be passed on under CC BY-SA 4.0 or a
+  later version of it. That condition belongs to this file. It does not reach the code or the other
+  databases, which sit beside it under their own terms.
+- Changes are named. Changed in the making of this file: HTML turned into plain text, footnote marks dropped,
+  curly quotes and long dashes made straight. No wording was changed. Where only the opening paragraphs of a
+  section were taken, the passage's title says so.
+
+The authors are Wikipedia's contributors; each article's history lists them. Neither they nor the Wikimedia
+Foundation endorse this skill.
+
+This is an encyclopaedia's account of first-aid guidelines. It is not a guideline, anyone can edit the
+articles, and the file is as old as the revisions it names. The instructions of an emergency operator, and
+a current guideline of a first-aid body, both come before it.

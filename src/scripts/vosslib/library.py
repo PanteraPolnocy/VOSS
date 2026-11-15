@@ -19,10 +19,12 @@ EXPECTED = (
     ("icd11", "ICD-11 codes and titles, verbatim", None, "when WHO publishes a new annual release"),
     ("ddinter", "DDInter 2.0 interactions", 24, "24 months, or when a new DDInter release appears"),
     ("labels-us", "product labels of medicines sold in the United States", 12, "12 months"),
+    ("advice-by", "published guidance on pet poisons, screen breaks, first-aid kits and flu vaccination", 12, "12 months"),
+    ("firstaid-sa", "first aid, as Wikipedia has it", 12, "12 months"),
 )
 # the layout this version reads, which a builder writes into 'build' as "format". A file laid out for another
 # version would be read wrongly without anyone noticing, so it is not read at all
-FORMATS = {"core-pd": 1, "icd11": 2, "ddinter": 2, "labels-us": 2}
+FORMATS = {"core-pd": 1, "icd11": 2, "ddinter": 2, "labels-us": 2, "advice-by": 1, "firstaid-sa": 1}
 META_COLUMNS = ("source", "url", "retrieved", "licence")
 
 

@@ -387,7 +387,7 @@ def _check_entry(kind, entry, where, known, out, today):
                     out.append(("FIX", here, "is in the future"))
         elif t == "country":
             if value not in ("", None) and not (isinstance(value, str) and re.fullmatch(r"[A-Za-z]{2}", value)):
-                out.append(("FIX", here, "must be a two-letter country code such as PL or GB, or empty"))
+                out.append(("FIX", here, "must be a two-letter country code such as DE or GB, or empty"))
         elif t == "choice":
             if value not in ("", None) and value not in spec["choices"]:
                 out.append(("FIX", here, "must be one of %s, or \"declined\", or empty" % ", ".join(spec["choices"])))

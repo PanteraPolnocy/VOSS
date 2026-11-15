@@ -1,0 +1,44 @@
+advice-by.db: where its contents come from, and on what terms
+
+Short passages of published guidance, each in its source's own words. Every source here asks to be named
+and for nothing more, so the passages may be copied, passed on and used commercially, each with its credit.
+None of these bodies endorses this skill, and nothing here has any official standing. The file holds each
+page as it stood on the day it was retrieved ('sources' prints the day): the page itself is the current one.
+
+Changed in the making of this file: HTML turned into plain text; curly quotes and long dashes made straight.
+No wording was changed, and each passage is whole.
+
+1. What may be dangerous to a pet
+   U.S. Food and Drug Administration, "Potentially Dangerous Items for Your Pet".
+   https://www.fda.gov/animal-veterinary/animal-health-literacy/potentially-dangerous-items-your-pet
+   Public domain. FDA's own words: "Unless otherwise noted, the contents of the FDA website (www.fda.gov) -
+   both text and graphics - are not copyrighted. They are in the public domain and may be republished,
+   reprinted and otherwise used freely by anyone without the need to obtain permission from FDA. Credit to
+   the U.S. Food and Drug Administration as the source is appreciated but not required."
+   (https://www.fda.gov/about-fda/about-website/website-policies)
+   Credit: Source: U.S. Food and Drug Administration
+   The telephone numbers on the page are American and were not taken.
+
+2. Breaks from a screen, and the first-aid box at work
+   Health and Safety Executive (Great Britain): "Work routine and breaks", from "Working safely with display
+   screen equipment" (https://www.hse.gov.uk/msd/dse/work-routine.htm), and two answers from "First aid at
+   work, frequently asked questions" (https://www.hse.gov.uk/firstaid/faqs.htm).
+   Crown copyright, under the Open Government Licence v3.0 (https://www.hse.gov.uk/help/copyright.htm).
+   Credit, as HSE asks for it: Contains public sector information published by the Health and Safety
+   Executive and licensed under the Open Government Licence
+
+3. A first-aid kit for the home
+   nidirect (Northern Ireland Executive), "First aid". https://www.nidirect.gov.uk/articles/first-aid
+   Crown copyright, under the Open Government Licence v3.0 (https://www.nidirect.gov.uk/articles/crown-copyright).
+   Credit: Contains public sector information licensed under the Open Government Licence v3.0. Source: nidirect
+
+4. When the flu vaccination is given
+   European Centre for Disease Prevention and Control (ECDC), "Timing of influenza vaccination".
+   https://www.ecdc.europa.eu/en/seasonal-influenza/prevention-and-control/vaccines/timing
+   CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), as ECDC's notice says of what it publishes
+   (https://www.ecdc.europa.eu/en/ecdc-intellectual-property-notices). ECDC is the creator; the text is
+   unchanged.
+
+The Open Government Licence v3.0: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+It allows copying, publishing, adapting and commercial use, asks for the source to be acknowledged, and
+grants no right to suggest official status or endorsement.

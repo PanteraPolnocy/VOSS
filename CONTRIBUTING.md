@@ -8,7 +8,7 @@ This repository will not host anything that is even remotely harmful to the user
 - `python tools/build.py` passes. It checks the source and packs `dist/voss.zip`.
 - A new or re-described command has worked examples in its help, and `python tools/build_index.py` has been run after it. Every example is run by the tests.
 - A new figure names its source on the line that prints it, and the source is listed in `src/scripts/data/SOURCES.md` with its licence. Nothing is quoted from memory, and no data goes in whose licence does not allow passing it on.
-- The doctrine, the clinical rules and the hard rules in `src/SKILL.md` are never weakened, by code or by documentation. Anything that changes who Voss is, what he may do, or which features he has is put to the maker first, and carries the tag `[pending]` until she has ruled.
+- The doctrine, the clinical rules and the hard rules in `src/SKILL.md` are never weakened, by code or by documentation. Anything that changes who Voss is, what he may do, or which features he has is put to the maker first, and goes in once the maker has agreed.
 - Voss is an original character. Nothing here compares him with any other fictional doctor or android.
 - **No personal data, anywhere.** Never commit a `personal.json`, a `household.md`, or a package Voss rebuilt for you. Tests use made-up people only. An error message names the argument that was wrong and never repeats what was typed: it may be somebody's date of birth.
 
@@ -31,6 +31,8 @@ python tools/build_icd11.py --fetch       downloads WHO's release file and build
 python tools/build_icd11.py --verify      checks that icd11.db still gives WHO's file back, byte for byte
 python tools/build_ddinter.py --fetch     downloads DDInter's files and the medicine names, and builds ddinter.db again
 python tools/build_labels.py --fetch      downloads openFDA's label files (1.8 GB) and builds labels-us.db again
+python tools/build_advice.py --fetch      downloads the pages behind advice-by.db, with their terms, and builds it again
+python tools/build_firstaid.py --fetch    downloads the Wikipedia revisions that were read, and builds firstaid-sa.db again
 ```
 
 ## The public build, the private build and the leak check
@@ -53,7 +55,7 @@ A command lives in one module of `src/scripts/vosslib/`, which has a `register(s
 - Everyday words for the job go into `ALSO` in `vosslib/index.py`, so that `tools --find` can name the command. Then run `python tools/build_index.py`.
 - The README's table of commands and `docs/limits.md` both name every command, and the tests check that they do. What a command cannot do belongs in the limits as much as what it can.
 
-A command that puts something into a personal file does not write it. It hands the change to `rebuild.save`, which reads it back and prints a code, and writes a new file only when the same command comes back with that code (`rebuild.out_options` adds the options). A page for somebody else to read works the same way: the page is printed with a code, and written only with `--write --confirm CODE`. A new field goes into `scripts/data/fields.json`, the empty template and `references/personal-file.md` together, and is `[pending]` until the maker has ruled on it.
+A command that puts something into a personal file does not write it. It hands the change to `rebuild.save`, which reads it back and prints a code, and writes a new file only when the same command comes back with that code (`rebuild.out_options` adds the options). A page for somebody else to read works the same way: the page is printed with a code, and written only with `--write --confirm CODE`. A new field goes into `scripts/data/fields.json`, the empty template and `references/personal-file.md` together, once the maker has agreed to it.
 
 ## Databases
 
@@ -74,7 +76,11 @@ Each database has a builder in `tools/` (`build_core.py` is the first) that name
 
 `ddinter.db` is non-commercial and share-alike. Nothing from it may be copied into another database or into the code, and nothing may go into it that could not be passed on under the same licence.
 
-Long text is not stored row by row. The builder packs it into blocks, compresses each block with whichever of zlib, bz2 and lzma makes it smallest, and stores where each piece sits; `vosslib/store.py` reads it back. That is why a database here is a fraction of the size of its text. What is read often goes into small blocks and what is read seldom into large ones, which squeeze harder and take longer to open. A table is kept lean in the same spirit: numbers where a word would repeat, and nothing stored twice. The whole skill has to stay under 30 MB unpacked, which is the most a skill may weigh when it is uploaded through the API.
+`firstaid-sa.db` is share-alike too, and it comes from a source that anyone can edit. Its revisions are pinned in `tools/build_firstaid.py`: a newer revision goes in only after somebody has read every passage of it (`--fetch --latest --show`) and written its number into the script. A section that says something no first-aid body teaches stays out, however useful the rest of it looks.
+
+`advice-by.db` holds passages whose sources ask for a credit and for nothing more. A passage is taken whole and word for word, with the page it stood on and the page's own date, and the builder stops when a page has changed shape or its terms no longer say what was read.
+
+Long text is not stored row by row. The builder packs it into blocks, compresses each block with zlib or lzma, whichever makes it smaller, and stores where each piece sits; `vosslib/store.py` reads it back. That is why a database here is a fraction of the size of its text. What is read often goes into small blocks and what is read seldom into large ones, which squeeze harder and take longer to open. A table is kept lean in the same spirit: numbers where a word would repeat, and nothing stored twice. The whole skill has to stay under 30 MB unpacked, which is the most a skill may weigh when it is uploaded through the API.
 
 The builders send a plain client name and nothing about you or this project. Wikidata asks scripts to say who runs them and is slow with those that do not, so its part of `build_core.py --fetch` can take the better part of an hour. If you want it faster, put a line of your own in the `VOSS_BUILD_AGENT` environment variable, as their policy describes.
 
@@ -82,13 +88,12 @@ The builders send a plain client name and nothing about you or this project. Wik
 
 Some commands say "nothing on file" because no source turned up whose terms clearly allow its content to be passed on. If you know of one, read its terms on its own page first, and say in the pull request what they are and when you read them.
 
-- First aid: a published guideline whose terms allow a summary of it to be shipped.
-- What poisons a cat or a dog: an authoritative list.
-- What a home first-aid kit should hold: a published list, a Red Cross society's for instance.
-- Seasonal vaccination windows, and advice for heat and cold: from a health authority whose terms allow it.
-- Desk health: a public-health or professional body's guidance on screen breaks.
+- First aid: a guideline of a first-aid body whose terms allow it to be shipped. Wikipedia's account stands in for one, and would gladly give way.
+- What poisons a cat or a dog, species by species. FDA's list is on file, and names only the more common things.
+- Advice for heat, cold and sun: from a health authority whose terms allow it.
+- Help for carers: a source that is not about one country.
 - Why two medicines interact, what to do about it, and anything on food: DDInter shows these on its website and does not offer them for download.
-- Product information from outside the United States. The European and the Polish kind come as PDF documents, which the standard library cannot read.
+- Product information from outside the United States. European and national leaflets come as PDF documents, which the standard library cannot read.
 
 ## The documents
 

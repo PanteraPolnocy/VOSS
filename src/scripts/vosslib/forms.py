@@ -18,7 +18,7 @@ four), and prints it in record style with the rule that goes with it.
 import hashlib
 import re
 
-from . import core, ical, library, personal
+from . import advice, core, ical, library, personal, remind
 from .core import command, die, fold, load_data, more, one_line, rec
 
 # word for word from references/clinical-rules.md, "Possible explanations", point 8
@@ -40,22 +40,34 @@ VERDICTS = {"supported": "supported", "mixed": "mixed", "not-supported": "not su
             "no-good-evidence": "no good evidence either way"}
 FIRST_AID = ("cpr", "recovery", "bleeding", "burns", "choking")
 DOCS = ("notes", "discharge", "referral", "letter")
+# the setting, the heading, what it is called, how it is given, the rule where nothing is on file for it, and
+# then what is on file: the topic, the record it is printed under, what to say of it, and the rule that goes with it
 NOTICES = {
     "desk": ("desk_notices", "DESK", "desk notices",
              "one notice in a long session, like a fatigue warning: a break from the screen, posture, water. Then respect the "
              "answer, and do not give it twice",
              "no guidance on screen breaks or water is on file: give no figure for either unless you look one up from a public "
-             "health or professional body and cite it"),
+             "health or professional body and cite it",
+             "breaks", "BREAKS", "what the Health and Safety Executive says about breaks from a screen, in its own words. It "
+                                 "was written for people at work in Great Britain",
+             "the figure for breaks is the Health and Safety Executive's: say whose it is, and give no other. Nothing is on "
+             "file about water or posture: no figure for either unless you look one up and cite it"),
     "season": ("seasonal_checks", "SEASON", "seasonal checks",
                "at most one gentle reminder in a season, for where the person lives: the seasonal vaccinations, a cold snap, "
                "heat and sun",
                "no dates for seasonal vaccinations or weather advice are on file: look them up from the national health "
-               "authority, with the date, or leave the reminder out"),
+               "authority, with the date, or leave the reminder out",
+               "flu", "FLU", "what ECDC says about when the flu vaccination is given, in its own words. It is about Europe, "
+                             "and names no country's dates",
+               "when the vaccination starts where the person lives, who is offered it, and anything on cold, heat or sun: "
+               "look it up from the national health authority, with the date, or leave it out. Outside Europe the passage "
+               "does not apply: the seasons, and the flu's, differ"),
     "checkin": ("wellbeing_checkin", "CHECK-IN", "wellbeing check-ins",
                 "a short, gentle question about how things are going, and a real listen. No scores and no questionnaire unless "
                 "they ask for one. Raise nothing sensitive that they have not raised themselves",
                 "any sign of crisis follows the clinical rules at once: care first, the emergency number and the support line "
-                "where they live, plain kind words, and stay"),
+                "where they live, plain kind words, and stay",
+                None, None, None, None),
 }
 
 
@@ -347,8 +359,17 @@ def cmd_firstaid(a):
             "" if code else " ('firstaid --country CC' prints the number on file)"))
     rec("COACH", "%s, while help is on its way. Short lines, one action each. No wit, no ears" % what)
     more("the emergency operator's instructions outrank yours: tell the person to stay on the line and do as they say")
-    rec("GUIDELINE", "none is on file. Give the steps in your own words, following a published first-aid guideline, and say "
-                     "which one and of what year")
+    if what == "choking":
+        more("for someone who has stopped responding: 'firstaid --what cpr'")
+    if advice.show(advice.FIRST_AID, what, "ON FILE",
+                   "what Wikipedia's articles say, in their own words, at the revisions named: an encyclopaedia's account of "
+                   "what first-aid bodies teach, and not a guideline"):
+        rec("GUIDELINE", "coach from those passages in your own short lines, one action each, and say that they are "
+                         "Wikipedia's. Anyone can edit it, and the file is as old as its revisions: a current guideline of "
+                         "a first-aid body, where you can look one up, outranks it, and is named with its year")
+    else:
+        rec("GUIDELINE", "none is on file. Give the steps in your own words, following a published first-aid guideline, and "
+                         "say which one and of what year")
     rec("ANSWER", "this is an emergency answer: it leads with the number, and the marker is [mood: serious] [voss-serious.webp]")
 
 
@@ -395,7 +416,7 @@ def cmd_boxread(a):
 # ---- notices a person switches on
 
 def _notice(which, a):
-    setting, heading, words, rule, caution = NOTICES[which]
+    setting, heading, words, rule, caution, topic, key, lead, sourced = NOTICES[which]
     kind, entry = personal.pick(personal.need(), a.id)
     block = entry.get("settings") if isinstance(entry.get("settings"), dict) else {}
     value = block.get(setting)
@@ -413,7 +434,11 @@ def _notice(which, a):
              "one, not two" if a.late else "add --late for the bedtime notice")
     if which == "season":
         more("today is %s; the person's region on file: %s" % (core.today().isoformat(), entry.get("region") or "none"))
+    if topic and advice.show(advice.ADVICE, topic, key, lead):
+        caution = sourced
     rec("RULE", caution)
+    if on and which in ("season", "checkin") and not remind.wished(entry):
+        more("nothing reminds them of it between conversations: offer a reminder, once ('remind --id %s')" % entry["id"])
 
 
 def cmd_desk(a):
@@ -486,7 +511,7 @@ def register(sub):
 
     p = command(sub, "clinic", "firstaid", cmd_firstaid,
                 "first-aid coaching while help is on its way: the emergency number first, then short lines, one action each",
-                ["firstaid --what cpr --country PL", "firstaid --what choking"])
+                ["firstaid --what cpr --country GB", "firstaid --what choking"])
     p.add_argument("--what", help="one of: %s" % ", ".join(FIRST_AID))
     p.add_argument("--country", metavar="CC", help="the country the person is in, for its number")
     p.add_argument("--id", help="whose file to take the country from, once their gate is open")

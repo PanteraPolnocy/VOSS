@@ -7,7 +7,8 @@ staykit   before a planned stay in hospital: what to pack, what to ask, what to 
 
 The person chooses every line. A command first lists what could go on the page; then, with the lines they
 chose, it prints the page as it would be written; and only with --write does it write a file. What is on a
-page is what the person told Voss, in their own words: the tool translates the headings and nothing else.
+page is what the person told Voss, in their own words. The headings are in English; for a reader of another
+language Voss gives each heading in that language too, and the two stand side by side.
 
 A page is health information. It is never written into a git working tree or into the skill's own folder,
 and anyone who is handed the page, or sees the phone's lock screen, can read it.
@@ -19,36 +20,34 @@ import os
 from . import core, personal, record
 from .core import command, die, more, rec
 
-LANGS = ("en", "pl", "both")
-# the headings of a page, in English and in Polish. Only headings are translated: the entries are the
-# person's own words, as they stand in the file
+# the headings of a page. The entries under them are the person's own words, as they stand in the file
 HEADINGS = {
-    "card": ("Medical ID", "Karta ratunkowa"),
-    "passport": ("Health passport", "Paszport zdrowia"),
-    "brief": ("For the doctor", "Dla lekarza"),
-    "name": ("Name", "Imi\u0119"),
-    "born": ("Date of birth", "Data urodzenia"),
-    "blood": ("Blood type", "Grupa krwi"),
-    "languages": ("Languages", "J\u0119zyki"),
-    "allergies": ("Allergies", "Alergie"),
-    "intolerances": ("Intolerances", "Nietolerancje"),
-    "medicines": ("Medicines", "Leki"),
-    "supplements": ("Supplements", "Suplementy"),
-    "conditions": ("Conditions", "Choroby"),
-    "procedures": ("Operations and hospital stays", "Operacje i pobyty w szpitalu"),
-    "vaccinations": ("Vaccinations", "Szczepienia"),
-    "devices": ("Implants and devices", "Implanty i urz\u0105dzenia"),
-    "aids": ("Glasses and hearing aids", "Okulary i aparaty s\u0142uchowe"),
-    "pregnancy": ("Pregnancy", "Ci\u0105\u017ca"),
-    "contact": ("Emergency contact", "Kontakt w nag\u0142ym wypadku"),
-    "doctor": ("Own doctor", "Lekarz prowadz\u0105cy"),
-    "wishes": ("Care wishes", "\u017byczenia dotycz\u0105ce opieki"),
-    "needs": ("How to talk with me", "Jak ze mn\u0105 rozmawia\u0107"),
-    "diary": ("Symptom diary", "Dziennik objaw\u00f3w"),
-    "questions": ("Questions for the doctor", "Pytania do lekarza"),
+    "card": "Medical ID",
+    "passport": "Health passport",
+    "brief": "For the doctor",
+    "name": "Name",
+    "born": "Date of birth",
+    "blood": "Blood type",
+    "languages": "Languages",
+    "allergies": "Allergies",
+    "intolerances": "Intolerances",
+    "medicines": "Medicines",
+    "supplements": "Supplements",
+    "conditions": "Conditions",
+    "procedures": "Operations and hospital stays",
+    "vaccinations": "Vaccinations",
+    "devices": "Implants and devices",
+    "aids": "Glasses and hearing aids",
+    "pregnancy": "Pregnancy",
+    "contact": "Emergency contact",
+    "doctor": "Own doctor",
+    "wishes": "Care wishes",
+    "needs": "How to talk with me",
+    "diary": "Symptom diary",
+    "questions": "Questions for the doctor",
 }
-FOOT = ("In the person's own words, as told on the dates on file. Not a medical record.",
-        "W\u0142asnymi s\u0142owami pacjenta, wed\u0142ug stanu na dzie\u0144 zapisu. To nie jest dokumentacja medyczna.")
+FOOT = "In the person's own words, as told on the dates on file. Not a medical record."
+TITLE = "title"
 # what may go on each page, in the order it is printed
 PAGES = {
     "card": ("name", "born", "blood", "allergies", "medicines", "conditions", "devices", "pregnancy", "contact", "wishes", "needs"),
@@ -132,21 +131,37 @@ def _entries(entry, key, a, today):
     return []
 
 
-def _heading(key, lang):
-    en, pl = HEADINGS[key]
-    return en if lang == "en" else pl if lang == "pl" else "%s / %s" % (en, pl)
+def _second(kind, given, foot):
+    """The headings Voss gave in a second language, as {key: text}, with the page's title under 'title' and the
+    last line under 'foot'. The tool cannot check a translation: it prints what it is given, beside the English."""
+    allowed = (TITLE,) + PAGES[kind]
+    out = {}
+    for item in given or []:
+        key, mark, words = str(item).partition("=")
+        key = key.strip().lower()
+        if not mark or key not in allowed:
+            die("--heading is KEY=TEXT, the heading in the reader's language, where KEY is one of: %s" % ", ".join(allowed))
+        out[key] = core.one_line(words, "--heading", 80)
+    if foot:
+        out["foot"] = core.one_line(foot, "--foot", 200)
+    return out
 
 
-def _page(kind, entry, chosen, lang, a, today):
+def _heading(key, second):
+    return "%s / %s" % (HEADINGS[key], second[key]) if key in second else HEADINGS[key]
+
+
+def _page(kind, entry, chosen, second, a, today):
     """The page as (title, [(heading, [lines])], foot)."""
     parts = []
     for key in PAGES[kind]:
         if key in chosen:
             lines = _entries(entry, key, a, today)
             if lines:
-                parts.append((_heading(key, lang), lines))
-    foot = FOOT[0] if lang == "en" else FOOT[1] if lang == "pl" else "%s %s" % FOOT
-    return _heading(kind, lang), parts, "%s %s" % (foot, today.isoformat())
+                parts.append((_heading(key, second), lines))
+    title = "%s / %s" % (HEADINGS[kind], second[TITLE]) if TITLE in second else HEADINGS[kind]
+    foot = "%s %s" % (FOOT, second["foot"]) if "foot" in second else FOOT
+    return title, parts, "%s %s" % (foot, today.isoformat())
 
 
 def _as_text(title, parts, foot):
@@ -192,9 +207,7 @@ def _make(kind, a):
     data = personal.need()
     who, entry = personal.pick(data, a.id)
     today = core.today()
-    lang = (a.lang or "en").lower()
-    if lang not in LANGS:
-        die("--lang is one of: %s" % ", ".join(LANGS))
+    second = _second(kind, a.heading, a.foot)
     possible = PAGES[kind]
     have = dict((key, _entries(entry, key, a, today)) for key in possible)
     if not a.lines and not a.all:
@@ -203,10 +216,13 @@ def _make(kind, a):
             if key == "questions":
                 more("questions: theirs to give, each with --question \"...\"")
             elif have[key]:
-                more("%s: %s on file (%s)" % (key, core.plural(len(have[key]), "entry", "entries"), HEADINGS[key][0]))
+                more("%s: %s on file (%s)" % (key, core.plural(len(have[key]), "entry", "entries"), HEADINGS[key]))
         empty = [key for key in possible if key != "questions" and not have[key]]
         if empty:
             more("nothing on file for: %s" % ", ".join(empty))
+        rec("HEADINGS", "in English. For a reader of another language, give each heading in it as well: --heading KEY=TEXT, "
+                        "and the page's title as --heading title=TEXT. The two stand side by side, and the entries stay in "
+                        "the person's own words")
         rec("RULE", WARNING)
         rec("NEXT", "ask which lines they want, then: %s --id %s --lines %s" % (
             kind, entry["id"], ",".join(k for k in possible if have[k] or k == "questions") or "..."))
@@ -215,7 +231,7 @@ def _make(kind, a):
     for key in chosen:
         if key not in possible:
             die("--lines names what goes on the page, from: %s" % ", ".join(possible))
-    title, parts, foot = _page(kind, entry, chosen, lang, a, today)
+    title, parts, foot = _page(kind, entry, chosen, second, a, today)
     if not parts:
         die("nothing is on file for the lines that were chosen, so there is no page to make")
     text = _as_text(title, parts, foot)
@@ -228,6 +244,8 @@ def _make(kind, a):
         if missing:
             rec("LEFT OUT", "nothing on file for: %s" % ", ".join(missing))
         rec("CONFIRM", code)
+        if second:
+            rec("HEADINGS", "the second language is your translation, and no tool has checked it: read those headings back too")
         rec("RULE", WARNING)
         rec("NEXT", "read it back. If they agree with every line, run this again with --write --confirm %s" % code)
         return
@@ -288,7 +306,9 @@ def _page_options(p):
     p.add_argument("--id", help="whose page (default: the only profile on file)")
     p.add_argument("--lines", metavar="KEY,KEY", help="the lines the person chose, by the names the first run lists")
     p.add_argument("--all", action="store_true", help="every line that is on file: only if the person said so")
-    p.add_argument("--lang", help="the headings: en, pl or both (default: en). The entries stay in the person's own words")
+    p.add_argument("--heading", action="append", metavar="KEY=TEXT",
+                   help="a heading in the reader's language, to stand beside the English: allergies=Allergien. 'title' is the page's own")
+    p.add_argument("--foot", metavar="TEXT", help="the page's last line in that language, to follow the English")
     p.add_argument("--write", action="store_true", help="write the page to a file, once it has been read back")
     p.add_argument("--confirm", metavar="CODE", help="with --write: the code the read-back printed")
     p.add_argument("--out", help="where to write: 'auto' (default) or a folder outside any git repository")
@@ -297,12 +317,13 @@ def _page_options(p):
 def register(sub):
     p = command(sub, "file", "card", cmd_card,
                 "a medical ID from the personal file, line by line as the person chooses: a page to print, and text for a phone",
-                ["card --id self", "card --id self --lines name,allergies,medicines,contact --lang both"])
+                ["card --id self", "card --id self --lines name,allergies,medicines,contact --heading allergies=Allergien "
+                 "--heading medicines=Medikamente --heading title=Notfallausweis"])
     _page_options(p)
 
     p = command(sub, "file", "passport", cmd_passport,
                 "a health summary for a new doctor or one abroad, from the personal file, line by line as the person chooses",
-                ["passport --id self", "passport --id self --all --lang both"])
+                ["passport --id self", "passport --id self --all"])
     _page_options(p)
 
     p = command(sub, "clinic", "brief", cmd_brief,

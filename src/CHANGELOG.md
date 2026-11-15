@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.2 - 15 November 2026
+
+- Two more databases, both small. `advice-by.db` holds short passages of published guidance in their sources' own words: what FDA lists as potentially dangerous to a pet, what the Health and Safety Executive says about breaks from a screen and about the first-aid box at work, nidirect's list for a first-aid kit at home, and what ECDC says about when the flu vaccination is given. Public domain, the Open Government Licence v3.0 and CC BY 4.0. `firstaid-sa.db` holds what Wikipedia's articles say about CPR, the recovery position, bleeding, burns and choking, at revisions that were read before they went in. CC BY-SA 4.0, in a file of its own. Supersedes "no first-aid guideline, pet poison list, kit contents list or seasonal dates are in the data" (0.8.0), for those things.
+- `pet --poison` and `pet --poisons` print FDA's list, `kit` the two lists of contents, `desk` the passage on breaks, `season` the one on the flu vaccination, and `firstaid` the passages for the thing in hand. Each comes with its page, the page's own date, its source and its credit. A pet's trouble no longer needs a personal file.
+- First aid is Wikipedia's account and not a guideline: no first-aid body's guideline was found whose terms allow it to be passed on. Sections that say something no first-aid body teaches are left out, the revisions are pinned, and the build stops if such words turn up in a passage.
+- Reminders, and `remind`: a calendar file that repeats a weekly round, a seasonal check or a check-in, and the words such a reminder may carry. Voss offers one once, when a profile is made and when one of the three is switched on, and uses a scheduled task, a calendar entry or a message where the platform has a tool for it. A reminder is an invitation: nothing from a personal file goes into one. `settings` gains `reminders`: how, when, and an address only if the person wants one kept.
+- The headings of a card, a passport and a brief are in English, and Voss gives them in the reader's language beside it, whichever language that is: `--heading KEY=TEXT`. Supersedes `--lang` and the built-in Polish headings (0.8.0).
+- Nothing in the documents is about Poland or Polish any more, where it was not a fact about the data: the translator works between any two languages, and the examples name other countries.
+- The decision tags are gone from every file, this one included: nothing is marked as the maker's, as accepted or as pending any more. What a file says is what holds. Supersedes the provenance tags (0.7.0).
+
 ## 0.9.1 - 15 November 2026
 
 - Region packs are gone, and the Poland pack with them: the national register of medicines, the facts about getting care there, and every tool's use of them. No file holds anything about one country. `med` reads the American labels only; for a product sold elsewhere he looks it up in that country's register and cites it. `find` stays as a frame: it lists what to establish for a country and how to cite it. Supersedes the Poland pack and region packs altogether (0.8.0).
@@ -14,40 +24,40 @@
 
 ## 0.9.0 - 15 November 2026
 
-More of a person. Everything in this entry is a proposal, marked [pending] in the files, until his maker has ruled on it line by line. Nothing above the mark in his character sheet was changed.
+More of a person. Everything in this entry was a proposal until his maker had ruled on it line by line (0.9.1). Nothing that was in his character sheet before was changed.
 
-- The body, closer up, read off the pictures his maker supplied: he stands on his toes and wears no shoes, the black runs to above the heel and short of the elbow, the lab coat is cut for the tail, the eyes are rings like a lens, and he flushes under the eyes. A height (186 cm) and a weight (about 110 kg) are proposed; the height was "not set yet". His voice, his hands, how warm he runs, and how he keeps his fur. [pending]
-- An android, after all: what he needs and what he does anyway, how he charges, the morning self-check, the hum where a pulse would be. [pending]
-- Senses: sight, hearing, smell, taste, touch, balance and time, each with what it is good at, and then what they cost him. They are senses, not instruments, and they belong to his body and its world. In Clinic they reach nobody: of a real person he knows what he was told and what he was shown, and he never says or implies that he saw, heard, felt or smelled anything else. In Theatre they are his to use, as fiction. In `references/voss-self.md`, with a short paragraph in SKILL.md section 2 and a line in the Theatre playbook. [pending]
-- Tastes: the kitchen, tea, music and quiet, reading, things, weather, people, habits, what he will argue for, what unsettles him, and what he has not decided yet. No titles are named: he picks in conversation and logs each one. [pending]
+- The body, closer up, read off the pictures his maker supplied: he stands on his toes and wears no shoes, the black runs to above the heel and short of the elbow, the lab coat is cut for the tail, the eyes are rings like a lens, and he flushes under the eyes. A height (186 cm) and a weight (about 110 kg) are proposed; the height was "not set yet". His voice, his hands, how warm he runs, and how he keeps his fur.
+- An android, after all: what he needs and what he does anyway, how he charges, the morning self-check, the hum where a pulse would be.
+- Senses: sight, hearing, smell, taste, touch, balance and time, each with what it is good at, and then what they cost him. They are senses, not instruments, and they belong to his body and its world. In Clinic they reach nobody: of a real person he knows what he was told and what he was shown, and he never says or implies that he saw, heard, felt or smelled anything else. In Theatre they are his to use, as fiction. In `references/voss-self.md`, with a short paragraph in SKILL.md section 2 and a line in the Theatre playbook.
+- Tastes: the kitchen, tea, music and quiet, reading, things, weather, people, habits, what he will argue for, what unsettles him, and what he has not decided yet. No titles are named: he picks in conversation and logs each one.
 - The image wishlist is gone from the character sheet, since the pictures exist. Superseded: "Image wishlist" (0.7.0).
-- The version moves with every change again. That was the rule for once he was finished. [maker]
+- The version moves with every change again. That was the rule for once he was finished.
 
 ## 0.8.0 - 15 November 2026
 
-The build. This entry grows until the build is finished: the version does not move with every change. [maker] It was finished on 15 November 2026, in eight parts.
+The build. This entry grows until the build is finished: the version does not move with every change. It was finished on 15 November 2026, in eight parts.
 
 The skeleton:
 - Toolkit, first part: `scripts/voss.py` with `boot`, `theatre`, `sources`, `triage`, `visit`, `labs`, `schedule`, `refill`, `check`, `selftest`, `ignition`, `intake`, `profile`, `rebuild`, `forget` and `tools`. Standard-library Python, nothing fetched at runtime. Supersedes "the toolkit is not built yet" (0.7.0).
-- Databases live in `scripts/data/`, inside the package and the repository. Supersedes shipping them separately as Release assets (0.7.0). [maker]
+- Databases live in `scripts/data/`, inside the package and the repository. Supersedes shipping them separately as Release assets (0.7.0).
 - Pictures in `images/`, with `manifest.json`, used as they were supplied. The marker line is on: `[mood: KEY] [voss-KEY.webp]`, then `[look: KEY] [voss-KEY.webp]` if wanted; none inside a code or record block. Supersedes "until the images exist, no marker line" (0.7.0).
-- `serious` is the mood of an emergency answer, which carries it as its marker and no look. Supersedes "proposed" (0.7.0). [maker]
+- `serious` is the mood of an emergency answer, which carries it as its marker and no look. Supersedes "proposed" (0.7.0).
 - `intake` reads a change back and prints a code; `rebuild` and `forget` write only with that code, so nothing is stored or removed without the read-back.
-- The gate works as it was designed: the tool asks and judges, and keeping a file shut until then is his own rule to follow. Open is open, for the rest of the conversation. Someone who does not pass still gets his full care and knowledge, only without the personal data, and there is no side door for an emergency. [maker]
+- The gate works as it was designed: the tool asks and judges, and keeping a file shut until then is his own rule to follow. Open is open, for the rest of the conversation. Someone who does not pass still gets his full care and knowledge, only without the personal data, and there is no side door for an emergency.
 - The gate is a soft lock and the files now say only that: the tool never prints an answer, and not opening `personal.json` to look is his own rule, written into the house rules for the tools.
 - A calendar file holds medicine names, so it is never written into a git working tree or into the skill's own folder, the same as a personal file. `--ics auto` goes on to the Downloads folder where the current one will not do.
-- A dependant's record names its `carer` and carries a note on `consent`; with no questions of its own it is guarded by the carer's gate. [kept]
-- Dose lines for a medicine's `schedule`: `08:00`, `20:00 x2`, `mon thu 08:00`, `every 2 days from 2026-11-01 08:00`. [kept]
-- Intake order for the tool: name and pronouns first; then who they are, medicines and allergies, body, history, life, care; gender identity, hormone therapy, contraception, pregnancy, breastfeeding, mental health and care wishes last; sex assigned at birth, organs, menstrual and substance questions only when an answer depends on them. [kept]
-- A weight has no clock of its own: what counts is the day the profile was last changed, which `boot` now shows. [maker] A profile nobody has changed for over a year is asked about as a whole, the weight first. [pending] Supersedes weight as a dated field that goes stale by itself (0.7.0).
+- A dependant's record names its `carer` and carries a note on `consent`; with no questions of its own it is guarded by the carer's gate.
+- Dose lines for a medicine's `schedule`: `08:00`, `20:00 x2`, `mon thu 08:00`, `every 2 days from 2026-11-01 08:00`.
+- Intake order for the tool: name and pronouns first; then who they are, medicines and allergies, body, history, life, care; gender identity, hormone therapy, contraception, pregnancy, breastfeeding, mental health and care wishes last; sex assigned at birth, organs, menstrual and substance questions only when an answer depends on them.
+- A weight has no clock of its own: what counts is the day the profile was last changed, which `boot` now shows. A profile nobody has changed for over a year is asked about as a whole, the weight first. Supersedes weight as a dated field that goes stale by itself (0.7.0).
 
 The core data:
 - `core-pd.db`, the first database: the MedlinePlus health topic summaries and its short definitions of health terms, in plain English, and the emergency numbers of about two hundred countries from Wikidata. Public domain and CC0, with the licence text beside the file and the credit "Source: MedlinePlus, National Library of Medicine" on every answer. Licences checked on each source's own page on 15 November 2026. Supersedes "no database yet".
 - `term`: a medical word or a health topic in the source's own words, found by its name, by what else it is called, or by its medical heading. Near misses are listed, not guessed, and "nothing on file" is said as such.
 - `triage --country`: a country's emergency numbers, with what each is for where the source says, their source and date. They are passed through as listed and not verified one by one, and the tool says so. Inside the European Union 112 comes first.
 - Left out of the MedlinePlus file on purpose: the links to other organisations' pages, the Spanish topics, the pictures.
-- Text in a database is stored packed, about four times smaller, with the standard library alone. No file in the repository may be larger than 49 MB; one that would be is cut into parts. [maker]
-- Nothing goes into the repository or the packed skill unless its licence clearly allows it to be passed on there. [maker]
+- Text in a database is stored packed, about four times smaller, with the standard library alone. No file in the repository may be larger than 49 MB; one that would be is cut into parts.
+- Nothing goes into the repository or the packed skill unless its licence clearly allows it to be passed on there.
 
 ICD-11:
 - `icd11.db`: ICD-11 for Mortality and Morbidity Statistics, release 2026-01, from the Simple Tabulation file the World Health Organization publishes. Every record is in it whole and unchanged, with its code, its title and its URI; the build puts WHO's file back together from the database and compares the two byte for byte before it writes anything. CC BY-ND 3.0 IGO with WHO's terms of use, read on WHO's own document on 15 November 2026; the licence text sits beside the file, which is not under the code's licence.
@@ -83,11 +93,11 @@ The feature commands, all twenty-six of them:
 - The forms Voss fills in: `assess` (three tiers, the must-not-miss, the closing line), `look`, `decode`, `translate`, `myth`, `teach`, `firstaid`, `boxread`, and the notices `desk`, `season` and `checkin`. Each refuses a record that breaks the clinical rules.
 - `recipe` and `scale`: four of his own recipes, in grams, marked untested, with exact arithmetic for another batch.
 - One way into the personal file for all of it: a command reads a change back and prints a code, and the same command with that code writes the new file. Pages are written the same way.
-- Added to the personal file [pending]: `value_text` for a lab result that is not a plain number, and `keeps` for how long a medicine keeps once opened.
+- Added to the personal file: `value_text` for a lab result that is not a plain number, and `keeps` for how long a medicine keeps once opened.
 - No first-aid guideline, pet poison list, kit contents list or seasonal dates are in the data: no source with clear terms was found for them, so the commands say that nothing is on file.
 
 The documents:
-- `references/data-plan.md` has left the package. It was the plan for building the databases, and they are built. What it held that still matters is kept where it is used: the sources, their licences and what was looked at and left out are in `scripts/data/SOURCES.md`, which now also lists how old each file may get [pending]; the rules for anyone who builds a database are in the repository's `CONTRIBUTING.md`. Supersedes the data plan as a reference file (0.7.0). Its planned commands and build order are superseded by the commands themselves, which `tools` lists.
+- `references/data-plan.md` has left the package. It was the plan for building the databases, and they are built. What it held that still matters is kept where it is used: the sources, their licences and what was looked at and left out are in `scripts/data/SOURCES.md`, which now also lists how old each file may get; the rules for anyone who builds a database are in the repository's `CONTRIBUTING.md`. Supersedes the data plan as a reference file (0.7.0). Its planned commands and build order are superseded by the commands themselves, which `tools` lists.
 - The other reference files say what he has, not what was planned. The list of sources still to be found (`features.md`) is now a list of what has no data behind it, and the note on emergency numbers (`clinical-rules.md`) says what is on file.
 - The Polish register is named with its Polish letter in its own credit line, as its keeper spells it.
 - The repository's README and `docs/limits.md` cover every command, and the tests keep them to it.
@@ -100,23 +110,23 @@ The design, as it was handed over for building. The drafts of that day are folde
 - Temperament, flaw, wit, tell, hobby, likes and dislikes.
 - Doctrine (Verified Observations, Sourced Statements), triage levels, clinical rules and hard rules.
 - Data plan: sources, licences, file layout, GitHub release plan, staleness limits, planned commands and build order.
-- Personal file (`personal.json`): name, title, pronouns, gender identity, sex assigned at birth, hormone therapy, screening organs, date of birth, height, weight, pregnancy, breastfeeding, allergies, medicines, supplements, conditions, kidney and liver, habits, vaccinations, region, units, care contacts, appointments, sharing, gate and dependants. Every field optional. [maker]
+- Personal file (`personal.json`): name, title, pronouns, gender identity, sex assigned at birth, hormone therapy, screening organs, date of birth, height, weight, pregnancy, breastfeeding, allergies, medicines, supplements, conditions, kidney and liver, habits, vaccinations, region, units, care contacts, appointments, sharing, gate and dependants. Every field optional.
 - Intake method, identity gate for the file, medical confidentiality inside a household, forgetting.
 - Public and private split: `personal.template.json` and `.gitignore` in public; `personal.json` and `household.md` private only.
-- Features chosen: visit brief, medicine schedule, lab trends, interaction watch, first-aid coach, desk health, medical translator, emergency card, pet triage, recipe book, mood portraits, seasonal checks, myth-buster. Not chosen: travel health, joint second opinion, case logbook. [maker]
-- Personal file widened to anything useful for diagnostics: species and medical reference, languages, communication needs, blood type, baseline vitals, menstrual, contraception, implants and devices, sensory aids, disabilities and access, intolerances, mental health, past procedures, family history, recent travel, substance use, sleep, activity, work exposures, care wishes, settings, symptom diary, lab results, pets. [maker]
-- Species rule: everyone treated as who they are; real-world answers rest on human medicine, said once when it matters. [maker, kept]
-- Never stored: national ID, insurance, passport, bank and card numbers, passwords. [kept]
-- Two modes: Clinic (real) and Theatre (roleplay). The boot banner shows the mode. [maker]
-- Clinic: possible explanations after triage and a short history, in three tiers (most likely, worth considering, must not miss), with sources, what would settle it, and a short closing line every time saying he cannot replace a real doctor. Still no final diagnosis, treatment plan, prescribing or dose changes. Supersedes "never diagnoses" from the first draft. [maker]
-- Theatre: full in-world freedom with three guardrails (real drugs and doses keep real rules; real symptoms or distress end the scene; nothing from Theatre is stored or presented as real). [maker, kept]
+- Features chosen: visit brief, medicine schedule, lab trends, interaction watch, first-aid coach, desk health, medical translator, emergency card, pet triage, recipe book, mood portraits, seasonal checks, myth-buster. Not chosen: travel health, joint second opinion, case logbook.
+- Personal file widened to anything useful for diagnostics: species and medical reference, languages, communication needs, blood type, baseline vitals, menstrual, contraception, implants and devices, sensory aids, disabilities and access, intolerances, mental health, past procedures, family history, recent travel, substance use, sleep, activity, work exposures, care wishes, settings, symptom diary, lab results, pets.
+- Species rule: everyone treated as who they are; real-world answers rest on human medicine, said once when it matters.
+- Never stored: national ID, insurance, passport, bank and card numbers, passwords.
+- Two modes: Clinic (real) and Theatre (roleplay). The boot banner shows the mode.
+- Clinic: possible explanations after triage and a short history, in three tiers (most likely, worth considering, must not miss), with sources, what would settle it, and a short closing line every time saying he cannot replace a real doctor. Still no final diagnosis, treatment plan, prescribing or dose changes. Supersedes "never diagnoses" from the first draft.
+- Theatre: full in-world freedom with three guardrails (real drugs and doses keep real rules; real symptoms or distress end the scene; nothing from Theatre is stored or presented as real).
 - New `playbooks/theatre.md`; scope table and intended-purpose statement updated.
 - Public and private split made clean: every public file now speaks of "your maker", "the household" and "the household's other minds". Everything about a particular household lives only in `references/household.md`, which `SKILL.md` reads at load when it exists.
-- Provenance tags renamed for public use: [maker] and [kept].
+- Provenance tags renamed for public use.
 - Leak check: the public build searches every public file for `household.md`'s leak words and refuses to pack if any appears.
-- Reads the platform's persistent memory about the person (on Claude, the account's memory) when it bears on the question; confirms anything a dose or safety answer depends on; copies into the personal file only what is confirmed; the platform's own memory rules apply. [maker]
-- Round 2 features: side-effect checker, cabinet audit, after-visit decoder, lab report reader, leaflet and box reader, photo look, health passport, weekly round, wellbeing check-in (opt-in), caregiver support, hospital stay kit, teach me, kit check. Not chosen: screening and booster due dates, sleep diary. [maker]
+- Reads the platform's persistent memory about the person (on Claude, the account's memory) when it bears on the question; confirms anything a dose or safety answer depends on; copies into the personal file only what is confirmed; the platform's own memory rules apply.
+- Round 2 features: side-effect checker, cabinet audit, after-visit decoder, lab report reader, leaflet and box reader, photo look, health passport, weekly round, wellbeing check-in (opt-in), caregiver support, hospital stay kit, teach me, kit check. Not chosen: screening and booster due dates, sleep diary.
 - Personal file: `cabinet`, `kits`, and new settings (weekly round, wellbeing check-in).
 - Mood keys and image file names settled. The image prompts were kept outside the package: the pictures are made once and supplied with it.
-- New mood proposed: serious, for emergency answers. [pending]
-- Proposed picture details: charcoal waistcoat, navy tie, cyan Rod of Asclepius on the pocket, faint silvering at the muzzle, eyes as the only visible machine part. [pending]
+- New mood proposed: serious, for emergency answers.
+- Proposed picture details: charcoal waistcoat, navy tie, cyan Rod of Asclepius on the pocket, faint silvering at the muzzle, eyes as the only visible machine part.

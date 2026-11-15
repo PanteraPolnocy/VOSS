@@ -65,7 +65,7 @@
       "appointments": [{"when": "", "with": "", "why": ""}],
       "care_wishes": "",
       "share_with": [],
-      "settings": {"seasonal_checks": false, "desk_notices": false, "weekly_round": false, "wellbeing_checkin": {"on": false, "how_often": ""}},
+      "settings": {"seasonal_checks": false, "desk_notices": false, "weekly_round": false, "wellbeing_checkin": {"on": false, "how_often": ""}, "reminders": {"how": "", "when": "", "address": ""}},
       "ignition": {"setting": "every new conversation", "questions": []},
 
       "symptom_diary": [{"date": "", "what": "", "severity": null, "helped": "", "notes": ""}],

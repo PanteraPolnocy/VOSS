@@ -331,7 +331,7 @@ def _set(entry, spec, value, today):
     elif t == "country":
         code = value.strip().upper()
         if not re.fullmatch(r"[A-Z]{2}", code):
-            die("%s must be a two-letter country code, such as PL or GB" % where)
+            die("%s must be a two-letter country code, such as DE or GB" % where)
         entry[name] = code
     elif t == "choice":
         low = value.strip().lower()
@@ -641,6 +641,8 @@ def cmd_intake(a):
                     "nothing from another mind's files")
         rec("NEXT", "read that back in your own words. If they confirm all of it, run 'rebuild' with the same --id and changes "
                     "and --confirm %s. If they change anything, start again from here" % code_of(new))
+        if a.new and not a.carer:
+            more("a new profile: once it is saved, offer reminders, once ('remind --id %s' says what can be set, and how)" % a.id)
         return
     data = personal.load()
     if data is None or (a.id and a.id not in personal.ids(data)):
@@ -678,6 +680,9 @@ def cmd_intake(a):
         rec("LEFT", "%s after these, in this order: who they are, medicines and allergies, body, history, life, care; the "
                     "sensitive ones last, each with its reason" % core.plural(max(left, 0), "question"))
         more("asked only when an answer depends on them (--needs FIELD): %s" % ", ".join(schema["ask_when_needed"]))
+        from . import remind
+        if not remind.wished(entry):
+            rec("OFFER", "when the questions are done, reminders, once: 'remind --id %s' says what can be set, and how" % entry["id"])
     elif not asked:
         rec("NOTHING", "nothing to ask just now. Ask for a field the first time a question needs it (--needs FIELD gives the reason "
                        "to say); a full intake only when the person asks for one (--full)")

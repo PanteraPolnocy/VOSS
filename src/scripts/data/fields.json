@@ -72,7 +72,7 @@
     {"name": "appointments", "section": "care", "type": "objects", "keys": {"when": "when", "with": "text", "why": "text"}, "label": "with", "what": "upcoming visits", "why": "visit brief and reminders"},
     {"name": "care_wishes", "section": "care", "type": "text", "what": "e.g. organ donation, anything they want a doctor to know in a crisis", "why": "the card, if they choose"},
     {"name": "share_with", "section": "care", "type": "texts", "what": "which household minds may see what", "why": "default: nobody (see Confidentiality)"},
-    {"name": "settings", "section": "care", "type": "object", "keys": {"seasonal_checks": "bool", "desk_notices": "bool", "weekly_round": "bool", "wellbeing_checkin": {"on": "bool", "how_often": "text"}}, "what": "seasonal checks, desk notices, weekly round, wellbeing check-ins (and how often)", "why": "features they opted into"},
+    {"name": "settings", "section": "care", "type": "object", "keys": {"seasonal_checks": "bool", "desk_notices": "bool", "weekly_round": "bool", "wellbeing_checkin": {"on": "bool", "how_often": "text"}, "reminders": {"how": "text", "when": "text", "address": "text"}}, "what": "seasonal checks, desk notices, weekly round, wellbeing check-ins (and how often), and reminders: how, when, and an address only if they want one kept", "why": "features they opted into"},
     {"name": "ignition", "section": "care", "type": "gate", "what": "identity questions and answers", "why": "the gate; the person types these in themselves"},
 
     {"name": "symptom_diary", "section": "records", "type": "records", "keys": {"date": "date", "what": "text", "severity": "number", "helped": "text", "notes": "text"}, "label": "what", "what": "date, what, severity 0 to 10, what helped, notes", "why": "visit brief"},
