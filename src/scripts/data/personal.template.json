@@ -63,13 +63,16 @@
         "emergency_contact": {"name": "", "relation": "", "phone": ""}
       },
       "appointments": [{"when": "", "with": "", "why": ""}],
+      "reading_targets": [{"kind": "", "target": "", "set_by": "", "recorded": ""}],
       "care_wishes": "",
       "share_with": [],
       "settings": {"seasonal_checks": false, "desk_notices": false, "weekly_round": false, "wellbeing_checkin": {"on": false, "how_often": ""}, "reminders": {"how": "", "when": "", "address": ""}},
       "ignition": {"setting": "every new conversation", "questions": []},
 
       "symptom_diary": [{"date": "", "what": "", "severity": null, "helped": "", "notes": ""}],
-      "lab_results": [{"date": "", "test": "", "value": null, "value_text": "", "unit": "", "range_low": null, "range_high": null, "range_text": "", "lab": "", "flag": ""}]
+      "lab_results": [{"date": "", "test": "", "value": null, "value_text": "", "unit": "", "range_low": null, "range_high": null, "range_text": "", "lab": "", "flag": ""}],
+      "home_readings": [{"date": "", "time": "", "kind": "", "value": "", "unit": "", "note": ""}],
+      "followups": [{"date": "", "what": "", "about": ""}]
     }
   ],
   "pets": [{"species": "", "name": "", "weight_kg": null, "vet": ""}],

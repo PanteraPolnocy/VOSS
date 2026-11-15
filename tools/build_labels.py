@@ -36,7 +36,7 @@ from another company. So:
 
 Nothing is reworded. Curly quotes and long dashes become straight ones, as everywhere in this skill.
 
-Other names for a substance (English and Polish) come from the same Wikidata file the interaction data
+Other names for a substance (in English and eight more languages) come from the same Wikidata file the interaction data
 uses (CC0), so that "paracetamol" finds "ACETAMINOPHEN".
 """
 import argparse
@@ -342,7 +342,7 @@ def other_names(substances, items):
         if len(hits) != 1:
             continue
         seen, extra = set([core.key(substance)]), []
-        for lang in ("en", "pl"):
+        for lang in core.NAME_LANGUAGES:
             for other in items[next(iter(hits))].get(lang) or []:
                 other = " ".join(other.split())
                 folded = core.key(other)
@@ -542,7 +542,7 @@ def build(a):
                 pack_sections(number, key, (name,))
         raw, packed_size = texts.close()
         size = dbtools.finish(con, path, core.today(), facts=(
-            ("format", 2), ("labels", len(best)), ("labels-read", seen), ("prescription", counts["prescription"]),
+            ("format", 3), ("labels", len(best)), ("labels-read", seen), ("prescription", counts["prescription"]),
             ("over-the-counter", counts["over the counter"]), ("substances", len(substances)), ("brand-names", names),
             ("left-out-no-substances", len(left_out)), ("named-through-wikidata", len(extra)), ("terms-read", terms_day.isoformat())))
     except BaseException:

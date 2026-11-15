@@ -4,6 +4,8 @@ card      a medical ID: a page to print, and plain text for the emergency screen
 passport  a full summary for a new doctor, or a doctor abroad.
 brief     one page for a visit: the symptom diary, the medicines, and the questions the person wants answered.
 staykit   before a planned stay in hospital: what to pack, what to ask, what to bring.
+timetable the medicine schedule on file as a page to print, for the fridge or for a carer.
+note      a note of a conversation for the person to keep: what was said, what to do, what to watch for.
 
 The person chooses every line. A command first lists what could go on the page; then, with the lines they
 chose, it prints the page as it would be written; and only with --write does it write a file. What is on a
@@ -302,6 +304,105 @@ def cmd_staykit(a):
     rec("RULE", data["rule"])
 
 
+# ---- a timetable of medicines
+
+TIMETABLE_FOOT = ("The schedule as it is on file: what was prescribed, or what the label says. This page repeats it and sets "
+                  "nothing. A change comes from the prescriber or the pharmacist. Not a medical record.")
+
+
+def _read_back(kind, pid, text, left_out, rule, a, files):
+    """The page read back with its code, or, with the code, written. One way for every page."""
+    code = hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+    if not a.write:
+        rec("READ BACK", "the %s%s, as it would be written. Nothing is written yet" % (kind, " for %s" % pid if pid else ""))
+        print(text, end="")
+        for line in left_out:
+            rec("LEFT OUT", line)
+        rec("CONFIRM", code)
+        rec("RULE", rule)
+        rec("NEXT", "read it back. If they agree with every line, run this again with --write --confirm %s" % code)
+        return
+    if (a.confirm or "").strip().lower() != code:
+        die("nothing is written without the read-back: run this without --write, read the page back to the person, and give "
+            "the code it prints as --confirm. A different page, or a different day, gives a different code")
+    _write(kind, pid or core.today().isoformat(), files, a.out)
+
+
+def cmd_timetable(a):
+    from . import doses
+    who, entry = personal.pick(personal.need(), a.id)
+    today = core.today()
+    meds, no_times = doses.from_file(entry, supplements=a.supplements)
+    if not meds:
+        die("no medicine on file has dose times, so there is no timetable to make. Times go into the file with 'intake', as "
+            "the schedule of a medicine")
+    slots = {}
+    for med in meds:
+        for dose in med["doses"]:
+            # "08:00 every day, 2 each time" without its clock, which is the heading it stands under
+            line = "%s: %s%s" % (med["name"], dose.words().split(" ", 1)[1], "; %s" % med["how"] if med["how"] else "")
+            slots.setdefault((dose.hour, dose.minute), []).append(line)
+    parts = [("At %02d:%02d" % key, sorted(slots[key], key=lambda s: s.lower())) for key in sorted(slots)]
+    if a.needed and no_times:
+        parts.append(("No set time", sorted(no_times, key=lambda s: s.lower())))
+    name = entry.get("call_me") if a.name and isinstance(entry.get("call_me"), str) and entry.get("call_me").strip() else ""
+    title = "Medicine timetable%s" % (": %s" % name if name else "")
+    foot = "%s %s" % (TIMETABLE_FOOT, today.isoformat())
+    text = _as_text(title, parts, foot)
+    left_out = ["no dose times on file, so not on the page: %s. --needed lists them under \"No set time\"" % "; ".join(no_times)] \
+        if no_times and not a.needed else []
+    _read_back("timetable", entry["id"], text, left_out,
+               "anyone who sees this page can read which medicines the person takes: where it hangs is theirs to decide. It "
+               "repeats the schedule on file and never sets one", a,
+               [("txt", text), ("html", _as_html(title, parts, foot))])
+
+
+# ---- a note of a conversation
+
+NOTE_FOOT = ("Written by Voss, a reference with a bedside manner, from what was said in the conversation. He cannot examine "
+             "anyone and can be wrong: a real doctor outranks this note. Not a medical record.")
+
+
+def _own_lines(values, what):
+    """Lines of Voss's own for a page: each on one line, and none a phrase he never says."""
+    from . import forms
+    out = []
+    for value in values or []:
+        line = core.one_line(value, what, 400)
+        if any(phrase in line.lower() for phrase in forms.NEVER):
+            die("%s says something Voss never says. Name what it could be and what would settle it, or say you cannot tell" % what)
+        out.append(line)
+    return out
+
+
+def cmd_note(a):
+    today = core.today()
+    if not (a.about or "").strip():
+        die("say what the conversation was about: --about \"...\"")
+    said = _own_lines(a.said, "--said")
+    if not said:
+        die("a note says what was said: --said \"...\", once for each point, in plain words")
+    todo = []
+    for item in a.todo or []:
+        what, _, when = str(item).partition("|")
+        what, when = core.one_line(what, "--todo", 300), when.strip()
+        if when and not personal.when_text(when):
+            die("--todo: the part after | is when it is due: a date, with or without a time (2026-12-01, or '2026-12-01 10:30')")
+        todo.append("%s%s" % (what, " - by %s" % personal.when_text(when) if when else ""))
+    parts = [("About", _own_lines([a.about], "--about")), ("What was said", said)]
+    for heading, lines in (("To do", todo), ("Watch for, and get help sooner if", _own_lines(a.watch, "--watch")),
+                           ("To ask the doctor", _own_lines(a.ask, "--ask")), ("Sources named", _own_lines(a.source, "--source"))):
+        if lines:
+            parts.append((heading, lines))
+    title = "Note of a conversation with Voss%s" % (": %s" % core.one_line(a.name, "--name", 60) if (a.name or "").strip() else "")
+    foot = "%s %s" % (NOTE_FOOT, today.isoformat())
+    text = _as_text(title, parts, foot)
+    files = [("txt", text)] + ([("html", _as_html(title, parts, foot))] if a.html else [])
+    _read_back("note", "", text, [],
+               "the note is the person's to keep, and it is not kept by you: nothing of it goes into a personal file unless they "
+               "ask for a part of it to. It holds what was said and no more: no diagnosis, no dose, nothing new", a, files)
+
+
 def _page_options(p):
     p.add_argument("--id", help="whose page (default: the only profile on file)")
     p.add_argument("--lines", metavar="KEY,KEY", help="the lines the person chose, by the names the first run lists")
@@ -338,3 +439,31 @@ def register(sub):
                 "before a planned stay in hospital: what to pack, what to ask the ward and what to bring",
                 ["staykit", "staykit --id self"])
     p.add_argument("--id", help="whose stay (default: the only profile on file, if there is a file)")
+
+    p = command(sub, "medicines", "timetable", cmd_timetable,
+                "the medicine schedule on file as one page to print, for the fridge or for a carer; read back before it is written",
+                ["timetable --id self", "timetable --id self --needed --name"])
+    p.add_argument("--id", help="whose timetable (default: the only profile on file)")
+    p.add_argument("--needed", action="store_true", help="also list the medicines that have no set time, under their own heading")
+    p.add_argument("--supplements", action="store_true", help="the supplements on file as well")
+    p.add_argument("--name", action="store_true", help="put the person's name on the page: only if they say so")
+    p.add_argument("--write", action="store_true", help="write the page to a file, once it has been read back")
+    p.add_argument("--confirm", metavar="CODE", help="with --write: the code the read-back printed")
+    p.add_argument("--out", help="where to write: 'auto' (default) or a folder outside any git repository")
+
+    p = command(sub, "clinic", "note", cmd_note,
+                "a note of a conversation for the person to keep: what was said, what to do, what to watch for; read back first",
+                ['note --about "a headache for three days" --said "Triage put it at level 3: your own doctor, within days." '
+                 '--said "Three possible explanations were named, and none of them is a diagnosis." '
+                 '--todo "ring the surgery for an appointment | 2026-11-17" --watch "a sudden, severe headache: that is an emergency"'])
+    p.add_argument("--about", help="what the conversation was about, in a line")
+    p.add_argument("--said", action="append", metavar="TEXT", help="a point that was made, in plain words; give it once for each")
+    p.add_argument("--todo", action="append", metavar="TEXT", help="a thing to do, and when: \"what | 2026-12-01\"")
+    p.add_argument("--watch", action="append", metavar="TEXT", help="what to watch for, and when to get help sooner")
+    p.add_argument("--ask", action="append", metavar="TEXT", help="a question to take to the doctor")
+    p.add_argument("--source", action="append", metavar="TEXT", help="a source that was named, with its date")
+    p.add_argument("--name", help="the person's name for the top of the page: only if they say so")
+    p.add_argument("--html", action="store_true", help="with --write: a page to print as well as the text")
+    p.add_argument("--write", action="store_true", help="write the note to a file, once it has been read back")
+    p.add_argument("--confirm", metavar="CODE", help="with --write: the code the read-back printed")
+    p.add_argument("--out", help="where to write: 'auto' (default) or a folder outside any git repository")

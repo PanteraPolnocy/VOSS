@@ -23,7 +23,7 @@ STEM = "ddinter"
 WHAT = "interactions between medicines"
 GRADES = {3: "Major", 2: "Moderate", 1: "Minor", 0: "listed, with no grade given"}
 # what kind of name a medicine was found under, as the file numbers them
-NAME_KINDS = ("name", "also called (en)", "also called (pl)")
+NAME_KINDS = ("name",) + tuple("also called (%s)" % lang for lang in core.NAME_LANGUAGES)
 LEVELS = {"major": 3, "moderate": 2, "minor": 1, "unknown": 0}
 GROUP_WORDS = {"A": "the gut and metabolism", "B": "the blood", "C": "the heart and circulation", "D": "the skin",
                "G": "the urinary and reproductive system, and sex hormones", "H": "hormones", "J": "infections",

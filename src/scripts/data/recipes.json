@@ -1,29 +1,33 @@
 {
-  "note": "Voss's own baking recipes, written for this package. Vegetarian; eggs and dairy are welcome. Everything is weighed in grams, eggs included: they are weighed without their shells. The recipes were written with care, and nobody has yet baked them from this file: each stays marked untested until someone has, and says so.",
+  "note": "Voss's own baking recipes, written for this package: one for each month, by the seasons where he was built, north of the equator. Vegetarian; eggs and dairy are welcome. Everything is weighed in grams, eggs included: they are weighed without their shells. The recipes were written with care, and nobody has yet baked them from this file: each stays marked untested until someone has, and says so.",
   "recipes": [
     {
-      "key": "shortbread",
-      "name": "Plain shortbread",
+      "key": "soda-bread",
+      "name": "Soda bread",
+      "month": 1,
+      "why": "January has no patience for yeast. This is bread in under an hour, for a cold house.",
       "tested": false,
-      "makes": {"count": 16, "what": "fingers"},
-      "tin": "a 20 cm square tin, lined with baking paper",
-      "oven": "160 C (140 C with a fan)",
-      "time": "35 to 40 minutes, until pale gold at the edges",
+      "makes": {"count": 1, "what": "loaf"},
+      "tin": "a baking tray, floured",
+      "oven": "200 C (180 C with a fan)",
+      "time": "40 to 45 minutes, until it sounds hollow when tapped underneath",
       "ingredients": [
-        {"item": "plain wheat flour", "grams": 300, "allergens": ["gluten (wheat)"]},
-        {"item": "unsalted butter, cold and diced", "grams": 200, "allergens": ["milk"]},
-        {"item": "caster sugar", "grams": 100},
-        {"item": "fine salt", "grams": 2}
+        {"item": "plain wheat flour", "grams": 500, "allergens": ["gluten (wheat)"]},
+        {"item": "buttermilk", "grams": 400, "allergens": ["milk"]},
+        {"item": "bicarbonate of soda", "grams": 8},
+        {"item": "fine salt", "grams": 8}
       ],
       "method": [
-        "Rub the butter into the flour, sugar and salt until it looks like damp sand, then press it together.",
-        "Press it evenly into the tin, prick it all over with a fork, and chill it for 20 minutes.",
-        "Bake it. Cut it into fingers while it is warm, and leave it in the tin until it is cold."
+        "Stir the flour, bicarbonate of soda and salt together, then stir in the buttermilk until a soft dough forms. Do not knead it.",
+        "Shape it into a round on the tray and cut a deep cross in the top.",
+        "Bake it at once, and cool it on a rack."
       ]
     },
     {
       "key": "pound-cake",
       "name": "Pound cake",
+      "month": 2,
+      "why": "Equal weights of four things. A month with little to recommend it deserves a recipe with nowhere to hide.",
       "tested": false,
       "makes": {"count": 10, "what": "slices"},
       "tin": "a loaf tin of about 1 litre, buttered and lined",
@@ -45,28 +49,114 @@
       ]
     },
     {
-      "key": "soda-bread",
-      "name": "Soda bread",
+      "key": "lemon-drizzle",
+      "name": "Lemon drizzle loaf",
+      "month": 3,
+      "why": "The first thing of the year that tastes of light. The drizzle goes on while the loaf is hot, or not at all.",
       "tested": false,
-      "makes": {"count": 1, "what": "loaf"},
-      "tin": "a baking tray, floured",
-      "oven": "200 C (180 C with a fan)",
-      "time": "40 to 45 minutes, until it sounds hollow when tapped underneath",
+      "makes": {"count": 10, "what": "slices"},
+      "tin": "a loaf tin of about 1 litre, buttered and lined",
+      "oven": "180 C (160 C with a fan)",
+      "time": "45 to 50 minutes, until a skewer pushed into the middle comes out clean",
       "ingredients": [
-        {"item": "plain wheat flour", "grams": 500, "allergens": ["gluten (wheat)"]},
-        {"item": "buttermilk", "grams": 400, "allergens": ["milk"]},
-        {"item": "bicarbonate of soda", "grams": 8},
-        {"item": "fine salt", "grams": 8}
+        {"item": "unsalted butter, soft", "grams": 175, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 175},
+        {"item": "eggs, beaten, weighed without their shells", "grams": 150, "allergens": ["egg"]},
+        {"item": "plain wheat flour", "grams": 175, "allergens": ["gluten (wheat)"]},
+        {"item": "baking powder", "grams": 7},
+        {"item": "fine salt", "grams": 1},
+        {"item": "lemon zest, finely grated", "grams": 6},
+        {"item": "milk", "grams": 30, "allergens": ["milk"]},
+        {"item": "lemon juice, for the drizzle", "grams": 60},
+        {"item": "granulated sugar, for the drizzle", "grams": 85}
       ],
       "method": [
-        "Stir the flour, bicarbonate of soda and salt together, then stir in the buttermilk until a soft dough forms. Do not knead it.",
-        "Shape it into a round on the tray and cut a deep cross in the top.",
-        "Bake it at once, and cool it on a rack."
+        "Beat the butter, caster sugar and zest until pale, then beat in the egg a little at a time.",
+        "Fold in the flour, baking powder and salt, loosen the batter with the milk, and scrape it into the tin.",
+        "Bake it. Stir the lemon juice into the granulated sugar while it bakes: the sugar should not dissolve.",
+        "Prick the hot loaf all over with a skewer, spoon the drizzle over it, and leave it in the tin until it is cold."
+      ]
+    },
+    {
+      "key": "scones",
+      "name": "Plain scones",
+      "month": 4,
+      "why": "Quick, and unforgiving of a heavy hand. Plain flour and the baking powder weighed: the rise is his decision.",
+      "tested": false,
+      "makes": {"count": 12, "what": "scones"},
+      "tin": "a baking tray, floured, and a 5 cm round cutter",
+      "oven": "220 C (200 C with a fan)",
+      "time": "12 to 15 minutes, until well risen and golden on top",
+      "ingredients": [
+        {"item": "plain wheat flour", "grams": 450, "allergens": ["gluten (wheat)"]},
+        {"item": "baking powder", "grams": 22},
+        {"item": "fine salt", "grams": 3},
+        {"item": "unsalted butter, cold and diced", "grams": 100, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 50},
+        {"item": "milk, cold", "grams": 250, "allergens": ["milk"]}
+      ],
+      "method": [
+        "Stir the flour, baking powder and salt together, and rub in the butter until it looks like fine crumbs. Stir in the sugar.",
+        "Pour in the milk and bring it together with a knife, in as few strokes as will do it. The dough should be soft and a little sticky.",
+        "Pat it out 3 cm thick on a floured board. Cut straight down with the cutter, without twisting, and set the scones on the tray.",
+        "Bake them at once, and cool them on a rack."
+      ]
+    },
+    {
+      "key": "sponge-sandwich",
+      "name": "Sponge sandwich with jam",
+      "month": 5,
+      "why": "For a table in the garden. Two layers, one jar of jam, and no excuse for a dome: weigh the batter into the tins.",
+      "tested": false,
+      "makes": {"count": 8, "what": "slices"},
+      "tin": "two 20 cm sandwich tins, buttered and base-lined",
+      "oven": "180 C (160 C with a fan)",
+      "time": "22 to 25 minutes, until the sponge springs back when pressed lightly",
+      "ingredients": [
+        {"item": "unsalted butter, soft", "grams": 200, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 200},
+        {"item": "eggs, beaten, weighed without their shells", "grams": 200, "allergens": ["egg"]},
+        {"item": "plain wheat flour", "grams": 200, "allergens": ["gluten (wheat)"]},
+        {"item": "baking powder", "grams": 10},
+        {"item": "fine salt", "grams": 1},
+        {"item": "milk", "grams": 30, "allergens": ["milk"]},
+        {"item": "raspberry jam, to fill", "grams": 150}
+      ],
+      "method": [
+        "Beat the butter and sugar until pale and light, then beat in the egg a little at a time.",
+        "Fold in the flour, baking powder and salt, and loosen the batter with the milk.",
+        "Divide the batter between the tins by weight and level it.",
+        "Bake them. Leave them in the tins for 5 minutes, turn them out onto a rack, and sandwich them with the jam when they are cold."
+      ]
+    },
+    {
+      "key": "flapjacks",
+      "name": "Flapjacks",
+      "month": 6,
+      "why": "Nobody wants the oven on for long in June. Twenty minutes, one pan, and they keep for a week in a tin.",
+      "tested": false,
+      "makes": {"count": 16, "what": "squares"},
+      "tin": "a 20 cm square tin, lined with baking paper",
+      "oven": "180 C (160 C with a fan)",
+      "time": "20 to 25 minutes, until golden at the edges and still soft in the middle",
+      "ingredients": [
+        {"item": "unsalted butter", "grams": 175, "allergens": ["milk"]},
+        {"item": "soft brown sugar", "grams": 125},
+        {"item": "golden syrup", "grams": 100},
+        {"item": "rolled oats", "grams": 300, "allergens": ["gluten (oats)"]},
+        {"item": "fine salt", "grams": 2}
+      ],
+      "method": [
+        "Melt the butter, sugar and syrup together in a pan over a low heat, without letting it boil.",
+        "Stir in the oats and salt until every oat is coated, and press the mixture evenly into the tin.",
+        "Bake it. Mark it into squares while it is warm, and leave it in the tin until it is cold."
       ]
     },
     {
       "key": "oat-biscuits",
       "name": "Oat biscuits",
+      "month": 7,
+      "why": "For a heatwave, baked at night: twelve minutes of oven, and the window open.",
       "tested": false,
       "makes": {"count": 20, "what": "biscuits"},
       "tin": "two baking trays, lined with baking paper",
@@ -86,6 +176,133 @@
         "Stir in the oats, flour, bicarbonate of soda and salt.",
         "Roll the dough into balls, set them well apart on the trays, and flatten each a little.",
         "Bake them. Leave them on the trays for 5 minutes, then move them to a rack."
+      ]
+    },
+    {
+      "key": "plum-traybake",
+      "name": "Plum traybake",
+      "month": 8,
+      "why": "Plums come all at once and will not wait. The almonds are there to catch the juice.",
+      "tested": false,
+      "makes": {"count": 12, "what": "squares"},
+      "tin": "a 20 by 30 cm tin, lined with baking paper",
+      "oven": "180 C (160 C with a fan)",
+      "time": "40 to 45 minutes, until a skewer pushed into the cake between the plums comes out clean",
+      "ingredients": [
+        {"item": "unsalted butter, soft", "grams": 150, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 150},
+        {"item": "eggs, beaten, weighed without their shells", "grams": 150, "allergens": ["egg"]},
+        {"item": "plain wheat flour", "grams": 200, "allergens": ["gluten (wheat)"]},
+        {"item": "ground almonds", "grams": 50, "allergens": ["nuts (almond)"]},
+        {"item": "baking powder", "grams": 8},
+        {"item": "fine salt", "grams": 1},
+        {"item": "plums, stoned and halved", "grams": 400}
+      ],
+      "method": [
+        "Beat the butter and sugar until pale, then beat in the egg a little at a time.",
+        "Fold in the flour, almonds, baking powder and salt, and spread the batter in the tin.",
+        "Set the plums on top, cut side up, and press them in a little.",
+        "Bake it, and cool it in the tin before cutting it into squares."
+      ]
+    },
+    {
+      "key": "overnight-loaf",
+      "name": "Overnight loaf",
+      "month": 9,
+      "why": "The evenings draw in, and the dough does the work while the house sleeps. It rewards patience, so he is working on it.",
+      "tested": false,
+      "makes": {"count": 1, "what": "loaf"},
+      "tin": "a heavy pot of 3 to 4 litres with a lid that can go in the oven, and baking paper to lower the dough in on",
+      "oven": "230 C (210 C with a fan), with the pot inside from cold",
+      "time": "30 minutes with the lid on, then 12 to 15 minutes with it off, until deep brown",
+      "ingredients": [
+        {"item": "strong white bread flour", "grams": 500, "allergens": ["gluten (wheat)"]},
+        {"item": "water, at room temperature", "grams": 360},
+        {"item": "fine salt", "grams": 10},
+        {"item": "fast-action dried yeast", "grams": 2}
+      ],
+      "method": [
+        "In the evening, stir everything together in a large bowl until no dry flour is left. Do not knead it. Cover the bowl and leave it at room temperature for 12 to 14 hours.",
+        "In the morning the dough will be bubbly and loose. Turn it out onto a floured board, fold it over itself three or four times, shape it into a ball, and set it seam down on baking paper.",
+        "Cover it and leave it for 1 hour. Heat the oven, with the pot and its lid inside, for the last 30 minutes of that.",
+        "Lower the dough into the hot pot on its paper, put the lid on, and bake it. Cool it on a rack for an hour before cutting it."
+      ]
+    },
+    {
+      "key": "apple-cake",
+      "name": "Apple cake",
+      "month": 10,
+      "why": "Autumn is his: cold dry air, the oven on, apples. This is the cake that goes with all three.",
+      "tested": false,
+      "makes": {"count": 10, "what": "slices"},
+      "tin": "a deep 20 cm round tin, buttered and lined",
+      "oven": "180 C (160 C with a fan)",
+      "time": "50 to 60 minutes, until a skewer pushed into the middle comes out clean",
+      "ingredients": [
+        {"item": "unsalted butter, soft", "grams": 150, "allergens": ["milk"]},
+        {"item": "soft brown sugar", "grams": 150},
+        {"item": "eggs, beaten, weighed without their shells", "grams": 150, "allergens": ["egg"]},
+        {"item": "plain wheat flour", "grams": 225, "allergens": ["gluten (wheat)"]},
+        {"item": "baking powder", "grams": 10},
+        {"item": "ground cinnamon", "grams": 4},
+        {"item": "fine salt", "grams": 1},
+        {"item": "apples, peeled, cored and diced", "grams": 350}
+      ],
+      "method": [
+        "Beat the butter and sugar until pale, then beat in the egg a little at a time.",
+        "Fold in the flour, baking powder, cinnamon and salt, then the apples. The batter will be stiff.",
+        "Scrape it into the tin and level it.",
+        "Bake it. Leave it in the tin for 15 minutes, then turn it out onto a rack."
+      ]
+    },
+    {
+      "key": "shortbread",
+      "name": "Plain shortbread",
+      "month": 11,
+      "why": "Three ingredients and salt. November is for finding out whether the butter was good.",
+      "tested": false,
+      "makes": {"count": 16, "what": "fingers"},
+      "tin": "a 20 cm square tin, lined with baking paper",
+      "oven": "160 C (140 C with a fan)",
+      "time": "35 to 40 minutes, until pale gold at the edges",
+      "ingredients": [
+        {"item": "plain wheat flour", "grams": 300, "allergens": ["gluten (wheat)"]},
+        {"item": "unsalted butter, cold and diced", "grams": 200, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 100},
+        {"item": "fine salt", "grams": 2}
+      ],
+      "method": [
+        "Rub the butter into the flour, sugar and salt until it looks like damp sand, then press it together.",
+        "Press it evenly into the tin, prick it all over with a fork, and chill it for 20 minutes.",
+        "Bake it. Cut it into fingers while it is warm, and leave it in the tin until it is cold."
+      ]
+    },
+    {
+      "key": "gingerbread",
+      "name": "Gingerbread biscuits",
+      "month": 12,
+      "why": "December, and made strictly to recipe. The spice is weighed like everything else.",
+      "tested": false,
+      "makes": {"count": 30, "what": "biscuits"},
+      "tin": "two baking trays, lined with baking paper, and cutters of about 7 cm",
+      "oven": "180 C (160 C with a fan)",
+      "time": "10 to 12 minutes, until the edges have just begun to darken",
+      "ingredients": [
+        {"item": "plain wheat flour", "grams": 350, "allergens": ["gluten (wheat)"]},
+        {"item": "ground ginger", "grams": 8},
+        {"item": "ground cinnamon", "grams": 4},
+        {"item": "bicarbonate of soda", "grams": 5},
+        {"item": "fine salt", "grams": 1},
+        {"item": "unsalted butter, cold and diced", "grams": 125, "allergens": ["milk"]},
+        {"item": "soft dark brown sugar", "grams": 150},
+        {"item": "golden syrup", "grams": 100},
+        {"item": "egg, beaten, weighed without its shell", "grams": 50, "allergens": ["egg"]}
+      ],
+      "method": [
+        "Stir the flour, spices, bicarbonate of soda and salt together, and rub in the butter until it looks like fine crumbs. Stir in the sugar.",
+        "Beat the syrup into the egg, pour it in, and bring it together into a smooth dough. Wrap it and chill it for 30 minutes.",
+        "Roll it out 5 mm thick on a floured board, cut out the biscuits, and set them a little apart on the trays.",
+        "Bake them. Leave them on the trays for 5 minutes, then move them to a rack. They harden as they cool."
       ]
     }
   ]

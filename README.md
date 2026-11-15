@@ -15,13 +15,13 @@ The split is deliberate. **The database talks, and Voss explains it.** A dose, a
 - **Possible explanations, never a verdict**: after triage and a short history, what a complaint could be, in three tiers, each with what fits, what does not and its source, and always the serious cause that must not be missed. The same care for a photo of a rash or a wound: what is visible, and how soon someone should see it.
 - **Medical words in plain English**: about a thousand health topics and some eighty short definitions, in the source's own words, each with its credit and the day it was retrieved.
 - **ICD-11 codes**: what a code on a letter or a referral means, word for word from the World Health Organization's classification.
-- **Lab results**: a value read against the range printed on your own report, and against nothing else. Results can be kept, one at a time or a whole report read off a photo, and followed over time, each against the range of its own report, with a note when the unit, the lab or the range changed in between.
-- **Medicines**: what a medicine is and what its label says, from about 9,200 American product labels; whether a symptom is among the side effects a label lists; which medicines are known to interact, with the grade the source gives each pair; a schedule you were given, written as a calendar file; how long a pack lasts, counted exactly; and the medicines kept at home, with what has expired or is there twice under two names.
-- **Seeing a doctor**: what to ask and what to bring, a symptom diary, one page for the visit made from it, a doctor's letter turned into a list of things to do with dates for the calendar, and what to think of before a planned stay in hospital.
+- **Lab results**: a value read against the range printed on your own report, and against nothing else. What a test is and what it is used for comes from MedlinePlus's pages on about three hundred medical tests, word for word. Results can be kept, one at a time or a whole report read off a photo, and followed over time, each against the range of its own report, with a note when the unit, the lab or the range changed in between.
+- **Medicines**: what a medicine is and what its label says, from about 9,200 American product labels; whether a symptom is among the side effects a label lists; which medicines are known to interact, with the grade the source gives each pair; a schedule you were given, written as a calendar file or as a timetable to print; how long a pack lasts, counted exactly; and the medicines kept at home, with what has expired or is there twice under two names.
+- **Seeing a doctor**: what to ask and what to bring, a symptom diary, one page for the visit made from it, a doctor's letter turned into a list of things to do with dates for the calendar, what to think of before a planned stay in hospital, and a note of a conversation with him, to keep.
 - **Pages to hand over**: a medical ID to print or to put on a phone's emergency screen, and a health summary for a new doctor or one abroad. You choose every line. The headings are in English, with a second language of your choosing beside them.
-- **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so.
+- **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so. It can hold your readings at home (blood pressure, weight, glucose) beside the target your doctor set, and what you agreed he should ask you about again.
 - **The household**: the first-aid kits, with two published lists of what one may hold; the pets (how soon a vet should hear of it, what may be dangerous to them, and never a dose); the people someone looks after; a weekly round of what is due, for those who switch it on; and a reminder for the calendar, so that the round is not forgotten.
-- **And the rest**: a check on a translation of a medical paper, a health claim weighed against sources, a short lesson on how the body works, and his own baking recipes, in grams.
+- **And the rest**: a check on a translation of a medical paper, a health claim weighed against sources, a short lesson on how the body works, and his own baking recipes, one for each month, in grams, set beside your allergies before he bakes for you.
 - **A check on his own replies**: typography, and his own rules of form.
 
 Some things are in no file: a first-aid body's own guideline, what the law asks for in a car's kit, advice for heat and cold, and anything that belongs to one country, such as where to get care at night, what a patient is owed, or a national register of medicines. For those he looks things up with whatever tools the assistant has and cites them, or says he has no data. Every feature is described in [src/references/features.md](src/references/features.md).
@@ -36,7 +36,7 @@ Some things are in no file: a first-aid body's own guideline, what the law asks 
 1. Take `dist/voss.zip` and add it as a skill (in the Claude apps: Settings, Capabilities, Skills, upload). In Claude Code, unzip it into `~/.claude/skills/voss/`.
 2. Say "Voss", or ask him something. He boots, shows his banner, and says what data is installed.
 
-Unpacked, the skill is about 24.6 MB, nearly all of it the six databases, and it is kept under 30 MB on purpose: that is the most a skill may weigh when it is uploaded through the API. Each database is optional. If you have no use for one, delete the `.db` file and its `LICENSE-*.txt` from `scripts/data/` and zip the folder again: the commands that read it say that nothing is installed, and everything else carries on.
+Unpacked, the skill is about 25.9 MB, nearly all of it the seven databases, and it is kept under 30 MB on purpose: that is the most a skill may weigh when it is uploaded through the API. Each database is optional. If you have no use for one, delete the `.db` file and its `LICENSE-*.txt` from `scripts/data/` and zip the folder again: the commands that read it say that nothing is installed, and everything else carries on.
 
 ## The personal file
 
@@ -60,10 +60,10 @@ A household can also give him a private `references/household.md`: who made him,
 | Group | Commands |
 |---|---|
 | Desk | `boot`, `theatre`, `check`, `selftest`, `sources`, `translate`, `teach`, `desk`, `season`, `checkin`, `tools` |
-| Clinic | `triage`, `find`, `visit`, `labs`, `term`, `code`, `trend`, `brief`, `staykit`, `assess`, `look`, `decode`, `myth`, `firstaid` |
-| Medicines | `schedule`, `refill`, `interact`, `watch`, `med`, `sidefx`, `boxread` |
+| Clinic | `triage`, `find`, `visit`, `labs`, `term`, `code`, `trend`, `brief`, `staykit`, `note`, `assess`, `look`, `decode`, `myth`, `firstaid` |
+| Medicines | `schedule`, `refill`, `interact`, `watch`, `med`, `sidefx`, `timetable`, `boxread` |
 | Household | `cabinet`, `kit`, `pet`, `round`, `carer`, `remind` |
-| The personal file | `diary`, `result`, `labread`, `card`, `passport`, `ignition`, `profile`, `intake`, `rebuild`, `forget` |
+| The personal file | `diary`, `result`, `labread`, `reading`, `followup`, `card`, `passport`, `ignition`, `profile`, `intake`, `rebuild`, `forget` |
 | Extras | `recipe`, `scale` |
 
 ```
@@ -77,6 +77,7 @@ $ python scripts/voss.py interact warfarin ibuprofen
 $ python scripts/voss.py find night care --country IE
 $ python scripts/voss.py boxread --name Advil --strength "200 mg" --substance ibuprofen
 $ python scripts/voss.py labs --test "Potassium" --value 5,4 --unit mmol/L --range "3.5-5.1" --flag H
+$ python scripts/voss.py labs --about potassium
 $ python scripts/voss.py schedule --med "Metformin 500 mg: 08:00, 20:00" --ics auto
 $ python scripts/voss.py refill --med "Metformin 500 mg: 08:00, 20:00" --pack 60 --opened 2026-11-01
 $ python scripts/voss.py firstaid --what choking --country NZ
@@ -91,6 +92,8 @@ And with a personal file, once its gate is open:
 $ python scripts/voss.py result --id self --test TSH --value 2.1 --unit mIU/l --range "0.27-4.2" --date 2026-11-02
 $ python scripts/voss.py trend --id self --test tsh
 $ python scripts/voss.py watch --id self --new ibuprofen
+$ python scripts/voss.py reading --id self --kind "blood pressure" --value 128/82 --unit mmHg
+$ python scripts/voss.py timetable --id self
 $ python scripts/voss.py cabinet
 $ python scripts/voss.py card --id self --lines name,allergies,medicines,contact --heading allergies=Allergien
 $ python scripts/voss.py remind --id self --what round --ics auto
@@ -110,7 +113,7 @@ $ python scripts/voss.py remind --id self --what round --ics auto
 - **The interaction data is partial, and says so.** It holds pairs of medicines with a grade and nothing more: no reasons, no advice, nothing on food. It only has a pair if one of the two medicines is in certain groups, so two heart medicines, or two for the nervous system, are not in it however well known their interaction. A pair that is not listed is not safe for that. Ask a pharmacist.
 - **ICD-11 only.** There is no ICD-10 in it, and no table between the two: WHO's licence keeps those for a written agreement.
 - **Emergency numbers are listed as Wikidata has them**, and were not verified one by one. If you already know your number, use it.
-- **No reference ranges, on purpose.** `labs` and `trend` compare a value with the range printed on its own report. Ranges differ between labs and methods, and a trend is a question for your doctor, not an answer.
+- **No reference ranges, on purpose.** `labs` and `trend` compare a value with the range printed on its own report. Ranges differ between labs and methods, and a trend is a question for your doctor, not an answer. The same goes for readings taken at home: `reading` keeps your figures beside the target your doctor set, and judges nothing.
 - **What you keep is what you said.** A diary, a result, an expiry date: he stores your words and your figures, and cannot know whether they are right. A figure he could not read off a photo is left out, never guessed.
 - **`schedule` and `refill` repeat a schedule; they never set one.** The refill sum assumes every dose was taken, because it cannot know otherwise. `cabinet` counts days to the date the maker printed, and knows nothing of whether a medicine is still good.
 - **A page you hand over can be read by whoever holds it**, and a medical ID on a lock screen by anyone who picks the phone up. You choose each line for that reason.
@@ -148,7 +151,7 @@ tools/                  build.py packs the skill; build_core.py and its kind fet
 ## Credits
 
 - Voss, the VOSS-01 design and the pictures: Pantera Północy.
-- Health topic summaries and definitions of health terms. Source: MedlinePlus, National Library of Medicine. Public domain. The National Library of Medicine does not endorse this skill, and the copy here is as old as the day it was retrieved.
+- Health topic summaries, definitions of health terms and medical test information. Source: MedlinePlus, National Library of Medicine. Public domain. The National Library of Medicine does not endorse this skill, and the copy here is as old as the day it was retrieved.
 - Emergency numbers by country: Wikidata, CC0. That 112 works throughout the European Union: the European Commission.
 - International Classification of Diseases, Eleventh Revision (ICD-11), World Health Organization (WHO) 2019 https://icd.who.int/browse11. Licensed under the Creative Commons Attribution-NoDerivatives 3.0 IGO licence (CC BY-ND 3.0 IGO). It is here whole and unchanged. WHO does not endorse this skill.
 - Product labels: Data provided by the U.S. Food and Drug Administration (https://open.fda.gov). CC0. FDA does not endorse this skill, and has not verified the labels.
@@ -169,6 +172,6 @@ tools/                  build.py packs the skill; build_core.py and its kind fet
 
 MIT for the code and for everything written for this skill. See `LICENSE`.
 
-The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0, and `labels-us.db` is CC0. `advice-by.db` holds passages that are public domain, under the Open Government Licence v3.0 or under CC BY 4.0: each may be passed on with its credit. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system. `ddinter.db` is CC BY-NC-SA 4.0: it may be passed on with DDInter's credit and under the same licence, and **not for commercial purposes**. That condition belongs to that one file. It does not reach the code or the other databases, which sit beside it under their own terms. If you use this skill commercially, delete `scripts/data/ddinter.db` first; everything else keeps working, and the tools say that no interaction data is installed. `firstaid-sa.db` is CC BY-SA 4.0: it may be passed on, commercially too, with its credits and under the same licence, and that condition likewise stays with that one file. Packing all of it into one zip changes none of this: a zip is a collection, and every file in it keeps its own terms.
+The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0, `labtests-pd.db` is public domain, and `labels-us.db` is CC0. `advice-by.db` holds passages that are public domain, under the Open Government Licence v3.0 or under CC BY 4.0: each may be passed on with its credit. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system. `ddinter.db` is CC BY-NC-SA 4.0: it may be passed on with DDInter's credit and under the same licence, and **not for commercial purposes**. That condition belongs to that one file. It does not reach the code or the other databases, which sit beside it under their own terms. If you use this skill commercially, delete `scripts/data/ddinter.db` first; everything else keeps working, and the tools say that no interaction data is installed. `firstaid-sa.db` is CC BY-SA 4.0: it may be passed on, commercially too, with its credits and under the same licence, and that condition likewise stays with that one file. Packing all of it into one zip changes none of this: a zip is a collection, and every file in it keeps its own terms.
 
 ![Voss](/src/images/voss-reference-sheet.webp)

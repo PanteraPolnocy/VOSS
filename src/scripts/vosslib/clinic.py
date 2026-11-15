@@ -259,6 +259,14 @@ def read_against(op, value, r):
 
 
 def cmd_labs(a):
+    from . import labtests
+    if a.about:
+        if a.test or a.value:
+            die("--about says what a test is; a value is read with --test and --value. One at a time")
+        return labtests.cmd_about(a)
+    if not a.test or not a.value:
+        die("give the test and its value as the report prints them: --test \"Potassium\" --value 5.4 --range \"3.5-5.1\". "
+            "For what a test is: labs --about WORDS")
     test = one_line(a.test, "--test", 120)
     unit = one_line(a.unit, "--unit", 40) if a.unit else ""
     m = _VALUE_RE.match(_tidy(a.value))
@@ -300,8 +308,7 @@ def cmd_labs(a):
                          "read the report again before saying anything about this result")
     else:
         rec("FLAG", "none given. Flags are the lab's: repeat one if the report has it, and add none of your own")
-    rec("MEASURES", "nothing on file yet for what this test measures (no database). Explain it from a cited lookup, "
-                    "or say you have no data")
+    rec("MEASURES", labtests.pointer(test))
     rec("RULE", "say that the value was read against the range on their report. It is not a diagnosis: offer the "
                 "question to ask the doctor instead")
 
@@ -329,13 +336,14 @@ def register(sub):
     p.add_argument("--from", dest="start", help="the first diary day (default today)")
 
     p = command(sub, "clinic", "labs", cmd_labs,
-                "read a lab value against the range printed on that person's own report, and against nothing else",
+                "read a lab value against the range printed on that person's own report; and what a test is, in the source's words",
                 ['labs --test eGFR --value 72 --unit "mL/min/1.73m2" --range ">=60"',
                  'labs --test "Potassium" --value 5,4 --unit mmol/L --range "3.5-5.1" --flag H',
                  'labs --test CRP --value "<0.5" --unit mg/L --range "<5.0"',
-                 'labs --test "Vitamin D" --value 18 --unit ng/mL --low 30 --high 50'])
-    p.add_argument("--test", required=True, help="the test's name as the report prints it")
-    p.add_argument("--value", required=True, help="the result: a number, or <0.5 / >100 where the lab printed it so")
+                 'labs --test "Vitamin D" --value 18 --unit ng/mL --low 30 --high 50', "labs --about potassium"])
+    p.add_argument("--test", help="the test's name as the report prints it")
+    p.add_argument("--value", help="the result: a number, or <0.5 / >100 where the lab printed it so")
+    p.add_argument("--about", nargs="+", metavar="WORDS", help="what a test is and what it is used for, as MedlinePlus has it")
     p.add_argument("--unit", help="the unit printed beside it")
     p.add_argument("--range", help="the reference range printed on the report: 3.5-5.1, <5.0, >=60, '60 or above'")
     p.add_argument("--low", help="the range's lower limit, if you would rather give the two limits apart")

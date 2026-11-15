@@ -65,6 +65,7 @@ import build_ddinter  # noqa: E402
 import build_firstaid  # noqa: E402
 import build_icd11  # noqa: E402
 import build_labels  # noqa: E402
+import build_tests  # noqa: E402
 import build_index  # noqa: E402
 import dbtools  # noqa: E402
 
@@ -74,7 +75,7 @@ REAL_DATA = os.path.join(SCRIPTS, "data")
 ANSWERS = ("kittiwake", "pendle", "bottle", "butelkowa", "cello")
 # every feature command of references/features.md, by the name its table gives it
 FEATURE_COMMANDS = ("diary", "brief", "result", "trend", "labread", "decode", "look", "passport", "card", "firstaid", "desk", "translate",
-                    "pet", "recipe", "scale", "season", "round", "remind", "checkin", "carer", "staykit", "teach", "kit", "myth", "assess", "cabinet",
+                    "pet", "recipe", "scale", "season", "round", "remind", "reading", "followup", "timetable", "note", "checkin", "carer", "staykit", "teach", "kit", "myth", "assess", "cabinet",
                     "boxread")
 UNCHOSEN = ("travel", "secondopinion", "opinion", "logbook", "casebook", "screening", "booster", "sleep", "sleepdiary")
 
@@ -630,7 +631,7 @@ class ClinicTests(Base):
         out = ok("labs", "--test", "Ferritin", "--value", "12")
         self.assertIn("RANGE      none given", out)
         self.assertIn("never against one remembered", out)
-        self.assertIn("MEASURES   nothing on file yet", out)
+        self.assertIn("MEASURES   nothing on file for what this test measures (labtests-pd.db is not installed)", out)
         self.assertIn("It is not a diagnosis", out)
 
     def test_labs_repeats_the_labs_flag_and_adds_none(self):
@@ -997,7 +998,8 @@ class FileShapeTests(Base):
                 self.assertEqual(set(shape), set(spec["keys"]), spec["name"])
         asked = schema["ask_first"] + schema["ask_routine"] + schema["ask_last"] + schema["ask_when_needed"] + schema["ask_on_request"]
         self.assertEqual(len(asked), len(set(asked)))
-        self.assertEqual(set(asked), set(f["name"] for f in schema["fields"]) - {"medical_reference", "ignition", "symptom_diary", "lab_results"})
+        self.assertEqual(set(asked), set(f["name"] for f in schema["fields"]) - {"medical_reference", "ignition", "symptom_diary", "lab_results",
+                                                                           "home_readings", "followups"})
         self.assertEqual(personal.check(template, date(2026, 11, 15)), [])
 
     def test_a_file_is_checked_in_one_pass_and_nothing_in_it_is_quoted(self):
@@ -1673,7 +1675,8 @@ class PackageTests(Base):
                     if (not shipped and (name == "term" or "--country" in args)) or (
                             name == "code" and not os.path.isfile(os.path.join(REAL_DATA, "icd11.db"))) or (
                             name in ("interact", "watch") and not os.path.isfile(os.path.join(REAL_DATA, "ddinter.db"))) or (
-                            name in ("med", "sidefx") and not os.path.isfile(os.path.join(REAL_DATA, "labels-us.db"))):
+                            name in ("med", "sidefx") and not os.path.isfile(os.path.join(REAL_DATA, "labels-us.db"))) or (
+                            "--about" in args and not os.path.isfile(os.path.join(REAL_DATA, "labtests-pd.db"))):
                         continue
                     if "CODE" in args:
                         probe = [a for a in args if a not in ("--json", "--package")]
@@ -1854,7 +1857,7 @@ class IndexTests(Base):
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("50 commands.", ok("tools"))
+        self.assertIn("54 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -4087,10 +4090,300 @@ class RemindTests(Base):
         self.assertEqual(personal.check(load_json(os.path.join(REAL_DATA, "personal.template.json")), core.today()), [])
 
 
+def test_page(title, body, names=""):
+    """A made-up page in the shape of MedlinePlus's pages on medical tests."""
+    return ('<html><body><article><div class="page-title"><h1>%s</h1></div><div class="main"><section><div class="mp-content">'
+            '<h2>What is it?</h2><p>%s</p>%s</div></section><section><div class="mp-refs mp-content"><h2>References</h2><ol>'
+            '<li>A made-up reference</li></ol></div></section></div></article></body></html>'
+            % (title, body, "<p>Other names: %s</p>" % names if names else ""))
+
+
+TEST_PAGES = {
+    "https://example.org/lab-tests/wobble-blood-test/": test_page(
+        "Wobble Blood Test", 'A wobble blood test measures the <a href="x">wobble</a> in your blood. It isn&rsquo;t real.',
+        "serum wobble, WBL, wobble level"),
+    "https://example.org/lab-tests/wobble-in-urine/": test_page("Wobble in Urine", "The same, the other way."),
+    "https://example.org/lab-tests/creak-panel/": test_page("Creak Panel", "Several creaks at once."),
+    "https://example.org/lab-tests/creak-test/": test_page("Creak Test", "One creak."),
+    "https://example.org/lab-tests/not-a-test/": "<html><body><p>Moved.</p></body></html>",
+}
+TEST_TERMS = ("<p>Works produced by the federal government are not copyrighted under U.S. law.</p><ul><li>Medical test "
+              "information</li></ul>")
+
+
+def labtest_downloads(pages=TEST_PAGES, terms=TEST_TERMS):
+    folder = tempfile.mkdtemp(dir=OUTPUTS)
+    with open(os.path.join(folder, build_tests.PAGES_FILE), "w", encoding="utf-8") as f:
+        json.dump({"pages": pages}, f)
+    with open(os.path.join(folder, build_tests.TERMS_FILE), "w", encoding="utf-8") as f:
+        f.write(terms)
+    return folder
+
+
+def build_tests_sample(out, downloads=None):
+    with swapped(build_tests, MIN_TESTS=2, LICENCE="A made-up licence text."):
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            build_tests.main(["--downloads", downloads or labtest_downloads(), "--retrieved", "2026-11-09", "--out", out])
+    return said.getvalue()
+
+
+def labtests_data():
+    """The folder that holds the small database of made-up medical tests, built once."""
+    if "labtests" not in _sample:
+        folder = os.path.join(OUTPUTS, "labtests-data")
+        os.makedirs(folder)
+        clock()
+        _sample["labtests_said"] = build_tests_sample(folder)
+        _sample["labtests"] = folder
+    return _sample["labtests"]
+
+
+class LabTestsTests(Base):
+    """tools/build_tests.py on made-up pages, and 'labs --about' against what it builds."""
+
+    def setUp(self):
+        Base.setUp(self)
+        os.environ["VOSS_DATA"] = labtests_data()
+
+    def test_a_page_becomes_a_test_on_file(self):
+        said = _sample["labtests_said"]
+        self.assertIn("4 tests; text:", said)
+        self.assertIn("NOTE not a test page in the shape this script knows, left out: https://example.org/lab-tests/not-a-test/", said)
+        info = library.read(os.path.join(labtests_data(), "labtests-pd.db"))
+        self.assertEqual(info["problems"], [])
+        self.assertEqual(info["sources"][0]["credit"], "Source: MedlinePlus, National Library of Medicine")
+        con = library.connect(info["path"])
+        number, block, start, length = con.execute("SELECT id, block, start, length FROM test WHERE title = ?", ("Wobble Blood Test",)).fetchone()
+        text = store.Reader(con).text(block, start, length)
+        names = set(con.execute("SELECT folded, kind FROM test_name WHERE test = ?", (number,)).fetchall())
+        con.close()
+        self.assertEqual(text, "## What is it?\n\nA wobble blood test measures the wobble in your blood. It isn't real.\n\n"
+                               "Other names: serum wobble, WBL, wobble level")
+        self.assertEqual(names, {("wobble_blood_test", 0), ("serum_wobble", 1), ("wbl", 1), ("wobble_level", 1)})
+        out = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as stopped:
+            build_tests_sample(out, labtest_downloads(terms="<p>All rights reserved.</p>"))
+        self.assertIn("no longer says \"works produced by the federal government are not copyrighted under u.s. law\"", str(stopped.exception))
+        with self.assertRaises(SystemExit) as stopped:
+            build_tests_sample(out, labtest_downloads(pages={"https://example.org/lab-tests/one/": test_page("One Test", "Alone.")}))
+        self.assertIn("only 1 test pages could be read", str(stopped.exception))
+        self.assertEqual(os.listdir(out), [])
+
+    def test_what_a_test_is(self):
+        out = ok("labs", "--about", "wobble")
+        for line in ("TEST       Wobble Blood Test [MedlinePlus medical test]", "that is what the words were read as: say so",
+                     "ALSO       serum wobble; WBL; wobble level", "ABOUT      the source's own words, in full", "## What is it?",
+                     "A wobble blood test measures the wobble in your blood. It isn't real.",
+                     "PAGE       https://example.org/lab-tests/wobble-blood-test/",
+                     "SOURCE     MedlinePlus medical tests, National Library of Medicine, retrieved 2026-11-09 [sourced: labtests-pd.db",
+                     "CREDIT     Source: MedlinePlus, National Library of Medicine",
+                     "RULE       these are the source's words about the test, written for readers in the United States. They are not about "
+                     "the person's result"):
+            self.assertIn(line, out)
+        self.assertNotIn("made-up reference", out)
+        self.assertIn("TEST       Wobble Blood Test", ok("labs", "--about", "WBL"), "found by another name the page gives")
+        self.assertNotIn("read as", ok("labs", "--about", "wobble", "blood", "test"))
+        out = ok("labs", "--about", "creak")
+        for line in ("MATCHES    2 tests on file whose names hold those words", "Creak Panel", "Creak Test", "NEXT       say which is meant"):
+            self.assertIn(line, out)
+        self.assertNotIn("ABOUT", out, "nothing is picked for them")
+        out = ok("labs", "--about", "grumble")
+        self.assertIn("TEST       nothing on file under those words", out)
+        self.assertIn("that is a gap in this file, not a fact about the test", out)
+
+    def test_a_value_points_to_what_its_test_is(self):
+        out = ok("labs", "--test", "Wobble", "--value", "5", "--range", "1-9")
+        self.assertIn("MEASURES   'labs --about \"Wobble\"' prints what MedlinePlus says this test is and what it is used for "
+                      "[read as Wobble Blood Test; labtests-pd.db]", out)
+        self.assertIn("MEASURES   2 tests on file hold that name: 'labs --about \"Creak\"' lists them",
+                      ok("labs", "--test", "Creak", "--value", "5"))
+        self.assertIn("MEASURES   nothing on file under that name", ok("labs", "--test", "Ferritin", "--value", "12"))
+        self.assertIn("One at a time", fails("labs", "--about", "wobble", "--test", "Wobble"))
+        self.assertIn("give the test and its value as the report prints them", fails("labs", "--unit", "mg"))
+        os.environ["VOSS_DATA"] = NO_DATA
+        self.assertIn("labtests-pd.db is not installed, so there is nothing on file for what a test measures", fails("labs", "--about", "wobble"))
+
+
+def with_readings(data):
+    me = data["profiles"][0]
+    me["baseline_vitals"] = {"bp": "120/80", "resting_pulse": 62, "temperature_c": 36.6, "measured": "2026-01-10"}
+    me["home_readings"] = [
+        {"date": "2026-11-01", "time": "07:30", "kind": "blood pressure", "value": "141/76", "unit": "mmHg", "note": ""},
+        {"date": "2026-11-08", "time": "", "kind": "blood pressure", "value": "118/90", "unit": "mmHg", "note": ""},
+        {"date": "2026-11-09", "time": "", "kind": "weight", "value": "72,5", "unit": "kg", "note": ""},
+        {"date": "2026-11-12", "time": "", "kind": "weight", "value": "160", "unit": "lb", "note": ""},
+        {"date": "2026-11-14", "time": "07:30", "kind": "blood pressure", "value": "128/82", "unit": "mmHg", "note": "left arm"}]
+    me["reading_targets"] = [{"kind": "blood pressure", "target": "below 135/85 at home", "set_by": "the GP", "recorded": "2026-10-01"}]
+    me["followups"] = [{"date": "2026-11-10", "what": "how the blood test came out", "about": "the test on 9 November"},
+                       {"date": "2026-12-01", "what": "how the X-ray went", "about": ""}]
+    me["appointments"] = [{"when": "2026-10-01 09:00", "with": "the dentist", "why": "a filling"},
+                          {"when": "2026-11-12 09:30", "with": "the GP", "why": "blood pressure"},
+                          {"when": "2026-11-20 09:30", "with": "the asthma nurse", "why": "review"}]
+    me["settings"]["weekly_round"] = True
+    me["intolerances"] = [{"substance": "lactose", "what_happens": "bloating", "told": "2026-11-01"}]
+    me["allergies"].append({"substance": "almonds", "reaction": "hives", "told": "2026-11-01"})
+
+
+class KeepingTests(Base):
+    """Home readings, follow-ups, the timetable, the note, and a recipe set beside a person's allergies."""
+
+    def setUp(self):
+        Base.setUp(self)
+        copy_fixture()
+
+    def test_a_reading_is_kept_as_it_was_read(self):
+        command = ["reading", "--id", "self", "--kind", "BP", "--value", "128/82", "--unit", "mmHg", "--time", "7:30", "--note", "left arm"]
+        out = ok(*command)
+        for words in ("READ BACK  for self. Nothing is saved yet", "ADD        home_readings:", "kind blood pressure", "value 128/82", "date 2026-11-15"):
+            self.assertIn(words, out)
+        new = saved(*command)
+        self.assertEqual(new["profiles"][0]["home_readings"], [{"date": "2026-11-15", "time": "07:30", "kind": "blood pressure",
+                                                                "value": "128/82", "unit": "mmHg", "note": "left arm"}])
+        self.assertIn("is the figure as it was read, and nothing else", fails("reading", "--id", "self", "--kind", "pulse", "--value", "about 70"))
+        self.assertIn("is the figure as it was read", fails("reading", "--id", "self", "--kind", "pulse", "--value", "?"))
+        self.assertIn("say what was measured", fails("reading", "--id", "self", "--value", "70"))
+        self.assertIn("is in the future", fails("reading", "--id", "self", "--kind", "pulse", "--value", "70", "--date", "tomorrow"))
+        self.assertIn("is not a time of day", fails("reading", "--id", "self", "--kind", "pulse", "--value", "70", "--time", "25:00"))
+        new = saved("reading", "--id", "self", "--kind", "heart rate", "--target", "under 100 at rest", "--set-by", "the cardiologist")
+        self.assertEqual(new["profiles"][0]["reading_targets"],
+                         [{"kind": "pulse", "target": "under 100 at rest", "set_by": "the cardiologist", "recorded": "2026-11-15"}])
+        self.assertIn("say what the target is for", fails("reading", "--id", "self", "--target", "low"))
+
+    def test_a_run_of_readings_is_counted_and_never_judged(self):
+        copy_fixture(with_readings)
+        out = ok("reading", "--id", "self")
+        for line in ("READINGS   self: 5 home readings on file", "KIND       blood pressure: 3 readings, 2026-11-01 to 2026-11-14",
+                     "2026-11-14 07:30  128/82 mmHg; left arm",
+                     "the first figure ran from 118 to 141, the second ran from 76 to 90; the latest is 128/82 [derived]",
+                     "their usual, as on file: 120/80 (measured 2026-01-10)",
+                     "TARGET     blood pressure: below 135/85 at home [set by the GP, recorded 2026-10-01; the tool does not judge a reading against it]",
+                     "KIND       weight: 2 readings", "CHECK      weight: the unit is not the same in every reading, so they are not set side by side",
+                     "RULE       the tool keeps figures and counts them. It knows no threshold"):
+            self.assertIn(line, out)
+        for verdict in ("high", "too", "normal", "good", "above", "within"):
+            self.assertNotIn(" %s " % verdict, out.lower().replace("it does not say whether a reading is good:", ""), "no reading is judged")
+        self.assertIn("READINGS   self: 1 home reading on file of blood pressure since 2026-11-10", ok("reading", "--id", "self", "--kind", "bp", "--since", "2026-11-10"))
+        self.assertIn("READINGS   self: 0 home readings on file of peak flow", ok("reading", "--id", "self", "--kind", "peak flow"))
+        new = saved("reading", "--id", "self", "--kind", "blood pressure", "--target", "below 130/80", "--set-by", "the nurse")
+        self.assertEqual([t["target"] for t in new["profiles"][0]["reading_targets"]], ["below 130/80"], "one target for a kind: the newer one")
+
+    def test_follow_ups_are_asked_once_and_named_nowhere_else(self):
+        command = ["followup", "--id", "self", "--what", "how the X-ray went", "--from", "2026-12-01", "--about", "the chest X-ray"]
+        self.assertEqual(saved(*command)["profiles"][0]["followups"], [{"date": "2026-12-01", "what": "how the X-ray went", "about": "the chest X-ray"}])
+        self.assertIn("date 2026-11-15", ok("followup", "--id", "self", "--what", "whether the cough has gone"), "with no day given, from today")
+        copy_fixture(with_readings)
+        out = ok("followup", "--id", "self")
+        for line in ("FOLLOW UP  self: 1 thing to ask about now, 1 for later",
+                     "ASK        how the blood test came out (the test on 9 November) [to be asked from 2026-11-10]",
+                     "from 2026-12-01: how the X-ray went", "VISIT      2026-11-12 09:30, the GP has been and gone: ask how it went, once",
+                     "DONE       once a thing has been asked and answered: forget --id self --field followups",
+                     "\"I did not go\" is an answer too, and gets no lecture"):
+            self.assertIn(line, out)
+        self.assertNotIn("dentist", out, "a visit of six weeks ago is not asked about")
+        self.assertNotIn("asthma nurse", out, "and neither is one that is still to come")
+        out = ok("round", "--id", "self")
+        self.assertIn("FOLLOW UP  1 thing to ask about again: 'followup --id self' lists it", out)
+        self.assertIn("PAST       the visit of 2026-11-12 09:30, the GP: ask how it went, once", out)
+        self.assertNotIn("blood test came out", out, "what it is about is not said in a round")
+        self.assertIn("REMOVE     one entry from followups", ok("forget", "--id", "self", "--field", "followups", "--match", "blood test"))
+
+    def test_a_timetable_to_print(self):
+        out = ok("timetable", "--id", "self")
+        for line in ("READ BACK  the timetable for self, as it would be written. Nothing is written yet", "MEDICINE TIMETABLE", "At 08:00:",
+                     "  Metformin 500 mg: every day; one tablet with food", "  Methotrexate 2.5 mg: on Mon, 6 each time; six tablets once a week",
+                     "At 20:00:", "This page repeats it and sets nothing.", "Not a medical record. 2026-11-15",
+                     "LEFT OUT   no dose times on file, so not on the page: Salbutamol inhaler 100 micrograms; Ibuprofen 200 mg",
+                     "It repeats the schedule on file and never sets one"):
+            self.assertIn(line, out)
+        self.assertNotIn("Wren", out, "no name on it unless they say so")
+        code = field(out, "CONFIRM")
+        self.assertIn("nothing is written without the read-back", fails("timetable", "--id", "self", "--write"))
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        ok("timetable", "--id", "self", "--write", "--confirm", code, "--out", folder)
+        self.assertEqual(sorted(os.listdir(folder)), ["voss-timetable-self.html", "voss-timetable-self.txt"])
+        out = ok("timetable", "--id", "self", "--needed", "--name")
+        for line in ("MEDICINE TIMETABLE: WREN", "No set time:", "  Ibuprofen 200 mg"):
+            self.assertIn(line, out)
+        self.assertIn("inside a git repository", fails("timetable", "--id", "self", "--needed", "--name", "--write", "--confirm",
+                                                       field(out, "CONFIRM"), "--out", ROOT))
+
+        def no_times(data):
+            for med in data["profiles"][0]["medicines"]:
+                med["schedule"] = []
+        copy_fixture(no_times)
+        self.assertIn("no medicine on file has dose times", fails("timetable", "--id", "self"))
+
+    def test_a_note_of_a_conversation(self):
+        command = ["note", "--about", "a headache for three days", "--said", "Triage put it at level 3: your own doctor, within days.",
+                   "--todo", "ring the surgery | 2026-11-17", "--watch", "a sudden, severe headache: that is an emergency",
+                   "--ask", "Could the tablets be the cause?", "--source", "MedlinePlus, retrieved 2026-11-15"]
+        use_personal(None)
+        out = ok(*command)
+        for line in ("READ BACK  the note, as it would be written. Nothing is written yet", "NOTE OF A CONVERSATION WITH VOSS", "About:",
+                     "  a headache for three days", "What was said:", "  Triage put it at level 3: your own doctor, within days.", "To do:",
+                     "  ring the surgery - by 2026-11-17", "Watch for, and get help sooner if:", "To ask the doctor:", "Sources named:",
+                     "a real doctor outranks this note. Not a medical record. 2026-11-15",
+                     "RULE       the note is the person's to keep, and it is not kept by you"):
+            self.assertIn(line, out)
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        ok(*(command + ["--write", "--confirm", field(out, "CONFIRM"), "--out", folder]))
+        self.assertEqual(os.listdir(folder), ["voss-note-2026-11-15.txt"])
+        self.assertIn("a note says what was said", fails("note", "--about", "a cough"))
+        self.assertIn("say what the conversation was about", fails("note", "--said", "It was discussed."))
+        self.assertIn("says something Voss never says", fails("note", "--about", "a cough", "--said", "It's probably nothing."))
+        self.assertIn("the part after | is when it is due", fails("note", "--about", "a cough", "--said", "Noted.", "--todo", "ring | soon"))
+
+    def test_a_bake_for_every_month(self):
+        recipes = core.load_data("recipes")["recipes"]
+        self.assertEqual([r["month"] for r in recipes], list(range(1, 13)))
+        self.assertTrue(all(r["why"] for r in recipes))
+        out = ok("recipe")
+        self.assertIn("December: Gingerbread biscuits ('gingerbread'): makes 30 biscuits", out)
+        self.assertIn("THIS MONTH Plain shortbread. Three ingredients and salt.", out)
+        out = ok("recipe", "--month", "dec")
+        self.assertIn("RECIPE     Gingerbread biscuits", out)
+        self.assertIn("MONTH      December. December, and made strictly to recipe.", out)
+        self.assertIn("RECIPE     Overnight loaf", ok("recipe", "--month", "9"))
+        self.assertIn("--month is a month", fails("recipe", "--month", "smarch"))
+        self.assertIn("name the recipe or the month, not both", fails("recipe", "shortbread", "--month", "3"))
+
+    def test_a_recipe_beside_what_a_person_has_on_file(self):
+        out = ok("recipe", "soda", "bread", "--for", "self")
+        self.assertIn("NOT MATCHED on file, and matched to nothing in this recipe by the tool: penicillin", out)
+        self.assertIn("NO CLASH   nothing on file was matched to this recipe. That is not a promise", out)
+        copy_fixture(with_readings)
+        out = ok("recipe", "plum", "--for", "self")
+        for line in ("FOR        self: the recipe set beside the allergies and intolerances on file [matched by word: a net, not a promise]",
+                     "CLASH      almonds, on file as an allergy (hives): the recipe holds nuts (almond)",
+                     "CLASH      lactose, on file as an intolerance (bloating): the recipe holds milk",
+                     "NOT MATCHED on file, and matched to nothing in this recipe by the tool: penicillin",
+                     "RULE       name every clash before you bake, and ask"):
+            self.assertIn(line, out)
+        self.assertNotIn("NO CLASH", out)
+        self.assertNotIn("safe", out.lower())
+
+        def vegan(data):
+            data["profiles"][0]["habits"] = {"smoking": "", "alcohol": "", "diet": "vegan", "caffeine": "", "told": "2026-11-01"}
+            data["profiles"][0]["allergies"] = [{"substance": "apple", "reaction": "", "told": "2026-11-01"}]
+        copy_fixture(vegan)
+        out = ok("recipe", "apple", "cake", "--for", "self")
+        self.assertIn("CLASH      apple, on file as an allergy: the recipe holds apples, peeled, cored and diced", out)
+        self.assertIn("DIET       as on file: vegan", out)
+        self.assertIn("CLASH      that diet: the recipe holds milk; egg", out)
+        self.assertIn("--for goes with a recipe", fails("recipe", "--for", "self"))
+
+    def test_a_medicine_has_names_in_nine_languages(self):
+        self.assertEqual(core.NAME_LANGUAGES[:2], ("en", "pl"), "the first two keep their numbers: files are read by them")
+        self.assertEqual(len(interactions.NAME_KINDS), 1 + len(core.NAME_LANGUAGES))
+        self.assertEqual(interactions.NAME_KINDS[3], "also called (fr)")
+        self.assertEqual(labels.NAME_KINDS[-1], "also called (la)")
+        self.assertEqual(build_ddinter.LANGUAGES, core.NAME_LANGUAGES)
+
+
 class KitchenTests(Base):
     def test_the_recipes_are_weighed_and_say_what_is_in_them(self):
         out = ok("recipe")
-        self.assertIn("RECIPES    4 recipes, all vegetarian, all in grams", out)
+        self.assertIn("RECIPES    12 recipes, one for each month, all vegetarian, all in grams", out)
         self.assertIn("Plain shortbread ('shortbread'): makes 16 fingers; gluten (wheat); milk; untested", out)
         out = ok("recipe", "pound", "cake")
         for line in ("RECIPE     Pound cake [untested: written with care, and not yet baked from this file by anyone]", "MAKES      10 slices",

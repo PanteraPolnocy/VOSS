@@ -390,6 +390,10 @@ def _add(entry, spec, value, today):
     return "ADD", "%s: %s%s" % (name, said, " (replaces the entry on file under the same %s)" % label if replaced else "")
 
 
+# a home reading as it is read off the instrument: one figure, or two with a stroke between them
+_FIGURE_RE = re.compile(r"^\d{1,4}([.,]\d{1,2})?(/\d{1,4}([.,]\d{1,2})?)?$")
+
+
 def _check_record(name, row, said, where, today):
     """What a row of a record must hold before it is kept. Returns the words for reading it back."""
     if name == "symptom_diary":
@@ -417,6 +421,25 @@ def _check_record(name, row, said, where, today):
                 die("%s: give the range once, as range_low and range_high or as range_text" % where)
             from . import clinic
             clinic.parse_range(row["range_text"])
+    elif name == "home_readings":
+        if personal.blankish(row.get("kind")) or personal.blankish(row.get("value")):
+            die("%s needs its 'kind' and 'value' parts: what was measured, and the figure as it was read" % where)
+        if not _FIGURE_RE.match(str(row["value"]).replace(" ", "")):
+            die("%s.value is the figure as it was read, and nothing else: 128/82, 36.8, 5,4. A figure nobody could read is "
+                "not kept" % where)
+        row["kind"] = " ".join(str(row["kind"]).lower().split())
+        row["value"] = str(row["value"]).replace(" ", "")
+        if not row.get("date"):
+            row["date"] = today.isoformat()
+            said += "; date %s" % row["date"]
+        if not personal.blankish(row.get("time")):
+            row["time"] = "%02d:%02d" % core.parse_clock(row["time"], "%s.time" % where)
+    elif name == "followups":
+        if personal.blankish(row.get("what")):
+            die("%s needs its 'what' part: what to ask about again" % where)
+        if not row.get("date"):
+            row["date"] = today.isoformat()
+            said += "; date %s" % row["date"]
     return said
 
 

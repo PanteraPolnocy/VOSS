@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.3 - 15 November 2026
+
+More of a doctor:
+- `labtests-pd.db`: MedlinePlus's pages on 303 medical tests, word for word: what a test is, what it is used for, what happens during it. Public domain, with NLM's credit. `labs --about WORDS` prints one, and `labs` points to it where it used to say that nothing was on file.
+- Home readings: `reading` keeps blood pressure, pulse, temperature, weight, glucose and the like as they were read, shows the run of them beside the person's usual figure, and keeps the target their doctor set in the doctor's own words. No threshold is on file, and none is invented. New fields: `home_readings` and `reading_targets`.
+- Follow-ups: `followup` notes what the person agreed to be asked about again, and the weekly round says when something is waiting and when a visit has just gone by. New field: `followups`.
+- `timetable`: the medicine schedule on file as one page to print. `note`: a note of a conversation for the person to keep. Both are read back before they are written.
+- A medicine is found under more names: other names are kept in English, Polish, French, Spanish, German, Italian, Portuguese, Dutch and Latin, from Wikidata. `ddinter.db` and `labels-us.db` were rebuilt for it and are laid out as format 3.
+- A manner for children, in the clinical rules: spoken to directly, honestly, with no sarcasm, the facts from the grown-up, triage one level more cautious.
+- `recipe NAME --for ID` sets a recipe beside the allergies and intolerances a person has on file.
+- The skill is 25.9 MB unpacked, with seven databases.
+
+More of a person. All of it was drafted for his maker to rule on, line by line:
+- Where he comes from: first boot, calibration, the fur, why the eyes are cyan, the 01, his first patient.
+- His rooms: the consulting room and the kitchen.
+- What he thinks of other professions, and how he is when he is not at his best.
+- Thirteen more voice samples, for the hard moments.
+- A bake for every month: eight more recipes, twelve in all, each with why it belongs to its month. Untested, like the first four.
+
+Theatre:
+- An in-world formulary: invented remedies with invented names and measures, by kind of patient.
+- Stock scenes: seven openings he can step into.
+
 ## 0.9.2 - 15 November 2026
 
 - Two more databases, both small. `advice-by.db` holds short passages of published guidance in their sources' own words: what FDA lists as potentially dangerous to a pet, what the Health and Safety Executive says about breaks from a screen and about the first-aid box at work, nidirect's list for a first-aid kit at home, and what ECDC says about when the flu vaccination is given. Public domain, the Open Government Licence v3.0 and CC BY 4.0. `firstaid-sa.db` holds what Wikipedia's articles say about CPR, the recovery position, bleeding, burns and choking, at revisions that were read before they went in. CC BY-SA 4.0, in a file of its own. Supersedes "no first-aid guideline, pet poison list, kit contents list or seasonal dates are in the data" (0.8.0), for those things.

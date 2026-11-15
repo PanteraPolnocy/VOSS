@@ -20,7 +20,7 @@
   ],
   "ask_last": ["gender_identity", "hormone_therapy", "contraception", "pregnancy", "breastfeeding", "mental_health", "care_wishes"],
   "ask_when_needed": ["sex_assigned_at_birth", "screening_organs", "menstrual", "substance_use"],
-  "ask_on_request": ["share_with", "settings"],
+  "ask_on_request": ["share_with", "settings", "reading_targets"],
   "fields": [
     {"name": "call_me", "section": "who", "type": "text", "what": "the name to use", "why": "so you are addressed as you wish"},
     {"name": "title", "section": "who", "type": "text", "what": "Ms, Mr, Mx, Dr, or none", "why": "he is formal; this sets the form"},
@@ -70,13 +70,16 @@
 
     {"name": "care_contacts", "section": "care", "type": "object", "keys": {"doctor": "contact", "pharmacy": "contact", "emergency_contact": {"name": "text", "relation": "text", "phone": "phone"}}, "what": "own doctor, pharmacy, emergency contact", "why": "visit prep and the card; phone numbers only if they want them kept"},
     {"name": "appointments", "section": "care", "type": "objects", "keys": {"when": "when", "with": "text", "why": "text"}, "label": "with", "what": "upcoming visits", "why": "visit brief and reminders"},
+    {"name": "reading_targets", "section": "care", "type": "objects", "keys": {"kind": "text", "target": "text", "set_by": "text", "recorded": "date"}, "label": "kind", "stamp": "recorded", "what": "what to aim for in a home reading, in the words of the doctor who set it", "why": "home readings: a target is the doctor's, never his"},
     {"name": "care_wishes", "section": "care", "type": "text", "what": "e.g. organ donation, anything they want a doctor to know in a crisis", "why": "the card, if they choose"},
     {"name": "share_with", "section": "care", "type": "texts", "what": "which household minds may see what", "why": "default: nobody (see Confidentiality)"},
     {"name": "settings", "section": "care", "type": "object", "keys": {"seasonal_checks": "bool", "desk_notices": "bool", "weekly_round": "bool", "wellbeing_checkin": {"on": "bool", "how_often": "text"}, "reminders": {"how": "text", "when": "text", "address": "text"}}, "what": "seasonal checks, desk notices, weekly round, wellbeing check-ins (and how often), and reminders: how, when, and an address only if they want one kept", "why": "features they opted into"},
     {"name": "ignition", "section": "care", "type": "gate", "what": "identity questions and answers", "why": "the gate; the person types these in themselves"},
 
     {"name": "symptom_diary", "section": "records", "type": "records", "keys": {"date": "date", "what": "text", "severity": "number", "helped": "text", "notes": "text"}, "label": "what", "what": "date, what, severity 0 to 10, what helped, notes", "why": "visit brief"},
-    {"name": "lab_results", "section": "records", "type": "records", "keys": {"date": "date", "test": "text", "value": "number", "value_text": "text", "unit": "text", "range_low": "number", "range_high": "number", "range_text": "text", "lab": "text", "flag": "text"}, "label": "test", "what": "date, test, value, unit, the range printed on that report, lab, flag", "why": "lab trends"}
+    {"name": "lab_results", "section": "records", "type": "records", "keys": {"date": "date", "test": "text", "value": "number", "value_text": "text", "unit": "text", "range_low": "number", "range_high": "number", "range_text": "text", "lab": "text", "flag": "text"}, "label": "test", "what": "date, test, value, unit, the range printed on that report, lab, flag", "why": "lab trends"},
+    {"name": "home_readings", "section": "records", "type": "records", "keys": {"date": "date", "time": "text", "kind": "text", "value": "text", "unit": "text", "note": "text"}, "label": "kind", "what": "date, time of day, what was measured, the figure as it was read, unit, note", "why": "home readings"},
+    {"name": "followups", "section": "records", "type": "records", "keys": {"date": "when", "what": "text", "about": "text"}, "label": "what", "what": "the day to ask from, what to ask about again, and what it belongs to", "why": "follow-ups"}
   ],
   "household": [
     {"name": "pets", "type": "household", "keys": {"species": "text", "name": "text", "weight_kg": "number", "vet": "contact"}, "label": "name", "what": "species, name, rough weight, vet", "why": "pet triage"},

@@ -21,10 +21,11 @@ EXPECTED = (
     ("labels-us", "product labels of medicines sold in the United States", 12, "12 months"),
     ("advice-by", "published guidance on pet poisons, screen breaks, first-aid kits and flu vaccination", 12, "12 months"),
     ("firstaid-sa", "first aid, as Wikipedia has it", 12, "12 months"),
+    ("labtests-pd", "MedlinePlus medical tests: what a test is and what it is for", 12, "12 months"),
 )
 # the layout this version reads, which a builder writes into 'build' as "format". A file laid out for another
 # version would be read wrongly without anyone noticing, so it is not read at all
-FORMATS = {"core-pd": 1, "icd11": 2, "ddinter": 2, "labels-us": 2, "advice-by": 1, "firstaid-sa": 1}
+FORMATS = {"core-pd": 1, "icd11": 2, "ddinter": 3, "labels-us": 3, "advice-by": 1, "firstaid-sa": 1, "labtests-pd": 1}
 META_COLUMNS = ("source", "url", "retrieved", "licence")
 
 

@@ -3,6 +3,9 @@
 diary    a symptom, how bad it was from 0 to 10, what helped: one line a day, in the person's own words, for
          a doctor to read.
 result   one lab result, with the range printed beside it on its own report.
+reading  a home reading (blood pressure, pulse, temperature, weight, glucose), kept as it was read, and the
+         target the person's doctor set for it. The tool knows no threshold of its own.
+followup what the person agreed to be asked about again, and the visits that have just gone by.
 labread  a whole report at once, as it was read off a photo or a PDF. A figure nobody could read is marked
          unreadable and is not kept: it is never guessed.
 trend    each result of a test against the range of its own report. It never puts two reports on one scale,
@@ -239,6 +242,141 @@ def cmd_trend(a):
                 "trend is not a diagnosis: name the question to ask the doctor, and leave the reading to them")
 
 
+# ---- home readings
+
+READ_KINDS = {"bp": "blood pressure", "blood_pressure": "blood pressure", "pressure": "blood pressure", "heart_rate": "pulse",
+              "temp": "temperature", "blood_sugar": "glucose", "sugar": "glucose", "peak_flow": "peak flow",
+              "oxygen": "oxygen saturation", "spo2": "oxygen saturation", "saturation": "oxygen saturation"}
+# where the person's usual figure for a kind of reading sits in 'baseline_vitals', and how to say it
+USUAL = {"blood pressure": ("bp", ""), "pulse": ("resting_pulse", " a minute, at rest"), "temperature": ("temperature_c", " C")}
+PAST_DAYS = 14
+
+
+def _kind(text):
+    """What was measured, by one name: 'BP' and 'blood pressure' are the same reading."""
+    words = " ".join(str(text).lower().split())
+    return READ_KINDS.get(fold(words), words)
+
+
+def _span(rows):
+    """How far a run of readings ranged, in words. A reading of two figures has each of them told apart: the
+    lowest of one and the lowest of the other need not have been read on the same day."""
+    figures = [[Decimal(p.replace(",", ".")) for p in str(r.get("value") or "").split("/")] for r in rows]
+    if len(set(len(f) for f in figures)) != 1:
+        return ""
+    names = ("it",) if len(figures[0]) == 1 else ("the first figure", "the second")
+    parts = []
+    for n, name in enumerate(names):
+        column = [f[n] for f in figures]
+        parts.append("%s ran from %s to %s" % (name, core.plain(min(column)), core.plain(max(column))))
+    return "%s; the latest is %s" % (", ".join(parts), rows[-1]["value"])
+
+
+def cmd_reading(a):
+    data, entry = _who(a)
+    today = core.today()
+    if a.target:
+        if not a.kind:
+            die("say what the target is for: --kind \"blood pressure\" --target \"below 135/85\"")
+        value = _given((("kind", _kind(a.kind)), ("target", a.target), ("set_by", a.set_by)))
+        rebuild.save(a, entry["id"], [("add", "reading_targets", value)], today)
+        return
+    if a.value:
+        if not a.kind:
+            die("say what was measured: --kind \"blood pressure\" --value 128/82")
+        value = _given((("date", a.date), ("time", a.time), ("kind", _kind(a.kind)), ("value", a.value), ("unit", a.unit),
+                        ("note", a.note)))
+        rebuild.save(a, entry["id"], [("add", "home_readings", value)], today)
+        return
+    rows = [r for r in personal.rows(entry, "home_readings") if isinstance(r, dict)]
+    since = core.a_date(a.since, "--since", today) if a.since else None
+    if since:
+        rows = [r for r in rows if str(r.get("date") or "") >= since.isoformat()]
+    if a.kind:
+        rows = [r for r in rows if r.get("kind") == _kind(a.kind)]
+    kinds = []
+    for row in rows:
+        if row.get("kind") not in kinds:
+            kinds.append(row.get("kind"))
+    rec("READINGS", "%s: %s on file%s%s" % (entry["id"], core.plural(len(rows), "home reading"),
+                                            " of %s" % _kind(a.kind) if a.kind else "",
+                                            " since %s" % since.isoformat() if since else ""))
+    if not rows:
+        more("to add one: reading --id %s --kind \"blood pressure\" --value 128/82 --unit mmHg --time 07:30" % entry["id"])
+    usual = entry.get("baseline_vitals") if isinstance(entry.get("baseline_vitals"), dict) else {}
+    targets = dict((t.get("kind"), t) for t in personal.rows(entry, "reading_targets") if isinstance(t, dict))
+    for kind in kinds:
+        mine = [r for r in rows if r.get("kind") == kind]
+        rec("KIND", "%s: %s%s" % (kind, core.plural(len(mine), "reading"),
+                                 ", %s to %s" % (mine[0].get("date"), mine[-1].get("date")) if len(mine) > 1 else ""))
+        for row in mine[-a.max:] if a.max > 0 else []:
+            more("%s%s  %s%s%s" % (row.get("date") or "no date", " %s" % row["time"] if row.get("time") else "", row.get("value"),
+                                  " %s" % row["unit"] if row.get("unit") else "", "; %s" % row["note"] if row.get("note") else ""))
+        if len(mine) > a.max > 0:
+            more("and %s before these: --max, or --since DATE" % core.plural(len(mine) - a.max, "earlier one"))
+        if len(set(fold(r.get("unit") or "") for r in mine)) > 1:
+            rec("CHECK", "%s: the unit is not the same in every reading, so they are not set side by side" % kind)
+        elif len(mine) > 1:
+            span = _span(mine)
+            if span:
+                more("%s [derived]" % span)
+        if kind in USUAL and usual.get(USUAL[kind][0]) not in (None, ""):
+            more("their usual, as on file: %s%s%s" % (usual[USUAL[kind][0]], USUAL[kind][1],
+                                                      " (measured %s)" % usual["measured"] if usual.get("measured") else ""))
+        if kind in targets and targets[kind].get("target"):
+            t = targets[kind]
+            rec("TARGET", "%s: %s [%s, recorded %s; the tool does not judge a reading against it]" % (
+                kind, t["target"], "set by %s" % t["set_by"] if t.get("set_by") else "as their doctor worded it",
+                t.get("recorded") or "no date"))
+    rec("RULE", "the tool keeps figures and counts them. It knows no threshold, and it does not say whether a reading is good: "
+                "that is for the doctor who set the target, with the readings in front of them. A reading that worries the "
+                "person, or comes with symptoms, is a triage question first")
+
+
+# ---- follow-ups
+
+def due_followups(entry, today):
+    """What the person agreed to be asked about again, and may be asked now."""
+    return [r for r in personal.rows(entry, "followups")
+            if isinstance(r, dict) and (core.parse_date(str(r.get("date") or "")[:10]) or today) <= today]
+
+
+def past_visits(entry, today):
+    """Visits on file whose day went by in the last fortnight: [(when, with whom)]."""
+    out = []
+    for row in personal.rows(entry, "appointments"):
+        day = core.parse_date(str(row.get("when") or "")[:10]) if isinstance(row, dict) else None
+        if day and 0 < (today - day).days <= PAST_DAYS:
+            out.append((str(row.get("when")), str(row.get("with") or "")))
+    return out
+
+
+def cmd_followup(a):
+    data, entry = _who(a)
+    today = core.today()
+    if a.what:
+        value = _given((("date", a.frm), ("what", a.what), ("about", a.about)))
+        rebuild.save(a, entry["id"], [("add", "followups", value)], today)
+        return
+    rows = [r for r in personal.rows(entry, "followups") if isinstance(r, dict)]
+    due = due_followups(entry, today)
+    rec("FOLLOW UP", "%s: %s to ask about now, %s for later" % (entry["id"], core.plural(len(due), "thing"), len(rows) - len(due)))
+    for row in due:
+        rec("ASK", "%s%s [to be asked from %s]" % (row.get("what"), " (%s)" % row["about"] if row.get("about") else "", row.get("date")))
+    for row in rows:
+        if row not in due:
+            more("from %s: %s" % (row.get("date"), row.get("what")))
+    for when, who in past_visits(entry, today):
+        rec("VISIT", "%s%s has been and gone: ask how it went, once. A letter from it goes to 'decode'" % (when, ", %s" % who if who else ""))
+    if not rows:
+        more("to note one, when they agree to be asked: followup --id %s --what \"how the X-ray went\" --from 2026-12-01" % entry["id"])
+    if rows:
+        rec("DONE", "once a thing has been asked and answered: forget --id %s --field followups --match \"words of it\". What they "
+                    "tell you may belong in the diary ('diary') or on file ('intake')" % entry["id"])
+    rec("RULE", "ask once, plainly, and take the answer as it comes. \"I did not go\" is an answer too, and gets no lecture: ask "
+                "what got in the way. Nothing is asked where others can read it that the person would keep to themselves")
+
+
 def register(sub):
     p = command(sub, "file", "diary", cmd_diary,
                 "the symptom diary: what is on file, or one new entry read back before it is kept",
@@ -288,3 +426,29 @@ def register(sub):
                 ["trend --id self", "trend --id self --test tsh"])
     p.add_argument("--id", help="whose file (default: the only profile on file)")
     p.add_argument("--test", nargs="+", metavar="NAME", help="one test only")
+
+    p = command(sub, "file", "reading", cmd_reading,
+                "home readings (blood pressure, pulse, temperature, weight, glucose) over time, and the target their doctor set",
+                ["reading --id self", 'reading --id self --kind "blood pressure" --value 128/82 --unit mmHg --time 07:30',
+                 'reading --id self --kind "blood pressure" --target "below 135/85 at home" --set-by "the GP"'])
+    p.add_argument("--id", help="whose file (default: the only profile on file)")
+    p.add_argument("--kind", help="what was measured: blood pressure, pulse, temperature, weight, glucose, peak flow, or their own word")
+    p.add_argument("--value", help="the figure as it was read: 128/82, 36.8")
+    p.add_argument("--unit", help="its unit: mmHg, C, kg, mmol/l")
+    p.add_argument("--date", help="the day it was read (default: today)")
+    p.add_argument("--time", help="the time of day: 07:30")
+    p.add_argument("--note", help="anything that goes with it: after a walk, left arm")
+    p.add_argument("--target", help="what to aim for, in the words of the doctor who set it; with --kind")
+    p.add_argument("--set-by", dest="set_by", help="with --target: who set it")
+    p.add_argument("--since", help="readings from this day on")
+    p.add_argument("--max", type=int, default=SHOW_MAX, help="readings to show of each kind, the latest (default %d)" % SHOW_MAX)
+    rebuild.out_options(p)
+
+    p = command(sub, "file", "followup", cmd_followup,
+                "what the person agreed to be asked about again, what is due to be asked now, and visits that have just gone by",
+                ["followup --id self", 'followup --id self --what "how the X-ray went" --from 2026-12-01 --about "the chest X-ray"'])
+    p.add_argument("--id", help="whose file (default: the only profile on file)")
+    p.add_argument("--what", help="what to ask about again, in a line")
+    p.add_argument("--from", dest="frm", metavar="DATE", help="the day to ask from (default: today)")
+    p.add_argument("--about", help="what it belongs to: a visit, a test, a new medicine")
+    rebuild.out_options(p)

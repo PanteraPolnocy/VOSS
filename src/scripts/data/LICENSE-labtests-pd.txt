@@ -1,0 +1,21 @@
+labtests-pd.db: where its contents come from, and on what terms
+
+MedlinePlus medical tests: what a test is, what it is used for, why someone may need it, what happens during
+it, how to prepare, its risks, and what results may mean, in MedlinePlus's own words.
+National Library of Medicine (NLM), United States. https://medlineplus.gov/lab-tests/
+
+Public domain. NLM's own words: "Works produced by the federal government are not copyrighted under U.S. law.
+You may reproduce, redistribute, and link freely to non-copyrighted content", and among the content that is
+in the public domain it lists "Medical test information".
+(https://medlineplus.gov/about/using/usingcontent/)
+
+Credit, to be kept with every answer drawn from it: Source: MedlinePlus, National Library of Medicine
+NLM does not endorse this skill. The file holds the pages as they stood on the day they were retrieved
+('sources' prints the day): it is not the current MedlinePlus, and MedlinePlus is.
+
+Not in this file: the references at the foot of each page, the links to other pages, and the pictures.
+Changed in the making of this file: HTML turned into plain text; curly quotes and long dashes made straight.
+No wording was changed.
+
+The pages were written for readers in the United States. They say what a test is; they say nothing about
+any one person's result, which is read against the range printed on that person's own report.

@@ -31,6 +31,7 @@ python tools/build_icd11.py --fetch       downloads WHO's release file and build
 python tools/build_icd11.py --verify      checks that icd11.db still gives WHO's file back, byte for byte
 python tools/build_ddinter.py --fetch     downloads DDInter's files and the medicine names, and builds ddinter.db again
 python tools/build_labels.py --fetch      downloads openFDA's label files (1.8 GB) and builds labels-us.db again
+python tools/build_tests.py --fetch       downloads MedlinePlus's medical test pages (some three hundred) and builds labtests-pd.db again
 python tools/build_advice.py --fetch      downloads the pages behind advice-by.db, with their terms, and builds it again
 python tools/build_firstaid.py --fetch    downloads the Wikipedia revisions that were read, and builds firstaid-sa.db again
 ```

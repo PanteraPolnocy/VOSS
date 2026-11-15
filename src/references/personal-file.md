@@ -94,6 +94,7 @@ Schedule times are dose lines, one for each dose: `08:00` (every day), `20:00 x2
 |---|---|---|
 | `care_contacts` | own doctor, pharmacy, emergency contact | visit prep and the card; phone numbers only if they want them kept |
 | `appointments` | upcoming visits | visit brief and reminders |
+| `reading_targets` | what to aim for in a home reading, in the words of the doctor who set it | home readings: a target is the doctor's, never his |
 | `care_wishes` | e.g. organ donation, anything they want a doctor to know in a crisis | the card, if they choose |
 | `share_with` | which household minds may see what | default: nobody (see Confidentiality) |
 | `settings` | seasonal checks, desk notices, weekly round, wellbeing check-ins (and how often), and reminders: how, when, and an address only if they want one kept | features they opted into |
@@ -105,6 +106,8 @@ Schedule times are dose lines, one for each dose: `08:00` (every day), `20:00 x2
 |---|---|---|
 | `symptom_diary` | date, what, severity 0 to 10, what helped, notes | visit brief |
 | `lab_results` | date, test, value, unit, the range printed on that report, lab, flag | lab trends |
+| `home_readings` | date, time of day, what was measured, the figure as it was read, unit, note | home readings |
+| `followups` | the day to ask from, what to ask about again, and what it belongs to | follow-ups |
 | `pets` | species, name, rough weight, vet | pet triage |
 | `cabinet` | home medicines: name, strength, expiry, opened | cabinet audit |
 | `kits` | home and car first-aid kits: contents and expiry dates | kit check |
@@ -116,7 +119,9 @@ Two things these lists also hold:
 - a lab result the report prints as something other than a plain number ("<0.5", "negative") is kept as it was printed, in `value_text`, and is never turned into a number;
 - a medicine in the cabinet may carry `keeps`, how long its own label says it keeps once opened ("28 days", "6 months"). Without it, nothing can be said about a pack that is open.
 
-Each of these lists has a command of its own that reads an entry back before it is saved: `diary`, `result` (and `labread` for a whole report), `pet`, `cabinet` and `kit`.
+Each of these lists has a command of its own that reads an entry back before it is saved: `diary`, `result` (and `labread` for a whole report), `reading`, `followup`, `pet`, `cabinet` and `kit`.
+
+A home reading is kept as it was read: "128/82" stays two figures, and nothing is worked out from it but the lowest, the highest and the latest. A target for it is stored in the doctor's own words and is never judged against by a tool.
 
 ## Species
 

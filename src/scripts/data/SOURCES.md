@@ -4,11 +4,12 @@ Every table the tools read is in this folder. Nothing is fetched while the tools
 
 A database sits here as `<name>.db` with its licence text beside it as `LICENSE-<name>.txt`. It carries its own record of source, address, retrieval date and licence, and `python scripts/voss.py sources` prints all of that, with each file's age. One database per licence family, so that the terms of one source never reach another. Every one of them is optional: take a file and its licence text out, and the commands that read it say that nothing is installed, and the rest carry on.
 
-The terms of every source below were read on that source's own page on 15 November 2026. Where terms could change under a file (ICD-11, DDInter, openFDA, the pages behind `advice-by.db`, Wikipedia), its builder reads them again each time it fetches, and stops if they are no longer the ones that were read.
+The terms of every source below were read on that source's own page on 15 November 2026. Where terms could change under a file (ICD-11, DDInter, openFDA, MedlinePlus's medical tests, the pages behind `advice-by.db`, Wikipedia), its builder reads them again each time it fetches, and stops if they are no longer the ones that were read.
 
 | File | What it holds | Source | Licence |
 |---|---|---|---|
 | `core-pd.db` | health topic summaries and short definitions in plain English; emergency numbers by country | MedlinePlus health topic XML and "Definitions of Health Terms" XML (National Library of Medicine); Wikidata, property P2852; one fact from the European Commission's page on 112 | public domain and CC0: see below, and `LICENSE-core-pd.txt` |
+| `labtests-pd.db` | what a medical test is, what it is used for and what happens during it, for about three hundred tests | MedlinePlus medical test pages (National Library of Medicine) | public domain: see below, and `LICENSE-labtests-pd.txt` |
 | `icd11.db` | ICD-11 for Mortality and Morbidity Statistics: every code and grouping with its title and URI, whole and unchanged | the "Simple Tabulation" release file of the World Health Organization | CC BY-ND 3.0 IGO with WHO's terms of use: see below, and `LICENSE-icd11.txt`. Not under the code's licence |
 | `ddinter.db` | pairs of medicines that are known to interact, each with a severity grade; other names for the medicines | DDInter 2.0, its download files; Wikidata for the other names | CC BY-NC-SA 4.0 (non-commercial, share-alike): see below, and `LICENSE-ddinter.txt`. Not under the code's licence. The names are CC0 |
 | `labels-us.db` | product labels of medicines sold in the United States: what each is for, its warnings, side effects and interactions, in the label's own words; other names for the substances | openFDA drug labels (United States Food and Drug Administration); Wikidata for the other names | CC0: see below, and `LICENSE-labels-us.txt` |
@@ -31,11 +32,21 @@ Built by `tools/build_core.py`, which names every download.
 - **MedlinePlus health topic summaries.** Public domain. NLM's page "Linking to and Using Content from MedlinePlus" (https://medlineplus.gov/about/using/usingcontent/) says: "Works produced by the federal government are not copyrighted under U.S. law. You may reproduce, redistribute, and link freely to non-copyrighted content", and lists the "Summaries on health topic pages" among it. It asks for the credit "Source: MedlinePlus, National Library of Medicine", which every answer from this file carries. The XML page (https://medlineplus.gov/xml.html) says the data sets are ones "you are welcome to download and use".
 - **MedlinePlus "Definitions of Health Terms".** Five small XML files on the same page, each term with the NIH body it comes from. Same terms, same credit.
 - **Medical Subject Headings (MeSH)** arrive with the topics and are used as names to find a topic by. NLM's terms for MeSH (https://www.nlm.nih.gov/databases/download/terms_and_conditions_mesh.html) ask that NLM be named as the source, that no endorsement be implied, and that a copy which is not current says so: the tool names NLM, and prints the day the file was retrieved.
-- **Not taken, on purpose:** the links to other organisations' pages, the Spanish topics, and every picture. MedlinePlus's pages on medical tests are public domain as well, but they come as pages only and not as a file, so they were not taken either. **Never to be taken:** the A.D.A.M. Medical Encyclopedia and the ASHP drug monographs, which the same page says are copyrighted and licensed to MedlinePlus alone.
+- **Not taken, on purpose:** the links to other organisations' pages, the Spanish topics, and every picture. MedlinePlus's pages on medical tests are in a file of their own, `labtests-pd.db`. **Never to be taken:** the A.D.A.M. Medical Encyclopedia and the ASHP drug monographs, which the same page says are copyrighted and licensed to MedlinePlus alone.
 - **Wikidata.** Emergency numbers by country, property P2852, with what each number is for where Wikidata says. "All structured data from the main, Property, Lexeme, and EntitySchema namespaces is available under the Creative Commons CC0 License" (https://www.wikidata.org/wiki/Wikidata:Copyright). The numbers are passed through as listed and were not verified one by one; the tool says so each time.
 - **European Commission.** One fact, with its source: 112 reaches an ambulance, the fire brigade or the police anywhere in the European Union (https://digital-strategy.ec.europa.eu/en/policies/112). No text of the page is reproduced. The build checks at every fetch that the page still says it.
 
 Changed in the making: a summary's HTML becomes plain text, and curly quotes and long dashes become straight ones. No wording is changed.
+
+## labtests-pd.db
+
+Built by `tools/build_tests.py`. MedlinePlus publishes its medical tests as pages and not as a file, so the builder reads the list on https://medlineplus.gov/lab-tests/ and then each page in turn, a little over three hundred of them.
+
+- **Public domain.** The same page of NLM's that covers the health topics (https://medlineplus.gov/about/using/usingcontent/) lists "Medical test information" among the content that is not copyrighted, and asks for the same credit, "Source: MedlinePlus, National Library of Medicine", which every answer from this file carries. The builder downloads that page too, and stops if it no longer says so.
+- **What is taken:** a page's title, the other names it gives for the test, and its text from the first heading down to the references: what the test is, what it is used for, why someone may need it, what happens during it, how to prepare, its risks, what results may mean.
+- **What is left out:** the references at the foot of each page, the links to other pages, and the pictures.
+- **Whom it was written for.** Readers in the United States. A page is about a test, and never about one person's result: that is read against the range printed on the person's own report, and the tools say so.
+- **Changed in the making:** HTML became plain text, and curly quotes and long dashes became straight ones. No wording was changed.
 
 ## icd11.db
 
@@ -60,7 +71,7 @@ Built by `tools/build_ddinter.py`. DDInter's own terms page (https://ddinter2.sc
 - **What was changed:** the eight download files were merged into one list of pairs, a pair listed twice is stored once, the grade is stored as a number, and the pairs are stored packed, each medicine with the numbers of the medicines it is paired with. No pair and no grade was added, removed or altered.
 - **How current it is.** DDInter's paper says of its reading: "For DDInter 2.0, we collected publications between March 2021 and May 2023." Whatever was found out about a pair after that is not in it, however new the copy.
 - **What DDInter's downloads hold, and what they do not.** The paper counts 302,516 interaction records between 2,310 medicines, with 857 records on food, 8,359 on illnesses and 6,033 on duplicated treatments. The downloads hold less. Pairs of medicines with a grade (Major, Moderate, Minor, Unknown): 160,235 pairs of 1,939 medicines on the day of the build. No account of why two medicines interact or what to do about it, and nothing on food, illnesses or duplicated treatments: those are on DDInter's website only, and are not taken from it. And only eight of the fourteen ATC groups have a download (A, B, D, H, L, P, R, V), so a pair of two medicines from the other groups is not in the file at all. The tools say this every time, and never let "not listed" read as "safe". The files also show which medicines are outside those groups: one whose pairs are spread over several files, with no file holding them all, is in none of the groups that have a download (903 of the 1,939). A pair of two such medicines is reported as out of the file's reach, since it could not be there whether or not the two interact.
-- **Other names.** DDInter has one name for each medicine, sometimes the American one. So that "paracetamol" finds "Acetaminophen", the English and Polish labels and aliases of Wikidata items that carry an ATC code (property P267, CC0) are added where an item's English name is the DDInter name and no other item's. They were matched by name, not checked one by one, and the tools say what each name was read as.
+- **Other names.** DDInter has one name for each medicine, sometimes the American one. So that "paracetamol" finds "Acetaminophen", the labels and aliases, in nine languages (English, Polish, French, Spanish, German, Italian, Portuguese, Dutch and Latin), of Wikidata items that carry an ATC code (property P267, CC0) are added where an item's English name is the DDInter name and no other item's. They were matched by name, not checked one by one, and the tools say what each name was read as.
 
 ## labels-us.db
 
@@ -118,6 +129,7 @@ A copy goes out of date. Each database has a limit, counted from the day the old
 | File | Warn when older than |
 |---|---|
 | `core-pd.db` | 12 months |
+| `labtests-pd.db` | 12 months |
 | `labels-us.db` | 12 months |
 | `ddinter.db` | 24 months, or when a new DDInter release appears |
 | `advice-by.db` | 12 months |

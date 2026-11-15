@@ -16,7 +16,7 @@ days, and knows nothing of whether a medicine is still good.
 from datetime import timedelta
 from decimal import Decimal
 
-from . import advice, core, doses, personal, rebuild, record, remind
+from . import advice, core, doses, journal, personal, rebuild, record, remind
 from .core import command, die, fold, more, one_line, rec
 
 SOON_DAYS = 30
@@ -283,6 +283,15 @@ def cmd_round(a):
             rec("VISIT", "%s%s%s" % (when, ", %s" % row["with"] if row.get("with") else "", ": %s" % row["why"] if row.get("why") else ""))
             more("'visit' has what to ask and what to bring")
             said += 1
+    due = journal.due_followups(entry, today)
+    if due:
+        # what they are about is not said in a round, which may be read where others see it
+        rec("FOLLOW UP", "%s to ask about again: 'followup --id %s' lists %s" % (
+            core.plural(len(due), "thing"), entry["id"], "it" if len(due) == 1 else "them"))
+        said += 1
+    for when, who in journal.past_visits(entry, today):
+        rec("PAST", "the visit of %s%s: ask how it went, once" % (when, ", %s" % who if who else ""))
+        said += 1
     for row in _shared(data, "cabinet"):
         last, state = _expiry(row.get("expiry"), today)
         if state:

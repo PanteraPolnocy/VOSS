@@ -25,7 +25,7 @@ STEM = "labels-us"
 WHAT = "what a medicine is and what its label says"
 # The file numbers what it can: a type, a section and a kind of name are kept as their place in these lists
 TYPES = ("prescription", "over the counter")
-NAME_KINDS = ("substance", "also called (en)", "also called (pl)")
+NAME_KINDS = ("substance",) + tuple("also called (%s)" % lang for lang in core.NAME_LANGUAGES)
 KINDS = ("boxed warning", "purpose", "active ingredient", "uses", "do not use", "warnings", "side effects", "interactions",
          "pregnancy and other groups", "for patients")
 # what 'med' prints without being asked, and what 'sidefx' searches. The builder packs each set side by side,

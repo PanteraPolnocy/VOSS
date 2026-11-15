@@ -20,6 +20,9 @@ SKILL = os.path.dirname(SCRIPTS)
 DATA = os.path.join(SCRIPTS, "data")
 
 KEY_WIDTH = 10
+# the languages a medicine's other names are kept in, in the order the databases number them: English, then
+# the ones added since, and Latin, which is what many registers of medicines name a substance in
+NAME_LANGUAGES = ("en", "pl", "fr", "es", "de", "it", "pt", "nl", "la")
 DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 MAX_TEXT = 2000
 

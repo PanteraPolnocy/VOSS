@@ -22,7 +22,7 @@ data is used:
 
 Names. DDInter calls each medicine by one name, sometimes the American one (acetaminophen) and sometimes
 the international one (salbutamol). So that a medicine is found under the name a person knows, other names
-for the same substance are taken from Wikidata (CC0): the English and Polish labels and aliases of items
+for the same substance are taken from Wikidata (CC0): the labels and aliases, in English and eight more languages, of items
 that carry an ATC code, matched to a DDInter name letter for letter. Where a name matches more than one
 item, nothing is taken. The tool always says which DDInter entry a name was read as.
 
@@ -60,7 +60,7 @@ ID_RE = re.compile(r"^DDInter(\d+)$")
 MIN_PAIRS, MIN_DRUGS, MIN_NAMES = 100000, 1500, 2500
 WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 NAMES_FILE = "drug-names.wikidata.json"
-LANGUAGES = ("en", "pl")
+LANGUAGES = core.NAME_LANGUAGES
 PACE, MAX_PACE = 0.5, 6.0
 MIN_ALIAS, MAX_ALIAS = 3, 60
 
@@ -151,7 +151,7 @@ def api(params):
 
 
 def fetch_names(path):
-    """The labels and aliases, in English and Polish, of every Wikidata item that carries an ATC code."""
+    """The labels and aliases, in the languages of core.NAME_LANGUAGES, of every Wikidata item that carries an ATC code."""
     found, more = [], {}
     while True:
         got = api(dict({"action": "query", "list": "search", "srnamespace": 0, "srlimit": 500, "srprop": "",
@@ -194,7 +194,7 @@ def fetch_names(path):
                 say("wikidata  %d of %d" % (min(i + 50, len(todo)), len(todo)))
     finally:
         keep()
-    doc = {"what": "English and Polish labels and aliases of the Wikidata items that carry an ATC code (property P267). "
+    doc = {"what": "Labels and aliases, in %s, of the Wikidata items that carry an ATC code (property P267). " % ", ".join(LANGUAGES) +
                    "Read through the API by tools/build_ddinter.py.",
            "items": dict((q, done[q]) for q in found if q in done)}
     dbtools.save(path, (json.dumps(doc, ensure_ascii=True, indent=0) + "\n").encode("utf-8"),
@@ -366,7 +366,7 @@ def build(a):
                         [(number, interactions.pack_partners(with_whom[number])) for number in sorted(with_whom)])
         counts = dict((word, sum(1 for v in pairs.values() if v == n)) for word, n in LEVELS.items())
         size = dbtools.finish(con, path, core.today(), facts=(
-            ("format", 2), ("groups", "".join(groups)), ("drugs", len(drugs)), ("pairs", len(pairs)), ("major", counts["Major"]),
+            ("format", 3), ("groups", "".join(groups)), ("drugs", len(drugs)), ("pairs", len(pairs)), ("major", counts["Major"]),
             ("moderate", counts["Moderate"]), ("minor", counts["Minor"]), ("unknown", counts["Unknown"]),
             ("named-through-wikidata", matched), ("out-of-reach", sum(1 for v in reach.values() if not v)),
             ("terms-read", terms_day.isoformat())))
