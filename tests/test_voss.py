@@ -6,6 +6,11 @@ Run:  python tests/test_voss.py            (from the repository root)
 The clock is pinned with VOSS_NOW, and made-up patients (tests/fixtures/personal.test.json) stand in for
 the personal file, so results do not depend on the day or on anyone's real data. Files the tools write
 (calendar files, rebuilt personal files, packages) go to a temporary folder that is removed afterwards.
+
+Most tests run with no database at all: VOSS_DATA points at an empty folder, so nothing depends on what
+data happens to ship. The tests of 'term' and of the emergency numbers build a small database of their own
+from the made-up files in tests/fixtures/core, with the real builder. A few at the end look at the
+databases that ship, and are skipped where there are none.
 """
 import atexit
 import contextlib
@@ -41,15 +46,23 @@ NOW = "2026-11-15T10:30"
 os.environ["VOSS_NOW"] = NOW
 os.environ["VOSS_PERSONAL"] = FIXTURE
 os.environ["VOSS_OUTPUTS"] = OUTPUTS
-for name in ("VOSS_DATA", "VOSS_HOUSEHOLD"):
-    os.environ.pop(name, None)
+NO_DATA = os.path.join(OUTPUTS, "no-data")
+os.makedirs(NO_DATA)
+os.environ["VOSS_DATA"] = NO_DATA
+os.environ.pop("VOSS_HOUSEHOLD", None)
+os.environ.pop("VOSS_BUILD_AGENT", None)
 
 import voss  # noqa: E402
 import vosslib  # noqa: E402
-from vosslib import clinic, core, desk, doses, gate, ical, index, library, personal, record  # noqa: E402
+from vosslib import clinic, core, desk, doses, gate, ical, index, library, personal, record, store, terms  # noqa: E402
 
 import build  # noqa: E402
+import build_core  # noqa: E402
 import build_index  # noqa: E402
+import dbtools  # noqa: E402
+
+CORE = os.path.join(FIXTURES, "core")
+REAL_DATA = os.path.join(SCRIPTS, "data")
 
 ANSWERS = ("kittiwake", "pendle", "bottle", "butelkowa", "cello")
 UNCHOSEN = ("travel", "secondopinion", "opinion", "logbook", "casebook", "screening", "booster", "sleep", "sleepdiary")
@@ -137,11 +150,51 @@ def make_db(folder, stem, built="2026-11-10", retrieved="2026-11-09", meta=True,
     return path
 
 
+@contextlib.contextmanager
+def small_samples():
+    """The builder refuses a topic file with a handful of topics in it, as a download cut short. The made-up
+    files are a handful on purpose, so that guard is lowered while they are read."""
+    keep = build_core.MIN_TOPICS, build_core.MIN_COUNTRIES
+    build_core.MIN_TOPICS, build_core.MIN_COUNTRIES = 3, 3
+    try:
+        yield
+    finally:
+        build_core.MIN_TOPICS, build_core.MIN_COUNTRIES = keep
+
+
+def build_sample(out, *extra, **files):
+    """Run the real builder on the made-up files in tests/fixtures/core; returns what it printed."""
+    named = {"topics": "mplus_topics_sample.xml", "definitions": "sampledefinitions.xml", "numbers": "emergency.sample.json",
+             "eu-page": "eu-112.sample.html"}
+    named.update(files)
+    args = []
+    for option, name in sorted(named.items()):
+        args += ["--" + option, name if os.path.isabs(name) or dbtools.is_url(name) else os.path.join(CORE, name)]
+    said = io.StringIO()
+    with small_samples(), contextlib.redirect_stdout(said):
+        build_core.main(args + ["--out", out] + list(extra))
+    return said.getvalue()
+
+
+_sample = {}
+
+
+def sample_data():
+    """The folder that holds the small core database, built once for the whole run."""
+    if "folder" not in _sample:
+        folder = os.path.join(OUTPUTS, "sample-data")
+        os.makedirs(folder)
+        clock()
+        _sample["said"] = build_sample(folder, "--retrieved", "2026-11-10")
+        _sample["folder"] = folder
+    return _sample["folder"]
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         clock()
         use_personal(FIXTURE)
-        os.environ.pop("VOSS_DATA", None)
+        os.environ["VOSS_DATA"] = NO_DATA
         os.environ.pop("VOSS_HOUSEHOLD", None)
 
     tearDown = setUp
@@ -213,7 +266,7 @@ class SourcesTests(Base):
 
     def test_nothing_installed(self):
         out = ok("sources")
-        self.assertIn("SOURCES    no database installed (looked in scripts/data)", out)
+        self.assertIn("SOURCES    no database installed (looked in ", out)
         for stem in ("core-pd", "icd11", "ddinter"):
             self.assertIn("NOT HERE   %s.db" % stem, out)
         self.assertIn("nothing is fetched while the tools run", out)
@@ -290,7 +343,7 @@ class ClinicTests(Base):
         self.assertIn("LEVEL 1    Emergency now: call the emergency number.", out)
         self.assertIn("no wit and no ears", out)
         self.assertIn("The marker is [mood: serious] [voss-serious.webp]", out)
-        self.assertIn("NUMBERS    none on file yet", out)
+        self.assertIn("NUMBERS    none on file: core-pd.db is not installed", out)
 
     def test_triage_options(self):
         out = ok("triage", "--level", "2")
@@ -1323,15 +1376,17 @@ class BuildTests(Base):
         os.remove(os.path.join(src, "images", "voss-baking.webp"))
         with open(os.path.join(src, "scripts", "vosslib", "extra.py"), "w", encoding="utf-8") as f:
             f.write("# caf\u00e9\n")
-        make_db(os.path.join(src, "scripts", "data"), "core-pd", licence=False)
+        make_db(os.path.join(src, "scripts", "data"), "region-zz", licence=False)
+        with open(os.path.join(src, "scripts", "data", "half-built.db.part"), "wb") as f:
+            f.write(b"left behind by a build that stopped")
         problems, _ = self.quiet(build.build_public, root)
         text = "\n".join(problems)
         for expect in ("versions disagree", "personal.template.json has 'call_me' filled in", ".gitignore does not list src/references/household.md",
                        "references/features.md line 1 col", "SKILL.md points at references/no-such-file.md",
                        "images/voss-smug.webp is not in images/manifest.json", "names voss-baking.webp, which is not in images/",
-                       "scripts/vosslib/extra.py has non-ASCII bytes", "scripts/data/core-pd.db has no LICENSE-core-pd.txt beside it",
-                       "scripts/data/SOURCES.md does not list core-pd.db among the files that are installed",
-                       "selftest failed in the public build"):
+                       "scripts/vosslib/extra.py has non-ASCII bytes", "scripts/data/region-zz.db has no LICENSE-region-zz.txt beside it",
+                       "scripts/data/SOURCES.md does not list region-zz.db among the files that are installed",
+                       "scripts/data/half-built.db.part is a half-built database", "selftest failed in the public build"):
             self.assertIn(expect, text)
         self.assertFalse(os.path.exists(os.path.join(root, "dist", "voss.zip")))
 
@@ -1370,12 +1425,18 @@ class PackageTests(Base):
             f.write("A \u201cdraft\u201d \u2013 with the wrong quotes.\n")
         here = os.getcwd()
         os.chdir(folder)
+        # the examples name real topics and real countries, so they run against the data that ships
+        shipped = os.path.isfile(os.path.join(REAL_DATA, "core-pd.db"))
+        if shipped:
+            os.environ.pop("VOSS_DATA")
         try:
             for group, name, summary, examples in registry:
                 self.assertTrue(summary and not summary.endswith(".") and len(summary) <= 125, name)
                 self.assertTrue(examples, "%s has no examples" % name)
                 for ex in examples:
                     args = shlex.split(ex)
+                    if not shipped and (name == "term" or "--country" in args):
+                        continue
                     if "CODE" in args:
                         probe = [a for a in args if a not in ("--json", "--package")]
                         at = probe.index("--confirm")
@@ -1439,7 +1500,7 @@ class PackageTests(Base):
     def test_only_the_chosen_commands_exist(self):
         names = [c["name"] for c in index.load()["commands"]]
         self.assertEqual(sorted(names), sorted(["boot", "theatre", "sources", "check", "selftest", "tools", "triage", "visit", "labs",
-                                                "schedule", "refill", "ignition", "profile", "intake", "rebuild", "forget"]))
+                                                "term", "schedule", "refill", "ignition", "profile", "intake", "rebuild", "forget"]))
         for name in names:
             for word in UNCHOSEN:
                 self.assertNotIn(word, name)
@@ -1528,11 +1589,13 @@ class IndexTests(Base):
                                 ("who is speaking", "ignition")):
             got = ok("tools", "--find", *question.split()).splitlines()[1].split()[0]
             self.assertEqual(got, first, question)
+        for question, first in (("what does this word mean", "term"), ("which number do I call abroad", "triage")):
+            self.assertEqual(ok("tools", "--find", *question.split()).splitlines()[1].split()[0], first, question)
         self.assertIn("no command answers that", ok("tools", "--find", "zzzzqq"))
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("16 commands.", ok("tools"))
+        self.assertIn("17 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -1590,6 +1653,466 @@ class SmallThingsTests(Base):
         self.assertTrue(core.within(SCRIPTS, SRC) and not core.within(SRC, SCRIPTS))
         self.assertTrue(core.inside_repository(SCRIPTS))
         self.assertFalse(core.inside_repository(OUTPUTS))
+
+
+class StoreTests(Base):
+    def test_text_goes_in_and_comes_out_the_same(self):
+        raw = ("Plain prose squeezes well, and the same words come round again. " * 300).encode("utf-8")
+        self.assertIn(store.ZLIB, store.available())
+        for codec in store.available():
+            used, packed = store.pack(raw, codec)
+            self.assertEqual(used, codec)
+            self.assertEqual(store.unpack(packed, used), raw, codec)
+            if codec != store.RAW:
+                self.assertLess(len(packed), len(raw) // 10, codec)
+        used, packed = store.pack(raw, store.SMALLEST)
+        self.assertEqual(len(packed), min(len(store.pack(raw, c)[1]) for c in store.available()))
+        self.assertEqual(store.unpack(packed, used), raw)
+        self.assertEqual(store.pack(b"ab", store.ZLIB), (store.RAW, b"ab"), "what does not shrink is kept as it is")
+
+    def test_a_piece_is_found_again_by_its_address(self):
+        con = sqlite3.connect(":memory:")
+        texts = dbtools.Texts(con, block_bytes=100)
+        first = texts.add("alpha " * 5)
+        second = texts.add("z\u00f3\u0142\u0107 " * 5)
+        again = texts.add("alpha " * 5)
+        third = texts.add("gamma " * 20)
+        raw, packed = texts.close()
+        self.assertEqual(first, (1, 0, 30))
+        self.assertEqual(second, (1, 30, 40))
+        self.assertEqual(again, first, "the same text is stored once")
+        self.assertEqual(third, (2, 0, 120))
+        self.assertEqual(texts.add(""), (None, 0, 0))
+        self.assertEqual(raw, 190)
+        reader = store.Reader(con)
+        self.assertEqual(reader.text(*first), "alpha " * 5)
+        self.assertEqual(reader.text(*second), "z\u00f3\u0142\u0107 " * 5)
+        self.assertEqual(reader.text(*third), "gamma " * 20)
+        self.assertEqual(reader.text(None, 0, 0), "")
+        self.assertEqual(sum(len(block) for _, block in reader.everything()), raw)
+        for bad in ((99, 0, 5), (1, 60, 500)):
+            with self.assertRaises(core.VossError):
+                reader.text(*bad)
+        con.close()
+
+    def test_a_damaged_or_unknown_block_says_so(self):
+        for codec in store.available():
+            if codec == store.RAW:
+                continue
+            with self.assertRaises(core.VossError) as caught:
+                store.unpack(b"this is not packed text", codec)
+            self.assertIn("damaged", str(caught.exception))
+        with self.assertRaises(core.VossError) as caught:
+            store.unpack(b"x", "a codec nobody has heard of")
+        self.assertIn("newer toolkit", str(caught.exception))
+        kept = store.lzma
+        try:
+            store.lzma = None
+            with self.assertRaises(core.VossError) as caught:
+                store.unpack(b"x", store.LZMA)
+            self.assertIn("which this Python was built without", str(caught.exception))
+            self.assertNotIn(store.LZMA, store.available())
+        finally:
+            store.lzma = kept
+
+
+class CoreBuildTests(Base):
+    """tools/build_core.py, run on the made-up files in tests/fixtures/core."""
+
+    SUMMARY = "\n".join([
+        "## What is a wobbly knee?", "",
+        "A wobbly knee is a made-up condition that the tests use. It isn't real - nothing here is advice, and it says \"so\" itself.", "",
+        "## What are the signs?", "",
+        "- A knee that wobbles", "- Trouble on stairs:", "  - going up", "  - going down", "",
+        "If the knee gives way completely, call 911.", "",
+        "Grade | Wobble", "1 | a little", "2 | a lot", "",
+        "NIH: National Institute of Made-Up Things"])
+
+    def test_a_summary_becomes_plain_text_and_nothing_else_is_taken(self):
+        with small_samples():
+            topics, generated = build_core.read_topics(os.path.join(CORE, "mplus_topics_sample.xml"))
+        self.assertEqual(generated, "2026-11-10")
+        self.assertEqual([t["id"] for t in topics], [16, 13, 14, 15, 11], "English topics only, by title")
+        knee = topics[-1]
+        self.assertEqual(knee["text"], self.SUMMARY)
+        self.assertEqual((knee["title"], knee["created"], knee["institute"]),
+                         ("Wobbly Knee", "2001-03-04", "National Institute of Made-Up Things"))
+        self.assertEqual((knee["also"], knee["see"], knee["mesh"]), (["WK", "Knee wobble"], ["Knee Instability"], ["Knee Instability"]))
+        self.assertEqual(knee["groups"], ["Bones, Joints and Muscles", "Made-Up Conditions"])
+        self.assertEqual(knee["related"], [13, 999])
+        self.assertEqual(topics[0]["text"], "")
+        everything = json.dumps(topics)
+        for left_out in ("picture", "Somebody", "Other people", "Rodilla", "example.org/made-up"):
+            self.assertNotIn(left_out, everything)
+        self.assertEqual(build_core.plain("<p>one<br>two</p><ol><li>a</li></ol><script>x()</script>"), "one\ntwo\n\n- a")
+        self.assertEqual(build_core.iso_date("1/2/2015"), "2015-01-02")
+        self.assertEqual(build_core.iso_date("yesterday"), "")
+
+    def test_definitions(self):
+        got = build_core.read_definitions([os.path.join(CORE, "sampledefinitions.xml")])
+        self.assertEqual([(d["title"], d["origin"]) for d in got],
+                         [("Wobble Index (WI)", "National Institute of Made-Up Things"), ("Wobbly Knee", "NIH Made-Up")])
+        self.assertEqual(got[0]["text"], "The wobble index says how much a made-up knee wobbles. It is not real.")
+        self.assertEqual(got[1]["page"], "Definitions of Health Terms: Made-Up Things")
+
+    def test_numbers_are_put_in_the_order_to_say_them(self):
+        with small_samples():
+            countries, left = build_core.read_numbers(os.path.join(CORE, "emergency.sample.json"))
+        ems, fire = "emergency medical services", "fire department"
+        self.assertEqual(sorted(countries), ["AU", "CN", "FR", "NZ", "PL", "US"])
+        self.assertEqual(countries["PL"][1], [("112", "", False), ("999", ems, False), ("997", "police", False), ("998", fire, False)])
+        self.assertEqual(countries["FR"][1], [("112", "", True), ("15", ems, False), ("17", "police", False)],
+                         "a member state of the EU has 112, whether or not the source lists it")
+        self.assertEqual(countries["AU"][1], [("000", "", False), ("112", "alternative", False), ("106", "teleprinter", False)])
+        self.assertEqual(countries["CN"][1], [("120", ems, False), ("119", fire, False), ("110", "police", False)])
+        self.assertEqual((countries["CN"][0], countries["CN"][2]), ("China", "People's Republic of China"))
+        self.assertEqual(countries["US"][0], "United States")
+        self.assertEqual(left, ["ZQ: a number without digits, left out"])
+
+    def test_the_database_it_writes(self):
+        folder = sample_data()
+        said = _sample["said"]
+        for line in ("5 health topics, 2 definitions, 6 countries with emergency numbers",
+                     "retrieved: topics 2026-11-10 (file generated 2026-11-10), definitions 2026-11-10, numbers 2026-11-10",
+                     "112 added from the EU page, where Wikidata does not list it: FR", "NOTE ZQ: a number without digits, left out"):
+            self.assertIn(line, said)
+        self.assertEqual(sorted(os.listdir(folder)), ["LICENSE-core-pd.txt", "core-pd.db"])
+        info = library.read(os.path.join(folder, "core-pd.db"))
+        self.assertEqual(info["problems"], [])
+        self.assertEqual(info["built"], date(2026, 11, 15))
+        self.assertEqual([s["retrieved"] for s in info["sources"]], [date(2026, 11, 10)] * 4)
+        self.assertEqual([s["credit"] for s in info["sources"]], [build_core.CREDIT, build_core.CREDIT, "", ""])
+        with open(os.path.join(folder, "LICENSE-core-pd.txt"), encoding="utf-8") as f:
+            licence = f.read()
+        for must in ("Source: MedlinePlus, National Library of Medicine", "CC0 1.0", "not verified one by one", "A.D.A.M."):
+            self.assertIn(must, licence)
+        con = library.connect(os.path.join(folder, "core-pd.db"))
+        try:
+            self.assertEqual(dict(con.execute("SELECT key, value FROM build"))["topics"], "5")
+            names = set(con.execute("SELECT folded, kind FROM name WHERE entry = 13"))
+            self.assertEqual(names, {("creaky_elbow", "title"), ("ce_creak", "also called"), ("a_creak", "also called")},
+                             "brackets that are not an abbreviation are not split into names of their own")
+            self.assertEqual(set(f for (f,) in con.execute("SELECT folded FROM name WHERE entry > 1000 AND kind = 'title'")),
+                             {"wobble_index_wi", "wobble_index", "wi", "wobbly_knee"})
+            self.assertEqual(con.execute("SELECT other FROM related WHERE entry = 11").fetchall(), [(13,)])
+            reader = store.Reader(con)
+            block, start, length = con.execute("SELECT block, start, length FROM entry WHERE id = 11").fetchone()
+            self.assertEqual(reader.text(block, start, length), self.SUMMARY)
+            everything = b"".join(raw for _, raw in reader.everything()).decode("utf-8")
+            for left_out in ("Rodilla", "Esto no se guarda", "Other people's words", "picture"):
+                self.assertNotIn(left_out, everything)
+            with self.assertRaises(sqlite3.OperationalError):
+                con.execute("DELETE FROM entry")
+        finally:
+            con.close()
+
+    def stops(self, *extra, **files):
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as caught:
+            build_sample(folder, *extra, **files)
+        self.assertEqual(os.listdir(folder), [], "a build that stops leaves nothing behind")
+        return str(caught.exception)
+
+    def test_what_stops_a_build(self):
+        self.assertIn("has no note of when it was downloaded", self.stops())
+        self.assertIn("--retrieved is in the future", self.stops("--retrieved", "2026-11-16"))
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        with open(os.path.join(CORE, "mplus_topics_sample.xml"), encoding="utf-8") as f:
+            text = f.read()
+        short = os.path.join(folder, "short.xml")
+        with open(short, "w", encoding="utf-8") as f:
+            f.write(text.replace('total="6"', 'total="9"'))
+        self.assertIn("says it holds 9 topics and 6 were read", self.stops("--retrieved", "2026-11-10", topics=short))
+        page = os.path.join(folder, "page.html")
+        with open(page, "w", encoding="utf-8") as f:
+            f.write("<p>112 is a number.</p>")
+        self.assertIn("no longer says", self.stops("--retrieved", "2026-11-10", **{"eu-page": page}))
+        self.assertIn("no such file", self.stops("--retrieved", "2026-11-10", numbers=os.path.join(folder, "nothing.json")))
+        self.assertIn("--numbers is a file", self.stops("--retrieved", "2026-11-10", numbers="https://example.org/numbers.json"))
+        out = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
+            build_core.main(["--topics", os.path.join(CORE, "mplus_topics_sample.xml"), "--definitions",
+                             os.path.join(CORE, "sampledefinitions.xml"), "--numbers", os.path.join(CORE, "emergency.sample.json"),
+                             "--eu-page", os.path.join(CORE, "eu-112.sample.html"), "--retrieved", "2026-11-10", "--out", out])
+        self.assertIn("only 5 English topics were read", str(caught.exception))
+
+    def test_reading_wikidata_request_by_request(self):
+        """The fetch, with the network stood in for: what is asked for, what is kept, and how it picks up again."""
+        asked = []
+        claims = {
+            ("Q36", "P297"): [{"mainsnak": {"datavalue": {"value": "pl"}}, "rank": "normal"}],
+            ("Q36", "P2852"): [
+                {"mainsnak": {"datavalue": {"value": {"id": "Q100"}}}, "rank": "normal"},
+                {"mainsnak": {"datavalue": {"value": {"id": "Q101"}}}, "rank": "normal",
+                 "qualifiers": {"P366": [{"datavalue": {"value": {"id": "Q200"}}}], "P582": [{"datavalue": {"value": {"time": "+2020"}}}]}},
+                {"mainsnak": {"snaktype": "somevalue"}, "rank": "normal"}],
+            ("Q30", "P297"): [{"mainsnak": {"datavalue": {"value": "US"}}, "rank": "normal"},
+                              {"mainsnak": {"datavalue": {"value": "XX"}}, "rank": "deprecated"}],
+            ("Q30", "P2852"): [{"mainsnak": {"datavalue": {"value": {"id": "Q102"}}}, "rank": "preferred",
+                                "qualifiers": {"P1535": [{"datavalue": {"value": {"id": "Q201"}}}]}}],
+        }
+        labels = {"Q36": "Poland", "Q30": "United States of America", "Q100": "112", "Q101": "985", "Q102": "a helpline",
+                  "Q200": "mountain rescue", "Q201": "teleprinter"}
+
+        def fake(params):
+            asked.append(params)
+            if params["action"] == "query":
+                if "sroffset" not in params:
+                    return {"query": {"search": [{"title": "Q36"}]}, "continue": {"sroffset": 1, "continue": "-||"}}
+                return {"query": {"search": [{"title": "Q30"}, {"title": "Q36"}]}}
+            if params["action"] == "wbgetclaims":
+                if params["entity"] == "Q36" and params["property"] == "P2852" and fake.fail:
+                    fake.fail = False
+                    raise SystemExit("could not fetch")
+                return {"claims": {params["property"]: claims[(params["entity"], params["property"])]}}
+            out = {}
+            for qid in params["ids"].split("|"):
+                out[qid] = {"labels": {"en": {"value": labels[qid]}}}
+                if qid == "Q102" and "claims" in params["props"]:
+                    out[qid]["claims"] = {"P1329": [{"mainsnak": {"datavalue": {"value": "911"}}}]}
+            return {"entities": out}
+
+        fake.fail = True
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        path = os.path.join(folder, "emergency.wikidata.json")
+        kept = build_core.api
+        build_core.api = fake
+        try:
+            with small_samples(), contextlib.redirect_stdout(io.StringIO()):
+                build_core.MIN_COUNTRIES = 2
+                with self.assertRaises(SystemExit):
+                    build_core.fetch_numbers(path)
+                self.assertFalse(os.path.exists(path))
+                self.assertEqual(sorted(load_json(path + ".partial")["done"]), ["Q30"], "what was read is kept")
+                before = len(asked)
+                build_core.fetch_numbers(path)
+        finally:
+            build_core.api = kept
+        again = [p for p in asked[before:] if p["action"] == "wbgetclaims"]
+        self.assertEqual([(p["entity"], p["property"]) for p in again], [("Q36", "P297"), ("Q36", "P2852")], "and not read twice")
+        self.assertFalse(os.path.exists(path + ".partial"))
+        doc = load_json(path)
+        self.assertEqual([c["item"] for c in doc["countries"]], ["Q30", "Q36"])
+        usa, poland = doc["countries"]
+        self.assertEqual((usa["codes"], usa["name"]), (["US"], "United States of America"))
+        self.assertEqual(usa["numbers"], [{"item": "Q102", "rank": "preferred", "use": [], "notes": ["teleprinter"], "ended": False,
+                                           "number": "911"}])
+        self.assertEqual(poland["codes"], ["PL"])
+        self.assertEqual([(n["number"], n["use"], n["ended"]) for n in poland["numbers"]],
+                         [("112", [], False), ("985", ["mountain rescue"], True)])
+        self.assertEqual(load_json(path + dbtools.NOTE)["retrieved"], "2026-11-15")
+        self.assertNotIn("VOSS", dbtools.AGENT.upper(), "nothing about the project goes out with a request")
+
+
+class CoreData(Base):
+    """Tests that run against the small database built from the made-up files."""
+
+    def setUp(self):
+        Base.setUp(self)
+        os.environ["VOSS_DATA"] = sample_data()
+
+
+class TermTests(CoreData):
+    def test_a_topic_in_the_sources_own_words(self):
+        out = ok("term", "wobbly", "knee")
+        topic, definition = out.split("\n\n" + "TERM ", 1) if "\n\nTERM " in out else (out, "")
+        for line in ("TERM       Wobbly Knee [health topic, id 11]", "ALSO       WK; Knee wobble; Knee Instability",
+                     "GROUP      Bones, Joints and Muscles; Made-Up Conditions", "SUMMARY    the source's own words, in full",
+                     "SEE ALSO   Creaky Elbow", "PAGE       https://example.org/wobblyknee.html",
+                     "SOURCE     MedlinePlus health topics, National Library of Medicine, retrieved 2026-11-10 "
+                     "[sourced: core-pd.db, built 2026-11-15]",
+                     "CREDIT     Source: MedlinePlus, National Library of Medicine"):
+            self.assertIn(line, topic)
+        self.assertIn(CoreBuildTests.SUMMARY, topic)
+        self.assertNotIn("MESH", topic, "a heading that only repeats a name already shown is not said twice")
+        for line in ("Wobbly Knee [definition]", "MEANS      A knee that wobbles, in the tests only.",
+                     "FROM       NIH Made-Up; Definitions of Health Terms: Made-Up Things", "PAGE       https://example.org/knee.html",
+                     "SOURCE     MedlinePlus definitions of health terms, National Library of Medicine, retrieved 2026-11-10"):
+            self.assertIn(line, definition)
+        self.assertIn("RULE       these are the source's words, about the thing and not about the person: nothing here is a diagnosis", out)
+        self.assertIn("where it names 911 or an American service, give the person's own ('triage --country')", out)
+        self.assertIn("a lab value is still read against the range printed on the person's own report", out)
+
+    def test_names_it_is_found_under(self):
+        def title(*words):
+            return field(ok("term", *words), "TERM")
+        self.assertEqual(title("WK"), "Wobbly Knee [health topic, id 11]")
+        self.assertEqual(title("knee", "instability"), "Wobbly Knee [health topic, id 11]")
+        self.assertEqual(title("wi"), "Wobble Index (WI) [definition]")
+        self.assertEqual(title("wobble", "index"), "Wobble Index (WI) [definition]")
+        self.assertEqual(title("CE"), "Creaky Elbow [health topic, id 13]")
+        self.assertEqual(title("acreak"), "Creaky Elbow [health topic, id 13]", "written together or apart")
+        self.assertEqual(title("what", "is", "a", "creaky", "elbow"), "Creaky Elbow [health topic, id 13]")
+        self.assertEqual(title("Creaky", "elbows"), "Creaky Elbow [health topic, id 13]", "a plural is the same word")
+        self.assertEqual(title("knee"), "Knee Tests [health topic, id 14]", "found by its medical heading")
+        self.assertIn("MESH       Knee [Medical Subject Headings, National Library of Medicine]", ok("term", "knee"))
+        self.assertEqual(title("--id", "15"), "Summer Sniffles [health topic, id 15]")
+
+    def test_near_misses_are_listed_not_guessed(self):
+        out = ok("term", "wobbl")
+        self.assertIn("MATCHES    3 entries whose names hold those words", out)
+        self.assertIn("Wobbly Knee [health topic, id 11]: A made-up topic for the tests: what a wobbly knee is", out)
+        self.assertIn("Wobble Index (WI) [definition]: The wobble index says how much", out)
+        self.assertIn("NEXT       say which is meant", out)
+        self.assertNotIn("SUMMARY", out)
+        out = ok("term", "wobly", "knee")
+        self.assertIn("MATCHES    nothing under that spelling; 2 entries with a name close to it", out)
+        out = ok("term", "sumer", "sniffles")
+        self.assertIn("NEAREST    nothing is on file under that spelling; this is the nearest name", out)
+        self.assertIn("TERM       Summer Sniffles [health topic, id 15]", out)
+        out = ok("term", "creaky", "--list")
+        self.assertIn("MATCHES    1 entry whose names hold those words", out)
+        out = ok("term", "pollen")
+        self.assertIn("MATCHES    no entry is named that; 2 entries whose summaries mention those words", out)
+        self.assertLess(out.index("Summer Sniffles"), out.index("Creaky Elbow"), "the one that says it most comes first")
+        self.assertIn("and 1 more: add a word to narrow it", ok("term", "wobbl", "--max", "2"))
+
+    def test_nothing_on_file_is_said_as_such(self):
+        out = ok("term", "zygomorphic")
+        self.assertIn("TERM       nothing on file under those words, in any name or in any summary", out)
+        self.assertIn("that is a gap in this file, not a fact about the word", out)
+        self.assertIn("say which word or topic", fails("term"))
+        self.assertIn("no entry has that id", fails("term", "--id", "999"))
+        self.assertIn("not both", fails("term", "--id", "11", "knee"))
+        self.assertIn("--max is 1 to 50", fails("term", "knee", "--max", "0"))
+
+    def test_brief_and_a_topic_with_no_summary(self):
+        out = ok("term", "--id", "15", "--brief")
+        self.assertIn("BRIEF      A made-up topic for the tests: sneezing in the summer.", out)
+        self.assertIn("'term --id 15' prints the whole summary", out)
+        self.assertNotIn("pollen", out)
+        self.assertIn("BRIEF      the source gives this topic no summary", ok("term", "--id", "16"))
+
+    def test_output_obeys_the_typography_rule(self):
+        for args in (("term", "wobbly", "knee"), ("term", "wobbl"), ("term", "pollen"), ("triage", "--country", "FR"), ("sources",)):
+            out = ok(*args)
+            self.assertEqual(desk.check_text(out), [], args)
+            self.assertFalse([ln for ln in out.splitlines() if ln != ln.rstrip()], args)
+
+    def test_without_the_database_it_says_so(self):
+        os.environ["VOSS_DATA"] = NO_DATA
+        err = fails("term", "knee")
+        self.assertIn("core-pd.db is not installed, so there is nothing on file for medical words and health topics", err)
+        self.assertIn("or say you have no data", err)
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        shutil.copyfile(os.path.join(sample_data(), "core-pd.db"), os.path.join(folder, "core-pd.db"))
+        os.environ["VOSS_DATA"] = folder
+        self.assertIn("cannot be answered from: it has no LICENSE-core-pd.txt beside it", fails("term", "knee"))
+
+    def test_stale_data_says_so_before_the_answer(self):
+        clock("2027-05-11T09:00")
+        out = ok("term", "wk")
+        self.assertTrue(out.startswith("STALE      core-pd.db: retrieved 2026-11-10, 182 days ago: STALE, the limit is 6 months"), out)
+        self.assertTrue(ok("triage", "--country", "PL").startswith("STALE      core-pd.db"))
+        clock("2027-05-10T09:00")
+        self.assertTrue(ok("term", "wk").startswith("TERM "))
+
+
+class NumbersTests(CoreData):
+    def test_a_countrys_numbers_with_their_source(self):
+        out = ok("triage", "--country", "PL")
+        self.assertIn("NUMBERS    Poland (PL): 112; 999 [emergency medical services]; 997 [police]; 998 [fire department]", out)
+        self.assertIn("the first is the one to lead with", out)
+        self.assertIn("EU         112 is the European emergency number: free of charge, and it reaches an ambulance, the fire brigade "
+                      "or the police anywhere in the European Union", out)
+        self.assertIn("SOURCE     Wikidata: emergency telephone numbers by country (property P2852), retrieved 2026-11-10 "
+                      "[sourced: core-pd.db, built 2026-11-15]", out)
+        self.assertIn("European Commission: 112, the EU's emergency phone number, retrieved 2026-11-10", out)
+        self.assertIn("were not verified one by one", out)
+        self.assertIn("ANSWER     a red flag ends the guessing. Lead with the number", out)
+        self.assertNotIn("LEVEL", out)
+        self.assertNotIn("984", out, "a number the source has withdrawn is not passed on")
+        self.assertNotIn("985", out, "nor one that has ended")
+
+    def test_by_code_or_by_name(self):
+        def listed(*words):
+            return field(ok("triage", "--country", *words), "NUMBERS")
+        self.assertEqual(listed("fr"), "France (FR): 112; 15 [emergency medical services]; 17 [police]")
+        self.assertEqual(listed("new zealand"), "New Zealand (NZ): 111")
+        self.assertEqual(listed("USA"), "United States (US): 911")
+        self.assertEqual(listed("United States of America"), "United States (US): 911")
+        self.assertEqual(listed("china"), "China (CN): 120 [emergency medical services]; 119 [fire department]; 110 [police]")
+        self.assertEqual(listed("Australia"), "Australia (AU): 000; 112 [alternative]; 106 [teleprinter]")
+        self.assertNotIn("EU  ", ok("triage", "--country", "AU"))
+        out = ok("triage", "--country", "Narnia")
+        self.assertIn("NUMBERS    nothing on file for that country", out)
+        self.assertIn("tell them to call their local emergency number", out)
+        self.assertIn("did you mean Poland?", ok("triage", "--country", "Polnad"))
+        self.assertIn("nothing on file for that country", ok("triage", "--country", "ZQ"))
+
+    def test_it_sits_with_the_rest_of_triage(self):
+        out = ok("triage")
+        self.assertIn("NUMBERS    by country: 'triage --country PL'", out)
+        out = ok("triage", "--flags", "--country", "AU")
+        self.assertIn("RED FLAGS", out)
+        self.assertIn("Australia (AU): 000", out)
+        out = ok("triage", "--level", "1", "--country", "US")
+        self.assertIn("LEVEL 1    Emergency now", out)
+        self.assertIn("United States (US): 911", out)
+        os.environ["VOSS_DATA"] = NO_DATA
+        self.assertIn("core-pd.db is not installed, so there is nothing on file for emergency numbers", fails("triage", "--country", "PL"))
+
+    def test_boot_sources_and_selftest_see_the_database(self):
+        self.assertEqual(field(ok("boot"), "BANNER"), "VOSS-01 | PROJECT ASCLEPIUS | CLINIC | data: 2026-11-15")
+        out = ok("sources")
+        self.assertIn("core-pd.db (", out)
+        self.assertIn("credit, to be kept with every answer from it: Source: MedlinePlus, National Library of Medicine", out)
+        self.assertIn("licence: CC0 1.0, a public domain dedication", out)
+        out = ok("selftest")
+        self.assertIn("PASS       data: core-pd.db says where it came from and when it was built", out)
+        self.assertIn("PASS       data: the text in core-pd.db unpacks on this Python", out)
+        self.assertIn("SELFTEST   17 of 17 passed; data: 2026-11-15", out)
+
+
+class ShippedDataTests(Base):
+    """A look at the databases that ship with the skill. Skipped in a copy that carries none."""
+
+    def setUp(self):
+        Base.setUp(self)
+        self.files = sorted(n for n in os.listdir(REAL_DATA) if n.endswith(".db"))
+        if not self.files:
+            self.skipTest("no database ships in this copy")
+        os.environ.pop("VOSS_DATA")
+        clock(datetime.now().strftime("%Y-%m-%dT%H:%M"))
+
+    def test_every_database_accounts_for_itself_and_fits(self):
+        with open(os.path.join(REAL_DATA, "SOURCES.md"), encoding="utf-8") as f:
+            listed = f.read().split("## Databases to come")[0]
+        for name in self.files:
+            info = library.read(os.path.join(REAL_DATA, name))
+            self.assertEqual(info["problems"], [], name)
+            self.assertLessEqual(info["size"], build.MAX_FILE_BYTES, "%s is over the limit for one file" % name)
+            self.assertIn("`%s`" % name, listed, "%s is not in SOURCES.md" % name)
+            self.assertTrue(desk._unpacks(os.path.join(REAL_DATA, name))[0], name)
+        self.assertFalse([n for n in os.listdir(REAL_DATA) if n.endswith(".part")])
+        code, out, _ = run("selftest")
+        self.assertEqual(code, 0, out)
+
+    def test_the_core_data(self):
+        if "core-pd.db" not in self.files:
+            self.skipTest("core-pd.db does not ship in this copy")
+        out = ok("term", "heart", "attack")
+        self.assertIn("TERM       Heart Attack [health topic, id 5]", out)
+        self.assertIn("CREDIT     Source: MedlinePlus, National Library of Medicine", out)
+        self.assertEqual(desk.check_text(out), [], "the source's text is in this skill's typography")
+        self.assertIn("Atrial Fibrillation [health topic", field(ok("term", "afib", "--brief"), "TERM"))
+        self.assertIn("[definition]", ok("term", "antioxidants"))
+        con = library.connect(os.path.join(REAL_DATA, "core-pd.db"))
+        try:
+            counts = dict(con.execute("SELECT kind, COUNT(*) FROM entry GROUP BY kind"))
+            self.assertGreater(counts["topic"], 900)
+            self.assertGreater(counts["definition"], 50)
+            self.assertGreater(con.execute("SELECT COUNT(*) FROM country").fetchone()[0], 150)
+            first = dict(con.execute("SELECT code, number FROM emergency WHERE position = 1"))
+            for code in sorted(build_core.EU):
+                self.assertEqual(first.get(code), "112", code)
+            for code, number in (("US", "911"), ("CA", "911"), ("AU", "000")):
+                self.assertEqual(first.get(code), number, code)
+            self.assertIn("999", [n for (n,) in con.execute("SELECT number FROM emergency WHERE code = 'GB'")])
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM entry WHERE url LIKE '%/spanish/%'").fetchone()[0], 0)
+        finally:
+            con.close()
+        self.assertIn("Poland (PL): 112", field(ok("triage", "--country", "poland"), "NUMBERS"))
 
 
 if __name__ == "__main__":

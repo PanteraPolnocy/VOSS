@@ -24,6 +24,7 @@ python tools/build.py                     checks the source and packs dist/voss.
 python tools/build.py --private --out DIR also packs the private build into DIR, outside this repository
 python tools/build_index.py               rewrites the command index after a command is added or re-described
 python tools/ascii_escape.py              puts non-ASCII characters in Python sources back into escapes
+python tools/build_core.py --fetch        downloads the sources of core-pd.db and builds it again
 ```
 
 ## The public build, the private build and the leak check
@@ -38,12 +39,18 @@ The private build (`--private --out DIR`) adds the household file and the person
 
 ## Databases
 
-There are none yet. When one is built it goes into `src/scripts/data/` as a single SQLite file, with its licence text beside it as `LICENSE-<name>.txt` and a row in `SOURCES.md`. The tools open it read-only. It must carry two tables, and is not answered from without them:
+A database lives in `src/scripts/data/` as a single SQLite file, with its licence text beside it as `LICENSE-<name>.txt` and a row in `SOURCES.md`. The tools open it read-only. It must carry two tables, and is not answered from without them:
 
 - `meta`, one row for each source: `source`, `url`, `retrieved` (YYYY-MM-DD), `licence`, and `credit` where the licence asks for a credit line.
 - `build`, of `key` and `value`: `built` is the day the file was made.
 
 The banner shows the oldest `built`; a file's age is counted from its oldest `retrieved`. One database per licence family, so that a share-alike or no-derivatives licence never spreads to a file it does not belong to. No file in this repository may be larger than 49 MB, and the build refuses one that is; it prints the size of every database it packs.
+
+Each database has a builder in `tools/` (`build_core.py` is the first) that names every address it downloads from, keeps the downloads in `downloads/` (which git ignores) with a note of the day beside each, and can be run again by anyone. `tools/dbtools.py` holds what the builders share. Before a source goes in, read its terms on its own page, and write what you found and the date into `SOURCES.md`. If the terms do not clearly allow the data to be passed on in a public repository and inside the packed skill, it stays out: ship the builder without the data, and say so.
+
+Long text is not stored row by row. The builder packs it into blocks, compresses each block with whichever of zlib, bz2 and lzma makes it smallest, and stores where each piece sits; `vosslib/store.py` reads it back. That is why a database here is a fraction of the size of its text.
+
+The builders send a plain client name and nothing about you or this project. Wikidata asks scripts to say who runs them and is slow with those that do not, so its part of `build_core.py --fetch` can take the better part of an hour. If you want it faster, put a line of your own in the `VOSS_BUILD_AGENT` environment variable, as their policy describes.
 
 ## Why a call is fast
 

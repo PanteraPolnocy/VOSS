@@ -4,36 +4,92 @@ lab value read against the range printed on the person's own report.
 Nothing here knows a reference range, a dose or a diagnosis. 'labs' compares two numbers it was given and
 says which side of the printed range the value falls on; what that means is a question for the doctor.
 """
+import difflib
 import re
 from datetime import timedelta
 
 from . import core
-from .core import command, decimal_of, die, load_data, more, one_line, plain, rec
+from .core import command, decimal_of, die, key, load_data, more, one_line, plain, rec
 
 # ---- triage
+
+NUMBERS_DB = "core-pd"
+ANSWER = ("a red flag ends the guessing. Lead with the number in one line, in plain words: no wit and no ears. "
+          "Then stay, and say what to do while help comes. The marker is [mood: serious] [voss-serious.webp]")
+
+
+def numbers(text):
+    """One country's emergency numbers, as the core data lists them, with where they came from."""
+    from . import library       # only this needs a database: a plain 'triage' or 'labs' does not pay for one
+    con, info = library.need(NUMBERS_DB, "emergency numbers")
+    try:
+        library.warn_if_stale(info, core.today())
+        want = str(text).strip()
+        row = None
+        if re.fullmatch(r"[A-Za-z]{2}", want):
+            row = con.execute("SELECT code, name, eu FROM country WHERE code = ?", (want.upper(),)).fetchone()
+        if row is None:
+            row = con.execute("SELECT c.code, c.name, c.eu FROM country_name n JOIN country c ON c.code = n.code "
+                              "WHERE n.folded = ?", (key(want),)).fetchone()
+        if row is None:
+            names = dict(con.execute("SELECT n.folded, c.name FROM country_name n JOIN country c ON c.code = n.code"))
+            near = []
+            for hit in difflib.get_close_matches(key(want), sorted(names), n=6, cutoff=0.75):
+                if names[hit] not in near:
+                    near.append(names[hit])
+            rec("NUMBERS", "nothing on file for that country%s" % (": did you mean %s?" % " or ".join(near[:3]) if near else ""))
+            more("--country takes a two-letter code (PL, GB) or a name. If the person may be in danger now, do not wait on "
+                 "this: tell them to call their local emergency number")
+            return
+        code, name, eu = row
+        listed = con.execute("SELECT number, use, source FROM emergency WHERE code = ? ORDER BY position", (code,)).fetchall()
+        rec("NUMBERS", "%s (%s): %s" % (name, code, "; ".join("%s [%s]" % (n, u) if u else n for n, u, _ in listed)))
+        more("the first is the one to lead with. What stands after a number is what the source says it is for; it may "
+             "reach other services as well")
+        sources = set(s for _, _, s in listed)
+        if eu:
+            fact = con.execute("SELECT value, source FROM fact WHERE key = ?", ("eu-112",)).fetchone()
+            if fact:
+                rec("EU", fact[0])
+                sources.add(fact[1])
+        for n, source in enumerate(sorted(sources)):
+            (more if n else lambda text: rec("SOURCE", text))(library.tag(info, source))
+        more("the numbers are listed as the source has them, and were not verified one by one: where there is time and it "
+             "matters, check")
+    finally:
+        con.close()
 
 
 def cmd_triage(a):
     data = load_data("triage")
     levels = data["levels"]
+    if a.level is not None and not 1 <= a.level <= len(levels):
+        die("--level is 1 to %d" % len(levels))
+    everything = a.level is None and not a.flags and not a.country
     if a.level is not None:
-        if not 1 <= a.level <= len(levels):
-            die("--level is 1 to %d" % len(levels))
         rec("LEVEL %d" % a.level, levels[a.level - 1])
         rec("RULE", data["rule"])
-        return
-    if not a.flags:
+    if everything:
         rec("TRIAGE", "decide the level before anything else in a symptom question")
         for n, text in enumerate(levels, 1):
             rec("LEVEL %d" % n, text)
         rec("RULE", data["rule"])
-    rec("RED FLAGS", "each one is level 1, emergency now. %s" % data["flags_note"])
-    for flag in data["red_flags"]:
-        more("- " + flag)
-    rec("ANSWER", "a red flag ends the guessing. Lead with the number in one line, in plain words: no wit and no ears. "
-                  "Then stay, and say what to do while help comes. The marker is [mood: serious] [voss-serious.webp]")
-    rec("NUMBERS", "none on file yet: they arrive with the core data. Until then use the list in "
-                   "references/clinical-rules.md, and check a number is current before quoting it")
+    if everything or a.flags:
+        rec("RED FLAGS", "each one is level 1, emergency now. %s" % data["flags_note"])
+        for flag in data["red_flags"]:
+            more("- " + flag)
+    if a.country:
+        numbers(a.country)
+    if everything or a.flags or a.country:
+        rec("ANSWER", ANSWER)
+    if everything or (a.flags and not a.country):
+        from . import library
+        if library.have(NUMBERS_DB) is None:
+            rec("NUMBERS", "none on file: %s.db is not installed. Use the list in references/clinical-rules.md, and check a "
+                           "number is current before quoting it" % NUMBERS_DB)
+        else:
+            rec("NUMBERS", "by country: 'triage --country PL' takes a two-letter code or a name, and prints that country's "
+                           "numbers with their source")
 
 
 # ---- visit
@@ -217,10 +273,12 @@ def cmd_labs(a):
 
 
 def register(sub):
-    p = command(sub, "clinic", "triage", cmd_triage, "the four triage levels and the red-flag checklist",
-                ["triage", "triage --flags", "triage --level 2"])
+    p = command(sub, "clinic", "triage", cmd_triage,
+                "the four triage levels, the red-flag checklist, and a country's emergency numbers",
+                ["triage", "triage --flags", "triage --level 2", "triage --country PL", "triage --country \"new zealand\""])
     p.add_argument("--level", type=int, help="one level only, 1 to 4")
     p.add_argument("--flags", action="store_true", help="the red-flag checklist only")
+    p.add_argument("--country", metavar="CC", help="the emergency numbers of one country: a two-letter code or its name")
 
     p = command(sub, "clinic", "visit", cmd_visit,
                 "getting ready for a doctor's visit: what to ask, what to bring, and a symptom diary to fill in",

@@ -374,6 +374,30 @@ def cmd_check(a):
 
 # ---- selftest
 
+def _unpacks(path):
+    """(True, '') if every way this database packs its text can be read here, else (False, why)."""
+    from . import store
+    try:
+        con = library.connect(path)
+    except Exception:
+        return False, "cannot be opened"
+    try:
+        if not con.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", (store.TABLE,)).fetchone():
+            return True, ""                     # a database with no packed text has nothing to prove
+        seen = set()
+        for number, codec in con.execute("SELECT id, codec FROM %s ORDER BY id" % store.TABLE).fetchall():
+            if codec not in seen:
+                seen.add(codec)
+                store.Reader(con).block(number)
+        return True, ""
+    except VossError as e:
+        return False, str(e)
+    except Exception as e:
+        return False, type(e).__name__
+    finally:
+        con.close()
+
+
 def cmd_selftest(a):
     from . import clinic, doses, ical
     results = []
@@ -434,6 +458,8 @@ def cmd_selftest(a):
     infos = library.installed()
     for info in infos:
         ok("data: %s.db says where it came from and when it was built" % info["stem"], not info["problems"], "; ".join(info["problems"]))
+        if not info["problems"]:
+            ok("data: the text in %s.db unpacks on this Python" % info["stem"], *_unpacks(info["path"]))
     pictures = manifest()
     if pictures:
         rows = (pictures.get("moods") or []) + (pictures.get("looks") or []) + (pictures.get("other") or [])

@@ -1,0 +1,32 @@
+{
+ "what": "Made up for the test suite, in the shape tools/build_core.py saves what it reads from Wikidata. The numbers for real countries are the well-known ones, written in by hand; the last two countries do not exist.",
+ "countries": [
+  {"item": "Q36", "codes": ["PL"], "name": "Poland", "numbers": [
+   {"item": "Q1", "number": "997", "rank": "normal", "use": ["police"], "notes": [], "ended": false},
+   {"item": "Q2", "number": "999", "rank": "normal", "use": ["emergency medical services"], "notes": [], "ended": false},
+   {"item": "Q3", "number": "112", "rank": "normal", "use": [], "notes": [], "ended": false},
+   {"item": "Q4", "number": "998", "rank": "normal", "use": ["fire department"], "notes": [], "ended": false},
+   {"item": "Q5", "number": "984", "rank": "deprecated", "use": [], "notes": [], "ended": false},
+   {"item": "Q6", "number": "985", "rank": "normal", "use": ["mountain rescue"], "notes": [], "ended": true},
+   {"item": "Q2", "number": "999", "rank": "normal", "use": ["emergency medical services"], "notes": [], "ended": false}]},
+  {"item": "Q142", "codes": ["FR"], "name": "France", "numbers": [
+   {"item": "Q7", "number": "17", "rank": "normal", "use": ["police"], "notes": [], "ended": false},
+   {"item": "Q8", "number": "15", "rank": "normal", "use": ["emergency medical services"], "notes": [], "ended": false}]},
+  {"item": "Q408", "codes": ["AU"], "name": "Australia", "numbers": [
+   {"item": "Q3", "number": "112", "rank": "normal", "use": [], "notes": ["alternative"], "ended": false},
+   {"item": "Q9", "number": "000", "rank": "preferred", "use": [], "notes": [], "ended": false},
+   {"item": "Q10", "number": "106", "rank": "normal", "use": [], "notes": ["teleprinter"], "ended": false}]},
+  {"item": "Q148", "codes": ["CN"], "name": "People's Republic of China", "numbers": [
+   {"item": "Q11", "number": "119", "rank": "normal", "use": ["fire department"], "notes": [], "ended": false},
+   {"item": "Q12", "number": "110", "rank": "normal", "use": ["police"], "notes": [], "ended": false},
+   {"item": "Q13", "number": "120", "rank": "normal", "use": ["emergency medical services"], "notes": [], "ended": false}]},
+  {"item": "Q30", "codes": ["US"], "name": "United States of America", "numbers": [
+   {"item": "Q14", "number": "911", "rank": "normal", "use": [], "notes": [], "ended": false}]},
+  {"item": "Q664", "codes": ["NZ"], "name": "New Zealand", "numbers": [
+   {"item": "Q15", "number": "111", "rank": "normal", "use": [], "notes": [], "ended": false}]},
+  {"item": "Q9001", "codes": ["ZQ"], "name": "Nowhere", "numbers": [
+   {"item": "Q16", "number": "a helpline with no digits", "rank": "normal", "use": ["crisis hotline"], "notes": [], "ended": false}]},
+  {"item": "Q9002", "codes": [], "name": "A place with no code", "numbers": [
+   {"item": "Q14", "number": "911", "rank": "normal", "use": [], "notes": [], "ended": false}]}
+ ]
+}

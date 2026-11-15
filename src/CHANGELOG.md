@@ -18,6 +18,14 @@ The skeleton:
 - Intake order for the tool: name and pronouns first; then who they are, medicines and allergies, body, history, life, care; gender identity, hormone therapy, contraception, pregnancy, breastfeeding, mental health and care wishes last; sex assigned at birth, organs, menstrual and substance questions only when an answer depends on them. [kept]
 - A weight has no clock of its own: what counts is the day the profile was last changed, which `boot` now shows. [maker] A profile nobody has changed for over a year is asked about as a whole, the weight first. [pending] Supersedes weight as a dated field that goes stale by itself (0.7.0).
 
+The core data:
+- `core-pd.db`, the first database: the MedlinePlus health topic summaries and its short definitions of health terms, in plain English, and the emergency numbers of about two hundred countries from Wikidata. Public domain and CC0, with the licence text beside the file and the credit "Source: MedlinePlus, National Library of Medicine" on every answer. Licences checked on each source's own page on 15 November 2026. Supersedes "no database yet".
+- `term`: a medical word or a health topic in the source's own words, found by its name, by what else it is called, or by its medical heading. Near misses are listed, not guessed, and "nothing on file" is said as such.
+- `triage --country`: a country's emergency numbers, with what each is for where the source says, their source and date. They are passed through as listed and not verified one by one, and the tool says so. Inside the European Union 112 comes first.
+- Left out of the MedlinePlus file on purpose: the links to other organisations' pages, the Spanish topics, the pictures.
+- Text in a database is stored packed, about four times smaller, with the standard library alone. No file in the repository may be larger than 49 MB; one that would be is cut into parts. [maker]
+- Nothing goes into the repository or the packed skill unless its licence clearly allows it to be passed on there. [maker]
+
 ## 0.7.0 - 14 November 2026
 
 The design, as it was handed over for building. The drafts of that day are folded in here, oldest first.

@@ -11,7 +11,7 @@ import sqlite3
 from pathlib import Path
 
 from . import core
-from .core import DATA, command, more, parse_date, rec
+from .core import DATA, command, die, more, parse_date, rec
 
 # stem, what it holds, months before a warning (None: no fixed age), the limit as the data plan words it
 EXPECTED = (
@@ -103,6 +103,58 @@ def installed():
     return [read(p) for p in files()]
 
 
+def have(stem):
+    """What one database says about itself, if it is installed and can be answered from; else None."""
+    path = os.path.join(folder(), stem + ".db")
+    if not os.path.isfile(path):
+        return None
+    info = read(path)
+    return None if info["problems"] else info
+
+
+def need(stem, what):
+    """Open the database a command answers from: (connection, what the file says about itself). A file that
+    is missing, or cannot say where its rows came from, stops the command with one plain line."""
+    path = os.path.join(folder(), stem + ".db")
+    if not os.path.isfile(path):
+        die("%s.db is not installed, so there is nothing on file for %s. Look it up with the tools you have and cite "
+            "it, or say you have no data" % (stem, what))
+    info = read(path)
+    if info["problems"]:
+        die("%s.db cannot be answered from: it %s ('sources' has the rest). Until that is put right this is a cited "
+            "lookup, or \"I have no data\"" % (stem, info["problems"][0]))
+    try:
+        return connect(path), info
+    except sqlite3.Error:
+        die("%s.db cannot be opened" % stem)
+
+
+def _source(info, number):
+    if not isinstance(number, int) or not 1 <= number <= len(info["sources"]):
+        die("%s.db points at a source it does not name: rebuild or replace the file" % info["stem"])
+    return info["sources"][number - 1]
+
+
+def tag(info, number):
+    """What goes with anything taken from one source of a database: the source, the day it was read, and the
+    file with the day it was built."""
+    s = _source(info, number)
+    return "%s, retrieved %s [sourced: %s.db, built %s]" % (
+        s["source"], s["retrieved"].isoformat(), info["stem"], info["built"].isoformat())
+
+
+def credit(info, number):
+    """The credit line the source asks for, or '' where it asks for none."""
+    return _source(info, number)["credit"]
+
+
+def warn_if_stale(info, today):
+    """Doctrine 5: a file past its limit says so before the answer."""
+    stale, note = age_note(info, today)
+    if stale:
+        rec("STALE", "%s.db: %s" % (info["stem"], note))
+
+
 def usable(infos):
     return [i for i in infos if not i["problems"]]
 
@@ -138,9 +190,10 @@ def status(infos):
 
 
 def _size(n):
-    if n >= 1048576:
-        return "%.1f MB" % (n / 1048576.0)
-    return "%d KB" % max(1, n // 1024)
+    """A file's size as the build counts it: megabytes of a million bytes."""
+    if n >= 100000:
+        return "%.1f MB" % (n / 1e6)
+    return "%d KB" % max(1, n // 1000)
 
 
 def cmd_sources(a):

@@ -174,6 +174,8 @@ def check_data(folder):
     # a file that is installed belongs in the main table, not still under the ones to come
     sources = re.split(r"(?m)^## Databases to come\s*$", sources)[0]
     for name in sorted(os.listdir(data)) if os.path.isdir(data) else []:
+        if name.lower().endswith(".part"):
+            problems.append("scripts/data/%s is a half-built database, left by a build that stopped: delete it" % name)
         if not name.lower().endswith(".db"):
             continue
         info = library.read(os.path.join(data, name))

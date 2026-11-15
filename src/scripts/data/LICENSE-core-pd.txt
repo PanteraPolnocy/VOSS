@@ -1,0 +1,30 @@
+core-pd.db: where its contents come from, and on what terms
+
+Everything in this file is in the public domain or under CC0. It may be copied, passed on and built upon
+without asking anyone. The credit lines below are kept all the same, because the sources ask for them and
+because an answer should say where it came from.
+
+1. MedlinePlus health topic summaries, and the "Definitions of Health Terms"
+   National Library of Medicine (NLM), United States. https://medlineplus.gov/xml.html
+   Works of the United States government, not copyrighted. NLM's own words: "Works produced by the federal
+   government are not copyrighted under U.S. law. You may reproduce, redistribute, and link freely to
+   non-copyrighted content", which includes the "Summaries on health topic pages".
+   (https://medlineplus.gov/about/using/usingcontent/)
+   Credit, to be kept with every answer drawn from it: Source: MedlinePlus, National Library of Medicine
+   NLM does not endorse this skill. The file holds the topics as they stood on the day it was retrieved
+   ('sources' prints the day): it is not the current MedlinePlus, and MedlinePlus is.
+   Medical Subject Headings (MeSH) carried with the topics are NLM's too, and are named as such.
+   Not in this file, and never to be added: the A.D.A.M. Medical Encyclopedia, the drug monographs of the
+   American Society of Health-System Pharmacists, and the pictures. Those are copyrighted.
+   Changed in the making of this file: HTML turned into plain text; curly quotes and long dashes made
+   straight. No wording was changed.
+
+2. Emergency telephone numbers by country
+   Wikidata, property P2852. https://www.wikidata.org/wiki/Property:P2852
+   Creative Commons CC0 1.0, a public domain dedication: https://creativecommons.org/publicdomain/zero/1.0/
+   Passed through as Wikidata lists them. They were not verified one by one.
+
+3. One fact about the number 112
+   European Commission, "112 - the EU's emergency phone number".
+   https://digital-strategy.ec.europa.eu/en/policies/112
+   A fact, cited with its source. No text of the page is reproduced.

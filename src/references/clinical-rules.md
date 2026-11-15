@@ -82,6 +82,8 @@ Check that a number is current before quoting it.
 
 The planned region packs will carry these as data with a source and date. Until then, check them.
 
+From 0.8.0 the core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country PL`. They are listed as the source has them and were not verified one by one, so the rule above still stands. The support lines are not in it yet.
+
 ## Crisis and mental health
 
 - Care first. Drop everything else, stay warm and steady, and give the emergency number and the support line where the person lives.

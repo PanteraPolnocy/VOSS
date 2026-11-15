@@ -8,18 +8,19 @@ The split is deliberate. **The database talks, and Voss explains it.** A dose, a
 
 ## Where the build stands
 
-He is being built in stages, and this is the first: the skeleton.
+He is being built in stages. The skeleton is in, and so is the first database.
 
 Working now:
 - **The persona and his rules**: the doctrine, triage first, the clinical rules, two modes (Clinic for real life, Theatre for roleplay), and his pictures: ten moods, two looks and a reference sheet.
-- **Triage**: the four levels and the red-flag checklist.
+- **Medical words in plain English**: about a thousand health topics and some eighty short definitions, in the source's own words, each with its credit and the day it was retrieved.
+- **Triage**: the four levels and the red-flag checklist, and the emergency numbers of about two hundred countries.
 - **Getting ready for a doctor**: what to ask, what to bring, a symptom diary to fill in.
 - **Lab values**: a result read against the range printed on your own report, and against nothing else.
 - **Medicines**: a schedule you were given, written as a calendar file; how long a pack lasts, counted exactly.
 - **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so.
 - **A check on his own replies**: typography, and his own rules of form.
 
-Not built yet: the databases (plain-English health topics, ICD-11, medicine interactions, product labels, a pack for Poland) and the commands that read them, and most of the features in [src/references/features.md](src/references/features.md). Until they are, he looks things up with whatever tools the assistant has and cites them, or says he has no data.
+Not built yet: the other databases (ICD-11, medicine interactions, product labels, a pack for Poland) and the commands that read them, and most of the features in [src/references/features.md](src/references/features.md). For anything the files do not hold, he looks it up with whatever tools the assistant has and cites it, or says he has no data.
 
 ## Requirements
 
@@ -51,12 +52,14 @@ A household can also give him a private `references/household.md`: who made him,
 | Group | Commands |
 |---|---|
 | Desk | `boot`, `theatre`, `sources`, `check`, `selftest`, `tools` |
-| Clinic | `triage`, `visit`, `labs` |
+| Clinic | `term`, `triage`, `visit`, `labs` |
 | Medicines | `schedule`, `refill` |
 | The personal file | `ignition`, `intake`, `profile`, `rebuild`, `forget` |
 
 ```
 $ python scripts/voss.py boot
+$ python scripts/voss.py term "atrial fibrillation"
+$ python scripts/voss.py triage --country PL
 $ python scripts/voss.py labs --test "Potassium" --value 5,4 --unit mmol/L --range "3.5-5.1" --flag H
 $ python scripts/voss.py schedule --med "Metformin 500 mg: 08:00, 20:00" --ics auto
 $ python scripts/voss.py refill --med "Metformin 500 mg: 08:00, 20:00" --pack 60 --opened 2026-11-01
@@ -66,7 +69,8 @@ $ python scripts/voss.py check --reply --text "It measures how well your kidneys
 ## What to know before you trust it
 
 - **He is not a doctor.** He is a reference with a bedside manner, and says so. Possible explanations come in three tiers, always naming what must not be missed, and never as a verdict.
-- **There is no database yet**, so nothing he says about a medicine, a code or a condition comes from the toolkit. That part arrives with the later stages.
+- **The one database so far explains words.** `term` prints what MedlinePlus says a thing is, written for readers in the United States. It is not about you, and it is not a diagnosis. Nothing he says about a medicine, an interaction or a code comes from the toolkit yet.
+- **Emergency numbers are listed as Wikidata has them**, and were not verified one by one. If you already know your number, use it.
 - **`labs` knows no reference ranges, on purpose.** It compares the two numbers you give it. Ranges differ between labs and methods.
 - **`schedule` and `refill` repeat a schedule; they never set one.** The refill sum assumes every dose was taken, because it cannot know otherwise.
 - **The gate is a soft lock.** It keeps a file from being read aloud to the wrong person. It does not encrypt anything. Someone who does not pass it still gets everything else he knows, only not the file.
@@ -83,13 +87,13 @@ src/                    the skill
   images/               the pictures, and manifest.json, which lists them
   scripts/voss.py       the toolkit's entry point
   scripts/vosslib/      one module per group of commands
-  scripts/data/         the tables the tools read, SOURCES.md (where each comes from),
-                        the command index, and the empty personal file
+  scripts/data/         the databases, each with its licence text beside it, the tables the tools read,
+                        SOURCES.md (where each comes from), the command index, and the empty personal file
 dist/voss.zip           the packed skill
 docs/limits.md          what to trust, command by command
 CONTRIBUTING.md         building, testing and the house rules
-tests/                  the test suite, with made-up patients and a made-up household to test with
-tools/                  build scripts
+tests/                  the test suite, with made-up patients, a made-up household and made-up data to test with
+tools/                  build.py packs the skill; build_core.py and its kind fetch a source and build its database
 ```
 
 ## Working on it
@@ -99,10 +103,14 @@ tools/                  build scripts
 ## Credits
 
 - Voss, the VOSS-01 design and the pictures: Pantera Północy.
-- No third-party data ships yet. Each database will bring its own licence and credit line, listed here and in `src/scripts/data/SOURCES.md`, and kept with every answer that draws on it.
+- Health topic summaries and definitions of health terms. Source: MedlinePlus, National Library of Medicine. Public domain. The National Library of Medicine does not endorse this skill, and the copy here is as old as the day it was retrieved.
+- Emergency numbers by country: Wikidata, CC0. That 112 works throughout the European Union: the European Commission.
+- Each database carries its own licence text (`src/scripts/data/LICENSE-*.txt`) and is listed in [src/scripts/data/SOURCES.md](src/scripts/data/SOURCES.md), with the day its licence was last checked. A credit line stays with every answer that draws on it.
 
 ## Licence
 
 MIT for the code and for everything written for this skill. See `LICENSE`.
+
+The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0.
 
 ![Voss](/src/images/voss-reference-sheet.webp)

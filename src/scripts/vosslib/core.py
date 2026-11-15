@@ -228,6 +228,12 @@ def fold(text):
     return re.sub(r"_+", "_", t).strip("_")
 
 
+def key(text):
+    """fold(), and then every run of anything that is not a letter or a digit is one underscore, so that a
+    name is found whatever its punctuation: 'HIV: PrEP (and PEP)' -> 'hiv_prep_and_pep'."""
+    return re.sub(r"[\W_]+", "_", fold(text)).strip("_")
+
+
 def one_line(text, what, limit=MAX_TEXT):
     """Free text for a record: trimmed, on one line, within a sane length."""
     t = " ".join(str(text).split())

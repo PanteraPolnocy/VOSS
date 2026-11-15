@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made up for the test suite, in the shape of the MedlinePlus health topic file. Nothing here is medicine. -->
+<health-topics total="6" date-generated="11/10/2026 08:58:25">
+<health-topic meta-desc="A made-up topic for the tests: what a wobbly knee is, and when to see someone about it." title="Wobbly Knee" url="https://example.org/wobblyknee.html" id="11" language="English" date-created="03/04/2001">
+<also-called>WK</also-called>
+<also-called>Knee wobble</also-called>
+<full-summary>&lt;h3&gt;What is a wobbly knee?&lt;/h3&gt;
+
+&lt;p&gt;A wobbly knee is a &lt;a href="https://example.org/made-up.html"&gt;made-up condition&lt;/a&gt; that the tests use. It isn&amp;#8217;t real &amp;#8212; nothing here is advice,   and
+it says &amp;#8220;so&amp;#8221; itself.&lt;/p&gt;
+
+&lt;h3&gt;What are the signs?&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;A knee that &lt;strong&gt;wobbles&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;Trouble on stairs:
+  &lt;ul&gt;&lt;li&gt;going up&lt;/li&gt;&lt;li&gt;going down&lt;/li&gt;&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;If the knee gives way completely, call 911.&lt;/p&gt;
+&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Grade&lt;/th&gt;&lt;th&gt;Wobble&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;1&lt;/td&gt;&lt;td&gt;a little&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;2&lt;/td&gt;&lt;td&gt;a lot&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;img src="https://example.org/knee.png" alt="a picture that must not be taken"&gt;
+&lt;h3&gt;&lt;/h3&gt;
+&lt;p class=""&gt;NIH: National Institute of Made-Up Things&lt;/p&gt;</full-summary>
+<group url="https://example.org/bones.html" id="3">Bones, Joints and Muscles</group>
+<group url="https://example.org/tests.html" id="4">Made-Up Conditions</group>
+<language-mapped-topic url="https://example.org/spanish/wobblyknee.html" id="12" language="Spanish">Rodilla tambaleante</language-mapped-topic>
+<mesh-heading><descriptor id="D000001">Knee Instability</descriptor></mesh-heading>
+<other-language vernacular-name="polski" url="https://example.org/languages/wobblyknee.html#Polish">Polish</other-language>
+<primary-institute url="https://example.org/">National Institute of Made-Up Things</primary-institute>
+<related-topic url="https://example.org/creakyelbow.html" id="13">Creaky Elbow</related-topic>
+<related-topic url="https://example.org/gone.html" id="999">A topic that is not in the file</related-topic>
+<see-reference>Knee Instability</see-reference>
+<site title="Somebody else's page" url="https://example.org/elsewhere"><information-category>Start Here</information-category><organization>Somebody Else</organization><standard-description>Other people's words, which are left out</standard-description></site>
+</health-topic>
+<health-topic meta-desc="Un tema inventado para las pruebas." title="Rodilla tambaleante" url="https://example.org/spanish/wobblyknee.html" id="12" language="Spanish" date-created="03/04/2001">
+<full-summary>&lt;p&gt;Esto no se guarda: el n&amp;uacute;cleo est&amp;aacute; en ingl&amp;eacute;s.&lt;/p&gt;</full-summary>
+<group url="https://example.org/spanish/bones.html" id="5">Huesos</group>
+<language-mapped-topic url="https://example.org/wobblyknee.html" id="11" language="English">Wobbly Knee</language-mapped-topic>
+</health-topic>
+<health-topic meta-desc="A made-up topic for the tests: an elbow that creaks." title="Creaky Elbow" url="https://example.org/creakyelbow.html" id="13" language="English" date-created="12/31/2010">
+<also-called>CE (creak)</also-called>
+<also-called>A-creak</also-called>
+<full-summary>&lt;p&gt;A creaky elbow creaks. It is made up, like the wobbly knee, and it turns up in the tests when pollen is mentioned.&lt;/p&gt;</full-summary>
+<group url="https://example.org/bones.html" id="3">Bones, Joints and Muscles</group>
+<related-topic url="https://example.org/wobblyknee.html" id="11">Wobbly Knee</related-topic>
+</health-topic>
+<health-topic meta-desc="A made-up topic for the tests: the tests somebody might run on a knee." title="Knee Tests" url="https://example.org/kneetests.html" id="14" language="English" date-created="01/02/2015">
+<full-summary>&lt;p&gt;Knee tests are tests on a knee. A normal made-up wobble index is below 5.&lt;/p&gt;</full-summary>
+<group url="https://example.org/tests.html" id="4">Made-Up Conditions</group>
+<mesh-heading><descriptor id="D000002">Knee</descriptor></mesh-heading>
+</health-topic>
+<health-topic meta-desc="A made-up topic for the tests: sneezing in the summer." title="Summer Sniffles" url="https://example.org/sniffles.html" id="15" language="English" date-created="06/07/2019">
+<full-summary>&lt;p&gt;Summer sniffles come with pollen. Pollen is everywhere in the summer, and pollen is all this made-up summary is about.&lt;/p&gt;</full-summary>
+<group url="https://example.org/tests.html" id="4">Made-Up Conditions</group>
+</health-topic>
+<health-topic meta-desc="" title="A Topic Without A Summary" url="https://example.org/empty.html" id="16" language="English" date-created="06/07/2019">
+<full-summary></full-summary>
+<group url="https://example.org/tests.html" id="4">Made-Up Conditions</group>
+</health-topic>
+</health-topics>
