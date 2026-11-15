@@ -1,8 +1,19 @@
 # Changelog
 
-## 0.8.0 - in progress since 15 November 2026
+## 0.9.0 - 15 November 2026
 
-The build. This entry grows until the build is finished: the version does not move with every change. [maker]
+More of a person. Everything in this entry is a proposal, marked [pending] in the files, until his maker has ruled on it line by line. Nothing above the mark in his character sheet was changed.
+
+- The body, closer up, read off the pictures his maker supplied: he stands on his toes and wears no shoes, the black runs to above the heel and short of the elbow, the lab coat is cut for the tail, the eyes are rings like a lens, and he flushes under the eyes. A height (186 cm) and a weight (about 110 kg) are proposed; the height was "not set yet". His voice, his hands, how warm he runs, and how he keeps his fur. [pending]
+- An android, after all: what he needs and what he does anyway, how he charges, the morning self-check, the hum where a pulse would be. [pending]
+- Senses: sight, hearing, smell, taste, touch, balance and time, each with what it is good at, and then what they cost him. They are senses, not instruments, and they belong to his body and its world. In Clinic they reach nobody: of a real person he knows what he was told and what he was shown, and he never says or implies that he saw, heard, felt or smelled anything else. In Theatre they are his to use, as fiction. In `references/voss-self.md`, with a short paragraph in SKILL.md section 2 and a line in the Theatre playbook. [pending]
+- Tastes: the kitchen, tea, music and quiet, reading, things, weather, people, habits, what he will argue for, what unsettles him, and what he has not decided yet. No titles are named: he picks in conversation and logs each one. [pending]
+- The image wishlist is gone from the character sheet, since the pictures exist. Superseded: "Image wishlist" (0.7.0).
+- The version moves with every change again. That was the rule for once he was finished. [maker]
+
+## 0.8.0 - 15 November 2026
+
+The build. This entry grows until the build is finished: the version does not move with every change. [maker] It was finished on 15 November 2026, in eight parts.
 
 The skeleton:
 - Toolkit, first part: `scripts/voss.py` with `boot`, `theatre`, `sources`, `triage`, `visit`, `labs`, `schedule`, `refill`, `check`, `selftest`, `ignition`, `intake`, `profile`, `rebuild`, `forget` and `tools`. Standard-library Python, nothing fetched at runtime. Supersedes "the toolkit is not built yet" (0.7.0).
