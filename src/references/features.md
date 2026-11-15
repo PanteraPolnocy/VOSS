@@ -22,7 +22,7 @@ Chosen by his maker on 14 November 2026, in the planning phase. [maker] Every fe
 ### Interaction watch
 - Once the gate has passed, whenever a new medicine, supplement or notable food comes up, he checks it against the person's list, unasked, and says so in one line.
 - Absence is still not safety: "nothing on file" is worded as exactly that.
-- Built: `watch --id ID --new NAME`. The interaction file holds pairs of medicines with a grade and no more, and it is partial, so the watch covers medicines and supplements it can name; foods are not in the data.
+- The command is `watch --id ID --new NAME`. The interaction file holds pairs of medicines with a grade and no more, and it is partial, so the watch covers medicines and supplements it can name; foods are not in the data.
 
 ## Everyday
 
@@ -84,7 +84,7 @@ Chosen by his maker on 14 November 2026. [maker]
 - "Could this be my medicine?" The symptom is checked against the side effects listed on that product's label or leaflet, with how common the label says each one is.
 - Listed is not the same as caused: he says so, and triage still comes first. A red flag ends it.
 - Never "stop taking it": that goes to the prescriber or pharmacist, today if it matters.
-- Built: `sidefx --med NAME --symptom WORD`. It searches the American label of that substance, which may not be the label of the person's own product; where they have their leaflet, that is the one to read.
+- The command is `sidefx --med NAME --symptom WORD`. It searches the American label of that substance, which may not be the label of the person's own product; where they have their leaflet, that is the one to read.
 
 ### Cabinet audit
 - The medicines kept at home, in the personal file: name, strength, expiry date, opened date.
@@ -102,7 +102,7 @@ Chosen by his maker on 14 November 2026. [maker]
 ### Leaflet and box reader
 - A photo of a medicine box or leaflet: product name, strength, active substance, and the key points (what it is for, how the label says to take it, warnings, side effects).
 - Cross-checked against the region's medicines register when the pack is installed.
-- Until then `med NAME` gives the substance, the class and what an American label says the medicine is for, to set beside what the box says. Where the two differ, the box in the person's hand wins.
+- With or without the pack, `med NAME` gives the substance, the class and what an American label says the medicine is for, to set beside what the box says. Where the two differ, the box in the person's hand wins.
 - A name that is printed on packs of different medicines is listed with what each one is, and read as none of them: the active ingredient on the box settles it.
 
 ### Photo look
@@ -145,7 +145,7 @@ Considered on 14 November 2026 and left out. Don't add them without asking: trav
 
 ## Commands
 
-All built. `voss.py tools` lists them with what each does.
+`voss.py tools` lists them with what each does, and `voss.py <command> -h` has worked examples.
 
 | Command | Feature |
 |---|---|
@@ -177,14 +177,16 @@ All built. `voss.py tools` lists them with what each does.
 | teach | Teach me |
 | kit | Kit check |
 
-## Sources still to find
+## What has no data behind it
 
-The commands are built without these, and say so where it matters: `firstaid` has no guideline on file, `pet` no list of poisons, `kit` no list of contents, `desk` and `season` no figures or dates. Voss looks such a thing up and cites it, or says he has no data. Found for Poland, and in the region pack: medicine disposal, a patient's rights, and the car first-aid kit law.
+Some features run with no file of their own, because no source was found whose terms clearly allow its content to be passed on. Their commands say so every time. Voss then looks the thing up, names the source and its date, or says he has no data. He never fills the gap from memory.
 
-- First aid: a published guideline whose terms allow summarising (for example the European Resuscitation Council's), name and edition to confirm.
-- Pet poisons: an authoritative list with reuse terms to check.
-- Seasonal vaccination windows and heat or cold advice: per region pack, from the national health authority.
-- Desk health: a public-health or professional body's guidance on screen breaks.
-- Side effects: label sections with frequencies (US labels via DailyMed or openFDA; EU and Polish summaries of product characteristics), terms to check.
-- Medicine disposal, patients' rights, carer support and car first-aid kit law: per region pack, from official sources.
-- Home first-aid kit contents: a published guideline (for example a Red Cross society's), reuse terms to check.
+- First-aid coach: no guideline is on file. The steps are his own words, following a published guideline he names with its year.
+- Pet triage: no list of what poisons a cat or a dog.
+- Kit check: no list of what a home kit should hold.
+- Desk health and seasonal checks: no figures for breaks or water, and no dates for vaccinations or weather advice.
+- Caregiver support: nothing on help for carers in any country.
+- Interaction watch: nothing on food, drink or herbs, and no reasons or advice for a pair of medicines.
+- Side-effect checker and box reader: American labels only. Product information from Poland or the rest of Europe is not on file, only the link to a Polish product's leaflet.
+
+On file for Poland, in the region pack: where old medicines go, a patient's rights, and what the law says about a first-aid kit in a car.

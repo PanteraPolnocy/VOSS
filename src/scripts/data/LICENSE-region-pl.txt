@@ -4,7 +4,7 @@ Three kinds of thing are in this file. Each stays under its own terms.
 
 1. The register of medicines
 
-   Source: Rejestr Produktow Leczniczych (the register of medicinal products allowed on the market in
+   Source: Rejestr Produktów Leczniczych (the register of medicinal products allowed on the market in
    Poland), kept by Centrum e-Zdrowia: https://rejestry.ezdrowie.gov.pl/rpl/search/public
    Licence: Creative Commons Attribution 4.0 International (CC BY 4.0),
    https://creativecommons.org/licenses/by/4.0/ , as stated for data set 397 on the open data portal of the

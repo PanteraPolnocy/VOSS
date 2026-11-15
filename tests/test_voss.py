@@ -1904,6 +1904,23 @@ class IndexTests(Base):
             self.assertIn(c["module"], vosslib.MODULES, c["name"])
             self.assertIn(c["group"], [g for g, _ in core.GROUPS], c["name"])
 
+    def test_the_documents_keep_up_with_the_commands(self):
+        commands = index.load()["commands"]
+        with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as f:
+            readme = f.read()
+        with open(os.path.join(ROOT, "docs", "limits.md"), encoding="utf-8") as f:
+            limits = f.read()
+        rows = dict((m.group(1), re.findall(r"`([a-z]+)`", m.group(2))) for m in re.finditer(r"(?m)^\| ([^|`]+) \| (`[^|]+`) \|$", readme))
+        for key, title in core.GROUPS:
+            self.assertEqual(rows.get(title), [c["name"] for c in commands if c["group"] == key], "the README's row for %s" % title)
+        for c in commands:
+            self.assertTrue(re.search(r"`%s[` ]" % c["name"], limits), "docs/limits.md has nothing to say about '%s'" % c["name"])
+        # the statement of what he is for is the one in the clinical rules, word for word, wherever it is printed
+        with open(os.path.join(SRC, "references", "clinical-rules.md"), encoding="utf-8") as f:
+            purpose = re.search(r"(?m)^## Intended purpose[^\n]*\n\n> ([^\n]+)$", f.read()).group(1)
+        self.assertIn("> " + purpose, readme)
+        self.assertIn(purpose, limits)
+
     def test_a_call_loads_only_the_module_it_needs(self):
         code = ("import sys; sys.path.insert(0, %r); import voss; voss.main(['triage', '--level', '1']); "
                 "print('LOADED', ' '.join(sorted(m for m in sys.modules if m.startswith('vosslib.'))))" % SCRIPTS)
@@ -3339,7 +3356,7 @@ class RegisterTests(Base):
                      "10 mg, Tabletki, doustna - Rp (on prescription) - Kolano Pharma S.A.",
                      "ALSO       other products whose name begins the same, each a product of its own: Kolanex Max",
                      "LEAFLET    the Polish leaflet, from the register: https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/7/leaflet",
-                     "SOURCE     Rejestr Produktow Leczniczych: the register of medicines allowed on the market in Poland (Centrum e-Zdrowia), "
+                     "SOURCE     Rejestr Produkt\u00f3w Leczniczych: the register of medicines allowed on the market in Poland (Centrum e-Zdrowia), "
                      "the state at the end of the day before it was retrieved, retrieved 2026-11-10 [sourced: region-pl.db, built 2026-11-15]",
                      "CREDIT     " + build_region_pl.CREDIT,
                      "RULE       the register says what a product is and how it may be sold. It gives no dose and no advice",
@@ -4101,7 +4118,7 @@ class ShippedDataTests(Base):
 
     def test_every_database_accounts_for_itself_and_fits(self):
         with open(os.path.join(REAL_DATA, "SOURCES.md"), encoding="utf-8") as f:
-            listed = f.read().split("## Databases to come")[0]
+            listed = f.read()
         for name in self.files:
             info = library.read(os.path.join(REAL_DATA, name))
             self.assertEqual(info["problems"], [], name)
@@ -4111,6 +4128,15 @@ class ShippedDataTests(Base):
         self.assertFalse([n for n in os.listdir(REAL_DATA) if n.endswith(".part")])
         code, out, _ = run("selftest")
         self.assertEqual(code, 0, out)
+
+    def test_every_credit_a_source_asks_for_is_in_the_readme(self):
+        with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as f:
+            readme = f.read()
+        for name in self.files:
+            self.assertIn("`%s`" % name, readme, "the README does not say under which terms %s is passed on" % name)
+            for source in library.read(os.path.join(REAL_DATA, name))["sources"]:
+                if source["credit"]:
+                    self.assertIn(source["credit"], readme, "the credit line of %s" % name)
 
     def test_the_core_data(self):
         if "core-pd.db" not in self.files:

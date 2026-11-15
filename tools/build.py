@@ -171,8 +171,6 @@ def check_data(folder):
     sources = read(sources_path) if os.path.isfile(sources_path) else ""
     if not sources:
         problems.append("scripts/data/SOURCES.md is missing")
-    # a file that is installed belongs in the main table, not still under the ones to come
-    sources = re.split(r"(?m)^## Databases to come\s*$", sources)[0]
     for name in sorted(os.listdir(data)) if os.path.isdir(data) else []:
         if name.lower().endswith(".part"):
             problems.append("scripts/data/%s is a half-built database, left by a build that stopped: delete it" % name)

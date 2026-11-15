@@ -63,6 +63,12 @@ The feature commands, all twenty-six of them:
 - Added to the personal file [pending]: `value_text` for a lab result that is not a plain number, and `keeps` for how long a medicine keeps once opened.
 - No first-aid guideline, pet poison list, kit contents list or seasonal dates are in the data: no source with clear terms was found for them, so the commands say that nothing is on file.
 
+The documents:
+- `references/data-plan.md` has left the package. It was the plan for building the databases, and they are built. What it held that still matters is kept where it is used: the sources, their licences and what was looked at and left out are in `scripts/data/SOURCES.md`, which now also lists how old each file may get [pending]; the rules for anyone who builds a database are in the repository's `CONTRIBUTING.md`. Supersedes the data plan as a reference file (0.7.0). Its planned commands and build order are superseded by the commands themselves, which `tools` lists.
+- The other reference files say what he has, not what was planned. The list of sources still to be found (`features.md`) is now a list of what has no data behind it, and the note on emergency numbers (`clinical-rules.md`) says what is on file.
+- The Polish register is named with its Polish letter in its own credit line, as its keeper spells it.
+- The repository's README and `docs/limits.md` cover every command, and the tests keep them to it.
+
 ## 0.7.0 - 14 November 2026
 
 The design, as it was handed over for building. The drafts of that day are folded in here, oldest first.

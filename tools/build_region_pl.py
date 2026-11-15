@@ -59,7 +59,9 @@ LICENCE_NAME = "CC BY 4.0"
 LEAFLET = "https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/%d/leaflet"
 LEAFLET_IMPORT = "https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/%d/parallel-import-files/LEAFLET/public"
 ELI = "https://api.sejm.gov.pl/eli/acts/"
-CREDIT = "Source: Rejestr Produktow Leczniczych, Centrum e-Zdrowia (https://rejestry.ezdrowie.gov.pl)"
+# the register's name keeps its Polish letter: a credit line spells its source the way the source does
+REGISTER_NAME = "Rejestr Produkt\u00f3w Leczniczych"
+CREDIT = "Source: %s, Centrum e-Zdrowia (https://rejestry.ezdrowie.gov.pl)" % REGISTER_NAME
 MIN_PRODUCTS = 15000
 HUMAN = "Ludzki"
 # the register's own stand-ins for a substance name, where there is no single one
@@ -264,7 +266,7 @@ Three kinds of thing are in this file. Each stays under its own terms.
 
 1. The register of medicines
 
-   Source: Rejestr Produktow Leczniczych (the register of medicinal products allowed on the market in
+   Source: Rejestr Produkt\u00f3w Leczniczych (the register of medicinal products allowed on the market in
    Poland), kept by Centrum e-Zdrowia: https://rejestry.ezdrowie.gov.pl/rpl/search/public
    Licence: Creative Commons Attribution 4.0 International (CC BY 4.0),
    https://creativecommons.org/licenses/by/4.0/ , as stated for data set 397 on the open data portal of the
@@ -512,8 +514,8 @@ def build(a):
     path = os.path.join(out_folder, STEM + ".db")
     con = dbtools.create(path)
     try:
-        src = dbtools.add_source(con, "Rejestr Produktow Leczniczych: the register of medicines allowed on the market in Poland "
-                                      "(Centrum e-Zdrowia), the state at the end of the day before it was retrieved", REGISTER_PAGE, day,
+        src = dbtools.add_source(con, "%s: the register of medicines allowed on the market in Poland (Centrum e-Zdrowia), the "
+                                      "state at the end of the day before it was retrieved" % REGISTER_NAME, REGISTER_PAGE, day,
                                  "CC BY 4.0, as the open data portal dane.gov.pl states for data set 397 (read %s); the days the "
                                  "data was made and obtained are to be given" % licence_day.isoformat(), CREDIT)
         law_days = [d for w, d in read_days.items() if FACTS_BY_KEY[w[0]]["sources"][w[1]]["kind"] == "law"]

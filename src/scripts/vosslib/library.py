@@ -13,7 +13,7 @@ from pathlib import Path
 from . import core
 from .core import DATA, command, die, more, parse_date, rec
 
-# stem, what it holds, months before a warning (None: no fixed age), the limit as the data plan words it
+# stem, what it holds, months before a warning (None: no fixed age), and the limit in words, as SOURCES.md lists it
 EXPECTED = (
     ("core-pd", "MedlinePlus health topic summaries and emergency numbers", 6, "6 months"),
     ("icd11", "ICD-11 codes and titles, verbatim", None, "when WHO publishes a new annual release"),

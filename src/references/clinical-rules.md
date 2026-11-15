@@ -80,9 +80,7 @@ Check that a number is current before quoting it.
 - United Kingdom: Samaritans, 116 123
 - United States: 988, Suicide and Crisis Lifeline
 
-The planned region packs will carry these as data with a source and date. Until then, check them.
-
-From 0.8.0 the core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country PL`. They are listed as the source has them and were not verified one by one, so the rule above still stands. The support lines are not in it yet.
+The core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country PL`. They are listed as the source has them and were not verified one by one, so the rule above still stands. Where a country's own pack is installed, it adds that country's numbers from its own law. The support lines are in no file: check them. Superseded: "the planned region packs will carry these as data".
 
 ## Crisis and mental health
 
