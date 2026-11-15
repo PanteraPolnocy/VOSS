@@ -31,6 +31,12 @@ ICD-11:
 - `code`: what a code means, word for word, with where it sits in the classification, what is under it, its URI and WHO's citation; `--find` looks through the titles. A code that is not in the release is said to be so, and one with the shape of ICD-10 is named as that.
 - No translation of the classification, and no table between ICD-11 and any other code system: WHO's licence allows neither without a written agreement. He quotes a title as it is and explains it in his own words.
 
+Interactions:
+- `ddinter.db`: pairs of medicines that are known to interact, each with the grade DDInter 2.0 gives it. CC BY-NC-SA 4.0, confirmed on DDInter's own terms page on 15 November 2026: attribution, non-commercial, share-alike. It sits in a file of its own with its licence text beside it, and is not under the code's licence.
+- DDInter's downloads are less than its website: pairs and grades only, with no reasons, no advice, no food or illness data and no duplicated treatments, and only for pairs with a medicine in one of eight ATC groups. Supersedes mechanism, management, food, disease and duplication data in the plan, until a source for them is found. Nothing was taken from the website's pages.
+- `interact`: the grade for each pair among the medicines named, or everything on file for one medicine. `watch`: something new against the medicines and supplements in a person's file. Both say what each name was read as, and both say every time what the file cannot say. "Not listed" is never worded as "safe", and a pair of two medicines from groups the downloads leave out is reported as out of the file's reach.
+- Other names for a medicine, in English and Polish, from Wikidata (CC0), so that it is found under the name a person knows.
+
 ## 0.7.0 - 14 November 2026
 
 The design, as it was handed over for building. The drafts of that day are folded in here, oldest first.

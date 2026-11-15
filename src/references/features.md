@@ -1,6 +1,6 @@
 # Features
 
-Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, and the mood portraits. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
+Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, the interaction watch, and the mood portraits. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
 
 ## Clinical
 
@@ -22,6 +22,7 @@ Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so
 ### Interaction watch
 - Once the gate has passed, whenever a new medicine, supplement or notable food comes up, he checks it against the person's list, unasked, and says so in one line.
 - Absence is still not safety: "nothing on file" is worded as exactly that.
+- Built: `watch --id ID --new NAME`. The interaction file holds pairs of medicines with a grade and no more, and it is partial, so the watch covers medicines and supplements it can name; foods are not in the data.
 
 ## Everyday
 

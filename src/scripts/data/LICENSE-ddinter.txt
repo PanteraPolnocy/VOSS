@@ -1,0 +1,38 @@
+ddinter.db: what it is, and on what terms
+
+This file holds drug-drug interactions from DDInter 2.0: which pairs of medicines are known to interact,
+and the severity grade DDInter gives each pair. https://ddinter2.scbdd.com/
+
+  Tian Y, Yi J, Wang N, Wu C, et al. DDInter 2.0: an enhanced drug interaction resource with expanded
+  data coverage, new interaction types, and improved user interface. Nucleic Acids Research 53(D1):D1356.
+  doi:10.1093/nar/gkae726
+
+Licence: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+DDInter's terms: "The DDInter data is made available under a Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International license." (https://ddinter2.scbdd.com/terms/)
+
+This file is NOT under the licence of the code it ships with. You may copy it and pass it on, and build
+on it, if you:
+  - give the credit above, and say what was changed;
+  - do not use it for commercial purposes. Anyone who uses this skill commercially must take this file
+    out first: the tools then say that no interaction data is installed, and nothing else changes;
+  - pass on anything you make from it under this same licence.
+
+What was changed in the making of this file: DDInter's download files (one for each of eight groups of
+the ATC classification) were merged into one table of pairs; a pair listed in two files is stored once;
+the severity grade is stored as a number (3 Major, 2 Moderate, 1 Minor, 0 Unknown). No pair and no grade
+was added, removed or altered.
+
+What this file does not hold. DDInter's downloads carry pairs and grades only: no account of why two
+medicines interact or what to do about it, and no food, disease or duplication data. They cover a pair
+only if at least one of its medicines is in ATC group A, B, D, H, L, P, R or V. A pair that is not in this
+file is therefore not known to be safe. DDInter's own disclaimer: "the absence of an interaction does not
+necessarily mean no interactions exist."
+
+DDInter does not endorse this skill. It is information, not advice: questions about medicines taken
+together go to a pharmacist or a prescriber.
+
+Other names for the medicines (so that "paracetamol" finds "Acetaminophen") come from Wikidata, property
+P267 items, under Creative Commons CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+They were matched by name and not checked one by one.

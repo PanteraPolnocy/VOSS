@@ -31,6 +31,8 @@ ALSO = {
     "labs": "blood test result value range reference report high low lab",
     "schedule": "medicine medication dose times calendar ics reminder pills tablets when to take",
     "refill": "pack run out left remaining tablets pills supply renew prescription reminder",
+    "interact": "interaction interactions mix together combine take with drug medicine tablets safe to take clash",
+    "watch": "new medicine supplement started prescribed check against list on file interaction",
     "ignition": "gate identity who questions answer check pass password",
     "intake": "file fill in add update details ask questions read back weight allergy medicine",
     "profile": "show on file read back what do you know about me record",

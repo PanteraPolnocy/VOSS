@@ -8,6 +8,7 @@ A database sits here as `<name>.db` with its licence text beside it as `LICENSE-
 |---|---|---|---|
 | `core-pd.db` | health topic summaries and short definitions in plain English; emergency numbers by country | MedlinePlus health topic XML and "Definitions of Health Terms" XML (National Library of Medicine); Wikidata, property P2852; one fact from the European Commission's page on 112 | public domain and CC0: see below, and `LICENSE-core-pd.txt` |
 | `icd11.db` | ICD-11 for Mortality and Morbidity Statistics: every code and grouping with its title and URI, whole and unchanged | the "Simple Tabulation" release file of the World Health Organization | CC BY-ND 3.0 IGO with WHO's terms of use: see below, and `LICENSE-icd11.txt`. Not under the code's licence |
+| `ddinter.db` | pairs of medicines that are known to interact, each with a severity grade; other names for the medicines | DDInter 2.0, its download files; Wikidata for the other names | CC BY-NC-SA 4.0 (non-commercial, share-alike): see below, and `LICENSE-ddinter.txt`. Not under the code's licence. The names are CC0 |
 | `triage.json` | the four triage levels and the red flags | written for this skill; word for word from `references/clinical-rules.md` | MIT, with the code |
 | `visit.json` | what to ask a doctor, what to bring, the symptom diary's columns | written for this skill as general advice; the diary columns are those in `references/features.md` | MIT, with the code |
 | `fields.json` | the personal file's fields, with what each holds and why a doctor asks | written for this skill; the wording is that of `references/personal-file.md` | MIT, with the code |
@@ -42,6 +43,17 @@ Built by `tools/build_icd11.py` from WHO's release file, which needs no account:
 - **What is not in it:** descriptions, definitions and index terms. The release file carries codes, titles and structure only.
 - WHO is preparing an updated licence. The build checks, by checksum, that the licence document is still the one that was read, and stops if it is not.
 
+## ddinter.db
+
+Built by `tools/build_ddinter.py`. The terms were read on DDInter's own page on 15 November 2026 (https://ddinter2.scbdd.com/terms/): "The DDInter data is made available under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International license."
+
+- **What that means here.** The file may be passed on with DDInter's credit, under the same licence, and not for commercial purposes. It is kept in a file of its own for that reason, apart from the MIT code and from the other databases. Anyone who uses the skill commercially has to take this one file out; the tools then say that no interaction data is installed.
+- **Credit**, printed with every answer: DDInter 2.0 (https://ddinter2.scbdd.com/). Tian Y, Yi J, Wang N, Wu C, et al. DDInter 2.0: an enhanced drug interaction resource with expanded data coverage, new interaction types, and improved user interface. Nucleic Acids Research 53(D1):D1356, doi:10.1093/nar/gkae726.
+- **What was changed:** the eight download files were merged into one table of pairs, a pair listed twice is stored once, and the grade is stored as a number. No pair and no grade was added, removed or altered.
+- **What DDInter's downloads hold, and what they do not.** Pairs of medicines with a grade (Major, Moderate, Minor, Unknown): 160,235 pairs of 1,939 medicines on the day of the build. No account of why two medicines interact or what to do about it, and nothing on food, illnesses or duplicated treatments: those are on DDInter's website only, and are not taken from it. And only eight of the fourteen ATC groups have a download (A, B, D, H, L, P, R, V), so a pair of two medicines from the other groups is not in the file at all. The tools say this every time, and never let "not listed" read as "safe". The files also show which medicines are outside those groups: one whose pairs are spread over several files, with no file holding them all, is in none of the groups that have a download (903 of the 1,939). A pair of two such medicines is reported as out of the file's reach, since it could not be there whether or not the two interact.
+- **Other names.** DDInter has one name for each medicine, sometimes the American one. So that "paracetamol" finds "Acetaminophen", the English and Polish labels and aliases of Wikidata items that carry an ATC code (property P267, CC0) are added where an item's English name is the DDInter name and no other item's. They were matched by name, not checked one by one, and the tools say what each name was read as.
+- The build checks at every fetch that DDInter's terms page still names the same licence, and stops if it does not.
+
 ## How the text is packed
 
 SQLite has no compression of its own. Long text is therefore packed into blocks of about half a megabyte, each compressed with whichever of the standard library's codecs makes it smallest (zlib, bz2 or lzma), and a piece is found again by block, start and length. The health topic summaries come out about four times smaller for it, and the ICD-11 records, which repeat each other a great deal, thirteen times. Reading one costs one block: a few milliseconds.
@@ -50,7 +62,6 @@ SQLite has no compression of its own. Long text is therefore packed into blocks 
 
 | File | What it will hold | Source | Licence |
 |---|---|---|---|
-| `ddinter.db` | interactions between medicines, foods and conditions | DDInter 2.0 | CC BY-NC-SA 4.0 |
 | `region-pl.db` | the Poland pack | to be confirmed source by source | to be confirmed |
 
 Each licence is checked again, and the date written down here, before its file is built. A source whose terms do not clearly allow its data to be passed on in a public repository and in the packed skill is left out.

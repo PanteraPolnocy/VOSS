@@ -58,6 +58,7 @@ from vosslib import clinic, core, desk, doses, gate, ical, index, library, perso
 
 import build  # noqa: E402
 import build_core  # noqa: E402
+import build_ddinter  # noqa: E402
 import build_icd11  # noqa: E402
 import build_index  # noqa: E402
 import dbtools  # noqa: E402
@@ -251,6 +252,74 @@ def sample_icd():
                                         "--licence-read", "2026-11-10")
         _sample["icd"] = folder
     return _sample["icd"]
+
+
+# Interaction files in the shape of DDInter's, about medicines that do not exist.
+DDI_FILES = {
+    "A": [("DDInter1", "Wobblol", "DDInter2", "Creakazine", "Major"),
+          ("DDInter1", "Wobblol", "DDInter3", "Kneeprofen", "Moderate"),
+          ("DDInter4", "Sniffex", "DDInter1", "Wobblol", "Minor"),
+          ("DDInter5", "Sniffex (topical)", "DDInter1", "Wobblol", "Unknown"),
+          ("DDInter7", "Mopezil", "DDInter1", "Wobblol", "Moderate"),
+          ("DDInter8", "Dozapine", "DDInter1", "Wobblol", "Major")],
+    "B": [("DDInter2", "Creakazine", "DDInter1", "Wobblol", "Moderate"),
+          ("DDInter2", "Creakazine", "DDInter6", "Elbowmycin", "Unknown"),
+          ("DDInter3", "Kneeprofen", "DDInter3", "Kneeprofen", "Minor"),
+          ("DDInter2", "Creakazine", "DDInter7", "Mopezil", "Minor"),
+          ("DDInter2", "Creakazine", "DDInter8", "Dozapine", "Unknown")],
+}
+# Wobblol is the group-A medicine and Creakazine the group-B one: every pair of theirs is in their own file.
+# Mopezil and Dozapine have a pair in each file and all their pairs in neither, so they are in neither group.
+DDI_NAMES = {"items": {
+    "Q1": {"en": ["wobblol", "WBL-1"], "pl": ["wobblol", "woblol"]},
+    "Q2": {"en": ["Creakazine", "creaksine", "CZ", "a name that is far too long to be a name anybody would ever type in"],
+           "pl": ["kreakazyna"]},
+    "Q3": {"en": ["Kneeprofen"], "pl": []},
+    "Q4": {"en": ["kneeprofen", "something else"], "pl": []},
+}}
+
+
+def ddi_files(files=None, names=None, header=None):
+    """Made-up download files and a made-up names file on disk; returns ([csv paths], names path)."""
+    import csv
+    folder = tempfile.mkdtemp(dir=OUTPUTS)
+    paths = []
+    for letter, rows in sorted((DDI_FILES if files is None else files).items()):
+        path = os.path.join(folder, "ddinter_downloads_code_%s.csv" % letter)
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            out = csv.writer(f)
+            out.writerow(header or build_ddinter.HEADER)
+            out.writerows(rows)
+        paths.append(path)
+    names_path = os.path.join(folder, "drug-names.sample.json")
+    with open(names_path, "w", encoding="utf-8") as f:
+        json.dump(DDI_NAMES if names is None else names, f)
+    return paths, names_path
+
+
+def build_ddi(out, paths, names_path, *extra):
+    """Run the real interaction builder on made-up files; returns what it printed."""
+    keep = build_ddinter.MIN_PAIRS, build_ddinter.MIN_DRUGS, build_ddinter.MIN_NAMES
+    build_ddinter.MIN_PAIRS, build_ddinter.MIN_DRUGS, build_ddinter.MIN_NAMES = 3, 3, 2
+    said = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(said):
+            build_ddinter.main(["--files"] + list(paths) + ["--names", names_path, "--out", out, "--downloads", NO_DATA] + list(extra))
+    finally:
+        build_ddinter.MIN_PAIRS, build_ddinter.MIN_DRUGS, build_ddinter.MIN_NAMES = keep
+    return said.getvalue()
+
+
+def sample_ddi():
+    """The folder that holds the small interaction database, built once for the whole run."""
+    if "ddi" not in _sample:
+        folder = os.path.join(OUTPUTS, "sample-ddi")
+        os.makedirs(folder)
+        clock()
+        paths, names_path = ddi_files()
+        _sample["ddi-said"] = build_ddi(folder, paths, names_path, "--retrieved", "2026-11-10", "--terms-read", "2026-11-10")
+        _sample["ddi"] = folder
+    return _sample["ddi"]
 
 
 class Base(unittest.TestCase):
@@ -1499,7 +1568,8 @@ class PackageTests(Base):
                 for ex in examples:
                     args = shlex.split(ex)
                     if (not shipped and (name == "term" or "--country" in args)) or (
-                            name == "code" and not os.path.isfile(os.path.join(REAL_DATA, "icd11.db"))):
+                            name == "code" and not os.path.isfile(os.path.join(REAL_DATA, "icd11.db"))) or (
+                            name in ("interact", "watch") and not os.path.isfile(os.path.join(REAL_DATA, "ddinter.db"))):
                         continue
                     if "CODE" in args:
                         probe = [a for a in args if a not in ("--json", "--package")]
@@ -1564,7 +1634,8 @@ class PackageTests(Base):
     def test_only_the_chosen_commands_exist(self):
         names = [c["name"] for c in index.load()["commands"]]
         self.assertEqual(sorted(names), sorted(["boot", "theatre", "sources", "check", "selftest", "tools", "triage", "visit", "labs",
-                                                "term", "code", "schedule", "refill", "ignition", "profile", "intake", "rebuild", "forget"]))
+                                                "term", "code", "schedule", "refill", "interact", "watch", "ignition", "profile", "intake",
+                                                "rebuild", "forget"]))
         for name in names:
             for word in UNCHOSEN:
                 self.assertNotIn(word, name)
@@ -1654,13 +1725,14 @@ class IndexTests(Base):
             got = ok("tools", "--find", *question.split()).splitlines()[1].split()[0]
             self.assertEqual(got, first, question)
         for question, first in (("what does this word mean", "term"), ("which number do I call abroad", "triage"),
-                                ("the icd code on my discharge letter", "code")):
+                                ("the icd code on my discharge letter", "code"), ("can I take these two tablets together", "interact"),
+                                ("the doctor prescribed something new", "watch")):
             self.assertEqual(ok("tools", "--find", *question.split()).splitlines()[1].split()[0], first, question)
         self.assertIn("no command answers that", ok("tools", "--find", "zzzzqq"))
         self.assertEqual(run("tools", "--find", "time", "--limit", "0")[0], 2)
         self.assertIn("CLINIC", ok("tools", "--group", "clinic"))
         self.assertEqual(run("tools", "--group", "nonsense")[0], 2)
-        self.assertIn("18 commands.", ok("tools"))
+        self.assertIn("20 commands.", ok("tools"))
 
     def test_compiled_files_go_to_the_temp_folder_only_when_the_skill_is_read_only(self):
         kept = (sys.dont_write_bytecode, sys.pycache_prefix, os.access, dict(os.environ))
@@ -2300,6 +2372,208 @@ class CodeTests(Base):
         self.assertIn("icd11.db is not installed, so there is nothing on file for ICD-11 codes", fails("code", "ZA00"))
 
 
+class InteractionBuildTests(Base):
+    """tools/build_ddinter.py, run on made-up files in the shape of DDInter's."""
+
+    def test_the_database_it_writes(self):
+        folder = sample_ddi()
+        said = _sample["ddi-said"]
+        for line in ("9 pairs of 8 medicines, from the files for ATC groups A, B",
+                     "graded: 2 major, 2 moderate, 2 minor, 3 with no grade given",
+                     "out of reach: 2 medicines are in none of the groups that have a download",
+                     "other names: 2 medicines matched to one Wikidata item, 4 other names taken; 1 matched several and got none",
+                     "NOTE 1 pair is graded differently in two files: the more serious grade was kept",
+                     "retrieved: DDInter 2026-11-10, names 2026-11-10; terms page read 2026-11-10"):
+            self.assertIn(line, said)
+        self.assertEqual(sorted(os.listdir(folder)), ["LICENSE-ddinter.txt", "ddinter.db"])
+        info = library.read(os.path.join(folder, "ddinter.db"))
+        self.assertEqual(info["problems"], [])
+        self.assertIn("CC BY-NC-SA 4.0", info["sources"][0]["licence"])
+        self.assertEqual(info["sources"][0]["credit"], build_ddinter.CREDIT)
+        self.assertEqual(info["sources"][1]["credit"], "")
+        with open(os.path.join(folder, "LICENSE-ddinter.txt"), encoding="utf-8") as f:
+            licence = f.read()
+        for must in ("https://creativecommons.org/licenses/by-nc-sa/4.0/", "NOT under the licence of the code", "doi:10.1093/nar/gkae726",
+                     "do not use it for commercial purposes", "under this same licence", "is therefore not known to be safe",
+                     "https://creativecommons.org/publicdomain/zero/1.0/"):
+            self.assertIn(must, licence)
+        con = library.connect(os.path.join(folder, "ddinter.db"))
+        try:
+            self.assertEqual(con.execute("SELECT a, b, level FROM pair ORDER BY a, b").fetchall(),
+                             [(1, 2, 3), (1, 3, 2), (1, 4, 1), (1, 5, 0), (1, 7, 2), (1, 8, 3), (2, 6, 0), (2, 7, 1), (2, 8, 0)],
+                             "each pair once, the more serious grade kept")
+            self.assertEqual([n for (n,) in con.execute("SELECT name FROM drug WHERE reach = 0 ORDER BY name")], ["Dozapine", "Mopezil"],
+                             "a medicine with no file that holds all its pairs is in none of the groups the files cover")
+            names = set(con.execute("SELECT folded, drug, kind FROM drug_name"))
+            for row in (("wobblol", 1, "name"), ("wbl_1", 1, "also called (en)"), ("woblol", 1, "also called (pl)"),
+                        ("kreakazyna", 2, "also called (pl)"), ("sniffex", 4, "name"), ("sniffex", 5, "name"), ("sniffex_topical", 5, "name")):
+                self.assertIn(row, names)
+            self.assertFalse([n for n in names if n[0] in ("cz", "something_else") or n[0].startswith("a_name_that")],
+                             "nothing from a name that fits two items, and nothing too short or too long to be a name")
+            self.assertEqual(dict(con.execute("SELECT key, value FROM build"))["groups"], "AB")
+        finally:
+            con.close()
+
+    def stops(self, *extra, **what):
+        paths, names_path = ddi_files(**what)
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as caught:
+            build_ddi(folder, paths, names_path, *extra)
+        self.assertEqual(os.listdir(folder), [], "a build that stops leaves nothing behind")
+        return str(caught.exception)
+
+    def test_what_stops_a_build(self):
+        good = ("--retrieved", "2026-11-10", "--terms-read", "2026-11-10")
+        self.assertIn("has no note of when it was downloaded", self.stops("--terms-read", "2026-11-10"))
+        self.assertIn("DDInter's terms page is not in the downloads folder", self.stops("--retrieved", "2026-11-10"))
+        self.assertIn("does not have the columns this script knows", self.stops(*good, header=["A", "B", "C", "D", "E"]))
+        self.assertIn("is not in the shape this script knows",
+                      self.stops(*good, files={"A": DDI_FILES["A"] + [("DDInter7", "Odd", "DDInter8", "Odder", "Catastrophic")]}))
+        self.assertIn("one DDInter number under two names",
+                      self.stops(*good, files={"A": DDI_FILES["A"] + [("DDInter1", "Wobblol forte", "DDInter2", "Creakazine", "Minor")]}))
+        self.assertIn("is not the names file this script writes", self.stops(*good, names={"nothing": "of the kind"}))
+        paths, names_path = ddi_files()
+        folder = tempfile.mkdtemp(dir=OUTPUTS)
+        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
+            build_ddinter.main(["--files"] + paths + ["--names", names_path, "--out", folder, "--downloads", NO_DATA] + list(good))
+        self.assertIn("only 9 pairs of 8 medicines were read", str(caught.exception))
+        downloads = tempfile.mkdtemp(dir=OUTPUTS)
+        dbtools.save(os.path.join(downloads, build_ddinter.TERMS_FILE), b"<p>All rights reserved. Ask before you copy.</p>",
+                     build_ddinter.TERMS_PAGE)
+        keep = build_ddinter.MIN_PAIRS, build_ddinter.MIN_DRUGS, build_ddinter.MIN_NAMES
+        build_ddinter.MIN_PAIRS, build_ddinter.MIN_DRUGS, build_ddinter.MIN_NAMES = 3, 3, 2
+        try:
+            with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
+                build_ddinter.main(["--files"] + paths + ["--names", names_path, "--out", folder, "--downloads", downloads,
+                                                           "--retrieved", "2026-11-10"])
+        finally:
+            build_ddinter.MIN_PAIRS, build_ddinter.MIN_DRUGS, build_ddinter.MIN_NAMES = keep
+        self.assertIn("DDInter's terms page no longer says", str(caught.exception))
+        self.assertEqual(os.listdir(folder), [])
+
+
+def made_up_medicines(data):
+    """Put the medicines that do not exist into the first made-up patient's file."""
+    me = data["profiles"][0]
+    me["medicines"] = [{"name": "Wobblol", "strength": "5 mg", "schedule": [], "told": "2026-11-01"},
+                       {"name": "Mysterol", "strength": "", "schedule": [], "told": "2026-11-01"}]
+    me["supplements"] = [{"name": "Sniffex", "strength": "", "schedule": [], "told": "2026-11-01"}]
+
+
+class InteractTests(Base):
+    def setUp(self):
+        Base.setUp(self)
+        os.environ["VOSS_DATA"] = sample_ddi()
+
+    def test_a_pair_and_its_grade(self):
+        out = ok("interact", "wobblol", "creakazine")
+        for line in ("READ AS    wobblol -> Wobblol", "creakazine -> Creakazine", "PAIR       Wobblol + Creakazine: Major [DDInter's grade]",
+                     "PARTIAL    this file holds pairs and grades only, and only pairs with at least one medicine in ATC group A, B",
+                     "N (the nervous system)", "C (the heart and circulation)",
+                     "the absence of an interaction does not necessarily mean no interactions exist",
+                     "SOURCE     DDInter 2.0: drug-drug interactions, the download files for ATC groups A, B, retrieved 2026-11-10 "
+                     "[sourced: ddinter.db, built 2026-11-15]",
+                     "CREDIT     " + build_ddinter.CREDIT,
+                     "RULE       a grade is DDInter's, about the two substances: it is not a verdict on this person",
+                     "Never tell anyone to start, stop or change a medicine"):
+            self.assertIn(line, out)
+        self.assertEqual(desk.check_text(out), [])
+        self.assertFalse([ln for ln in out.splitlines() if ln != ln.rstrip()])
+
+    def test_not_listed_is_never_safe(self):
+        out = ok("interact", "kneeprofen", "creakazine", "elbowmycin")
+        self.assertIn("PAIR       Creakazine + Elbowmycin: listed, with no grade given [DDInter lists the pair]", out)
+        self.assertIn("NOT LISTED Kneeprofen + Creakazine: no interaction between these two is in this file. That is not \"safe\"", out)
+        self.assertIn("NOT LISTED Kneeprofen + Elbowmycin", out)
+        self.assertLess(out.index("PAIR "), out.index("NOT LISTED"), "what is listed comes first")
+        self.assertNotIn("no interaction between these two is known", out)
+
+    def test_a_pair_the_file_could_not_hold_is_said_to_be_out_of_reach(self):
+        out = ok("interact", "mopezil", "dozapine", "wobblol")
+        self.assertIn("PAIR       Dozapine + Wobblol: Major [DDInter's grade]", out)
+        self.assertIn("OUT OF REACH Mopezil + Dozapine: neither is in a group this file covers, so the pair could not be in it whether or "
+                      "not the two interact", out)
+        self.assertNotIn("NOT LISTED", out)
+        self.assertIn("this medicine is in none of the groups the file covers", ok("interact", "mopezil"))
+        self.assertNotIn("none of the groups", ok("interact", "wobblol"))
+        self.assertIn("NOT LISTED Mopezil + Kneeprofen", ok("interact", "mopezil", "kneeprofen"), "one of the two may be covered: only unlisted")
+
+    def test_a_medicine_is_found_under_its_other_names(self):
+        out = ok("interact", "woblol", "Kreakazyna 5 mg")
+        self.assertIn("woblol -> Wobblol [found under \"woblol\", another name for it, from Wikidata (pl)]", out)
+        self.assertIn("Kreakazyna 5 mg -> Creakazine [found under \"kreakazyna\", another name for it, from Wikidata (pl)]", out)
+        self.assertIn("PAIR       Wobblol + Creakazine: Major", out)
+        self.assertNotIn("only the start", out, "a strength after the name changes nothing")
+        out = ok("interact", "wobblol carbonate", "creakazine tablets")
+        self.assertIn("only the start of that name matched (\"carbonate\" was left off): make sure this is the medicine meant", out)
+        self.assertEqual(out.count("only the start"), 1)
+
+    def test_a_name_with_two_forms_is_checked_as_both(self):
+        out = ok("interact", "sniffex", "wobblol")
+        self.assertIn("that name fits 2 entries: each is checked, under DDInter's own name for it", out)
+        self.assertIn("PAIR       Sniffex + Wobblol: Minor [DDInter's grade]", out)
+        self.assertIn("PAIR       Sniffex (topical) + Wobblol: listed, with no grade given", out)
+        self.assertNotIn("Sniffex + Sniffex (topical)", out)
+        self.assertNotIn("Sniffex (topical) + Sniffex", out)
+
+    def test_a_name_it_does_not_have(self):
+        out = ok("interact", "wobblol", "mysterol")
+        self.assertIn("UNKNOWN    \"mysterol\": nothing in this file under that name. It was not checked against anything: say so", out)
+        self.assertIn("NOTHING    only one of the names could be read, so there is no pair to check", out)
+        self.assertIn("did you mean Creakazine?", ok("interact", "wobblol", "creakazin"))
+        out = ok("interact", "mysterol", "zygomorphine")
+        self.assertIn("NOTHING    none of those names is in this file, so nothing was checked", out)
+        self.assertNotIn("PAIR", out)
+
+    def test_one_medicine_alone(self):
+        out = ok("interact", "wobblol")
+        self.assertIn("MEDICINE   Wobblol: 6 interactions on file (2 major, 2 moderate, 1 minor, 1 with no grade)", out)
+        self.assertIn("MAJOR      Creakazine; Dozapine", out)
+        self.assertIn("PARTIAL", out)
+        self.assertIn("LISTED     Sniffex (topical)", ok("interact", "wobblol", "--level", "unknown"))
+        self.assertIn("MODERATE   Kneeprofen; Mopezil", ok("interact", "wobblol", "--level", "Moderate"))
+        self.assertIn("and 1 more: raise --max", ok("interact", "wobblol", "--max", "1"))
+        self.assertIn("--level is one of", fails("interact", "wobblol", "--level", "deadly"))
+
+    def test_what_it_refuses(self):
+        self.assertIn("name the medicines", fails("interact"))
+        self.assertIn("more than 25 names at once", fails("interact", *["wobblol"] * 26))
+        self.assertIn("--max is 1 to 500", fails("interact", "wobblol", "--max", "0"))
+        self.assertIn("say what is new", fails("watch", "--id", "self"))
+        os.environ["VOSS_DATA"] = NO_DATA
+        self.assertIn("ddinter.db is not installed, so there is nothing on file for interactions between medicines",
+                      fails("interact", "wobblol", "creakazine"))
+
+    def test_with_the_medicines_on_file(self):
+        copy_fixture(made_up_medicines)
+        out = ok("interact", "--id", "self", "creakazine")
+        self.assertIn("FILE       3 medicines and supplements on file for self are included", out)
+        self.assertIn("PAIR       Creakazine + Wobblol: Major", out)
+        self.assertIn("UNKNOWN    \"Mysterol\"", out)
+        self.assertIn("PAIR       Wobblol + Sniffex: Minor", out)
+
+    def test_watch_checks_something_new_against_the_file(self):
+        copy_fixture(made_up_medicines)
+        out = ok("watch", "--id", "self", "--new", "creakazine")
+        for line in ("WATCH      1 new name against 3 medicines and supplements on file for self",
+                     "PAIR       Creakazine + Wobblol: Major [DDInter's grade]", "UNKNOWN    \"Mysterol\"",
+                     "NOT LISTED Creakazine + Sniffex: no interaction between these two is in this file",
+                     "SAY        one line to the person", "an unlisted one is still not \"safe\""):
+            self.assertIn(line, out)
+        self.assertNotIn("Wobblol + Sniffex", out, "only the new one is checked: the rest was there before")
+        out = ok("watch", "--id", "self", "--new", "woblol")
+        self.assertIn("SAME       Wobblol is on file already, under one name or another", out)
+        self.assertIn("PAIR       Wobblol + Sniffex: Minor", out)
+        out = ok("watch", "--id", "self", "--new", "mysterol")
+        self.assertIn("NOTHING    the new name is not in this file, so nothing was checked", out)
+        use_personal(None)
+        self.assertIn("there is no personal file here", fails("watch", "--new", "wobblol"))
+
+    def test_stale_data_says_so_first(self):
+        clock("2027-11-11T09:00")
+        self.assertTrue(ok("interact", "wobblol", "creakazine").startswith("STALE      ddinter.db: retrieved 2026-11-10"))
+
+
 class ShippedDataTests(Base):
     """A look at the databases that ship with the skill. Skipped in a copy that carries none."""
 
@@ -2349,6 +2623,24 @@ class ShippedDataTests(Base):
         finally:
             con.close()
         self.assertIn("Poland (PL): 112", field(ok("triage", "--country", "poland"), "NUMBERS"))
+
+    def test_the_interaction_data(self):
+        if "ddinter.db" not in self.files:
+            self.skipTest("ddinter.db does not ship in this copy")
+        con = library.connect(os.path.join(REAL_DATA, "ddinter.db"))
+        try:
+            self.assertGreater(con.execute("SELECT COUNT(*) FROM pair").fetchone()[0], 100000)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM pair WHERE a >= b OR level NOT IN (0, 1, 2, 3)").fetchone()[0], 0)
+            self.assertGreater(con.execute("SELECT COUNT(*) FROM drug").fetchone()[0], 1500)
+        finally:
+            con.close()
+        out = ok("interact", "warfarin", "ibuprofen")
+        self.assertRegex(out, r"PAIR       Warfarin \+ Ibuprofen: (Major|Moderate|Minor)")
+        self.assertIn("PARTIAL", out)
+        self.assertIn("CREDIT     " + build_ddinter.CREDIT, out)
+        self.assertIn("paracetamol -> Acetaminophen [found under", ok("interact", "paracetamol", "warfarin"))
+        with open(os.path.join(REAL_DATA, "LICENSE-ddinter.txt"), encoding="utf-8") as f:
+            self.assertIn("https://creativecommons.org/licenses/by-nc-sa/4.0/", f.read())
 
     def test_the_icd11_data(self):
         if "icd11.db" not in self.files:
