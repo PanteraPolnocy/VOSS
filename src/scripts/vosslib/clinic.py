@@ -56,6 +56,9 @@ def numbers(text):
             (more if n else lambda text: rec("SOURCE", text))(library.tag(info, source))
         more("the numbers are listed as the source has them, and were not verified one by one: where there is time and it "
              "matters, check")
+        if library.have("region-" + code.lower()):
+            from . import region            # the country's own list, where its pack is installed
+            region.numbers(code)
     finally:
         con.close()
 

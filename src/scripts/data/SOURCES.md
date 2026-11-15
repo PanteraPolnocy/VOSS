@@ -10,6 +10,7 @@ A database sits here as `<name>.db` with its licence text beside it as `LICENSE-
 | `icd11.db` | ICD-11 for Mortality and Morbidity Statistics: every code and grouping with its title and URI, whole and unchanged | the "Simple Tabulation" release file of the World Health Organization | CC BY-ND 3.0 IGO with WHO's terms of use: see below, and `LICENSE-icd11.txt`. Not under the code's licence |
 | `ddinter.db` | pairs of medicines that are known to interact, each with a severity grade; other names for the medicines | DDInter 2.0, its download files; Wikidata for the other names | CC BY-NC-SA 4.0 (non-commercial, share-alike): see below, and `LICENSE-ddinter.txt`. Not under the code's licence. The names are CC0 |
 | `labels-us.db` | product labels of medicines sold in the United States: what each is for, its warnings, side effects and interactions, in the label's own words; other names for the substances | openFDA drug labels (United States Food and Drug Administration); Wikidata for the other names | CC0: see below, and `LICENSE-labels-us.txt` |
+| `region-pl.db` | the Poland pack: what a medicine sold in Poland is (name, substance, strength, form, sale category), and ten facts about getting care there, each with the law or the page it rests on | Rejestr Produktów Leczniczych (Centrum e-Zdrowia); Polish law from the Sejm's legislation service; single facts from pages of NFZ, the Patient Ombudsman and the Ministry of Health | the register: CC BY 4.0. The law: not under copyright. The facts' wording: this skill's. See below, and `LICENSE-region-pl.txt` |
 | `triage.json` | the four triage levels and the red flags | written for this skill; word for word from `references/clinical-rules.md` | MIT, with the code |
 | `visit.json` | what to ask a doctor, what to bring, the symptom diary's columns | written for this skill as general advice; the diary columns are those in `references/features.md` | MIT, with the code |
 | `fields.json` | the personal file's fields, with what each holds and why a doctor asks | written for this skill; the wording is that of `references/personal-file.md` | MIT, with the code |
@@ -71,14 +72,27 @@ Built by `tools/build_labels.py` from openFDA's drug label download (https://ope
 - **Other names** for the substances come from the same Wikidata file the interaction data uses (CC0), matched by name and not checked one by one.
 - The build checks at every fetch that openFDA's terms page still names the same dedication, and stops if it does not.
 
+## region-pl.db
+
+Built by `tools/build_region_pl.py`. Three kinds of thing are in it, and each stays under its own terms. All of them were read on their own pages on 15 November 2026.
+
+- **The register of medicines** (Rejestr Produktów Leczniczych, kept by Centrum e-Zdrowia): the whole register as one CSV file from https://rejestry.ezdrowie.gov.pl, the state at the end of the day before.
+- **Its licence.** CC BY 4.0, as the government's open data portal states for data set 397 (https://dane.gov.pl/pl/dataset/397: `license_name` is "CC BY 4.0"). The portal also switches on the condition that the time the data was made and the time it was obtained be given, which is the condition of art. 15 ust. 1 pkt 1 of the act of 11 August 2021 on open data. So the source, the state the file is in and the day it was fetched go with every answer. The build reads the portal's entry again at every fetch and stops if the licence has another name.
+- **What is kept of it.** Medicines for people only (20,353 of the 23,002 rows), and of each: its name, the substance as the register names it (in Latin), strength, form, route, ATC code, the holder of the permit, the sale category of its packs, and the number of its leaflet in the register. A link to the leaflet is printed, never its text. No wording was changed. Centrum e-Zdrowia does not endorse this skill.
+- **Polish law**, quoted word for word, with the article. It is not under copyright: art. 4 of the act of 4 February 1994 on copyright and related rights ("Nie stanowią przedmiotu prawa autorskiego: 1) akty normatywne lub ich urzędowe projekty; 2) urzędowe dokumenty, materiały, znaki i symbole"), read in its consolidated text, Dz.U. 2025 poz. 24. The acts come from the Sejm's legislation service, https://api.sejm.gov.pl/eli. Where it gives an act as HTML, the build finds the quoted words in the act again at every fetch, checks that the act is in force, and says so if a newer consolidated text has been announced. Where it gives only a PDF, which the standard library cannot read, the words were read by hand on 15 November 2026, and the fact says so.
+- **Official pages** of NFZ, the Patient Ombudsman and the Ministry of Health. NFZ's site is marked as its own copyright, with no open licence, and the footer of gov.pl puts its texts under CC BY-SA 4.0, which is share-alike. So no sentence is taken from either. Only single facts are (a telephone number, opening hours), stated in this skill's own words, with the page named and the day it was read. The build checks at every fetch that the page still states them.
+- **The facts**, ten of them, are written out in the builder (`FACTS`), each with what it rests on. Their wording is this skill's and under its licence (MIT).
+- **Changed in the making:** curly quotes and long dashes in a quotation are made straight, as everywhere in this skill. Nothing else in the law's words is changed, and they keep their Polish letters.
+
 ## How the text is packed
 
 SQLite has no compression of its own. Long text is therefore packed into blocks of about half a megabyte, each compressed with whichever of the standard library's codecs makes it smallest (zlib, bz2 or lzma), and a piece is found again by block, start and length. The health topic summaries come out about four times smaller for it, the product labels seven times, and the ICD-11 records, which repeat each other a great deal, thirteen times. Reading one costs one block: a few milliseconds.
 
-## Databases to come
+## Looked at and left out
 
-| File | What it will hold | Source | Licence |
-|---|---|---|---|
-| `region-pl.db` | the Poland pack | to be confirmed source by source | to be confirmed |
+- **Waiting times for treatment** (NFZ's "API Terminy Leczenia"; CC BY 4.0 on dane.gov.pl, data set 1455). The licence would allow it. The data would not survive it: clinics and hospitals report their lists to NFZ every week, so a copy inside a skill is wrong within days. The current version of the API is also behind a wall against scripts, and its rules page could not be read. `find waiting times` says where NFZ publishes them.
+- **The telephone advice line known as Teleplatforma Pierwszego Kontaktu.** The only official page found for it is from June 2023, and NFZ's page of December 2025 on where to get help does not mention it. A number that may no longer answer is not passed on.
+- **Leaflets and summaries of product characteristics**, Polish and European. They come as PDF documents, which the standard library cannot read. The Poland pack keeps the link to a product's leaflet, and nothing of its text.
+- **The text of gov.pl and of NFZ's site.** See region-pl.db above: facts are taken, words are not.
 
-Each licence is checked again, and the date written down here, before its file is built. A source whose terms do not clearly allow its data to be passed on in a public repository and in the packed skill is left out.
+Each licence is checked again, and the date written down here, before a file is built. A source whose terms do not clearly allow its data to be passed on in a public repository and in the packed skill is left out.

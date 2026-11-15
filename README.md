@@ -18,10 +18,11 @@ Working now:
 - **Getting ready for a doctor**: what to ask, what to bring, a symptom diary to fill in.
 - **Lab values**: a result read against the range printed on your own report, and against nothing else.
 - **Medicines**: what a medicine is and what its label says, from some 9,600 American product labels; whether a symptom is among the side effects a label lists; which medicines are known to interact, with the grade the source gives each pair; a schedule you were given, written as a calendar file; and how long a pack lasts, counted exactly.
+- **Poland**: what a medicine sold there is, by the name on the box, from the national register; and how care is arranged (the emergency numbers, night and holiday care, the emergency department, the patient helpline, a patient's rights), each fact with the law or the official page it rests on.
 - **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so.
 - **A check on his own replies**: typography, and his own rules of form.
 
-Not built yet: the pack for Poland and the commands that read it, and most of the features in [src/references/features.md](src/references/features.md). For anything the files do not hold, he looks it up with whatever tools the assistant has and cites it, or says he has no data.
+Not built yet: most of the features in [src/references/features.md](src/references/features.md). For anything the files do not hold, he looks it up with whatever tools the assistant has and cites it, or says he has no data.
 
 ## Requirements
 
@@ -117,12 +118,14 @@ tools/                  build.py packs the skill; build_core.py and its kind fet
 - International Classification of Diseases, Eleventh Revision (ICD-11), World Health Organization (WHO) 2019 https://icd.who.int/browse11. Licensed under the Creative Commons Attribution-NoDerivatives 3.0 IGO licence (CC BY-ND 3.0 IGO). It is here whole and unchanged. WHO does not endorse this skill.
 - Product labels: Data provided by the U.S. Food and Drug Administration (https://open.fda.gov). CC0. FDA does not endorse this skill, and has not verified the labels.
 - Interactions between medicines: DDInter 2.0 (https://ddinter2.scbdd.com/). Tian Y, Yi J, Wang N, Wu C, et al. DDInter 2.0: an enhanced drug interaction resource with expanded data coverage, new interaction types, and improved user interface. Nucleic Acids Research 53(D1):D1356, doi:10.1093/nar/gkae726. CC BY-NC-SA 4.0. Other names for the medicines: Wikidata, CC0.
+- Medicines sold in Poland: Rejestr Produktów Leczniczych, Centrum e-Zdrowia (https://rejestry.ezdrowie.gov.pl), the state at the end of the day before it was fetched. CC BY 4.0. Centrum e-Zdrowia does not endorse this skill.
+- Facts about care in Poland: Polish law as published in Dziennik Ustaw, quoted by article, from the Sejm's legislation service (https://api.sejm.gov.pl/eli); and single facts read on pages of NFZ, the Patient Ombudsman and the Ministry of Health, in this skill's own words.
 - Each database carries its own licence text (`src/scripts/data/LICENSE-*.txt`) and is listed in [src/scripts/data/SOURCES.md](src/scripts/data/SOURCES.md), with the day its licence was last checked. A credit line stays with every answer that draws on it.
 
 ## Licence
 
 MIT for the code and for everything written for this skill. See `LICENSE`.
 
-The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0, and `labels-us.db` is CC0. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system. `ddinter.db` is CC BY-NC-SA 4.0: it may be passed on with DDInter's credit and under the same licence, and **not for commercial purposes**. If you use this skill commercially, delete `scripts/data/ddinter.db` first; everything else keeps working, and the tools say that no interaction data is installed.
+The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0, and `labels-us.db` is CC0. `region-pl.db` holds the Polish register of medicines under CC BY 4.0, which asks for the credit and for the day the data was made and fetched, and Polish law, which is not under copyright. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system. `ddinter.db` is CC BY-NC-SA 4.0: it may be passed on with DDInter's credit and under the same licence, and **not for commercial purposes**. If you use this skill commercially, delete `scripts/data/ddinter.db` first; everything else keeps working, and the tools say that no interaction data is installed.
 
 ![Voss](/src/images/voss-reference-sheet.webp)

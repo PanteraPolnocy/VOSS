@@ -22,6 +22,7 @@ from . import core, library, store
 from .core import command, die, key, more, rec
 
 STEM = "labels-us"
+REGION = "region-pl"         # the register of the country the person lives in, where its pack is installed
 WHAT = "what a medicine is and what its label says"
 LABEL = "id, type, route, substances, parts, generic, brand, maker, class, application, set_id, effective, labels, source"
 KINDS = ("boxed warning", "purpose", "active ingredient", "uses", "do not use", "warnings", "side effects", "interactions",
@@ -404,6 +405,15 @@ def _print_text(text, limit, everything):
 
 
 def cmd_med(a):
+    # the name on a box means what the register of the country it was sold in says it means: that comes first
+    local = False
+    if a.id is None and a.name and library.have(REGION):
+        from . import region
+        local = region.products(" ".join(a.name), a.max)
+        if local and not library.have(STEM):
+            return
+        if local:
+            print()
     con, info = library.need(STEM, WHAT)
     try:
         reader = store.Reader(con)
@@ -418,6 +428,10 @@ def cmd_med(a):
                 die("name the medicine: med metformin (or a brand name, or --id N from a list)")
             rows, how, dropped, one, names = resolve(con, " ".join(a.name))
             if not rows:
+                if local:
+                    rec("LABEL", "no American label is on file under that name, so there is none to set beside the register. "
+                                 "Ask again with the substance's English name")
+                    return
                 rec("MEDICINE", "nothing on file under that name")
                 rec("RULE", "that is a gap in this file, which holds American labels only: a medicine sold elsewhere under "
                             "another name may not be in it. Look it up with the tools you have and cite it, or say you have no data")

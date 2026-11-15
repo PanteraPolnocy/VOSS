@@ -3,4 +3,4 @@
 VERSION = "0.8.0"
 
 # Modules that carry commands, in the order the tool index lists them.
-MODULES = ["desk", "library", "clinic", "terms", "codes", "doses", "interactions", "labels", "gate", "record", "rebuild", "index"]
+MODULES = ["desk", "library", "clinic", "terms", "codes", "doses", "interactions", "labels", "region", "gate", "record", "rebuild", "index"]

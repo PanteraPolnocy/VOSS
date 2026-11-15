@@ -31,7 +31,9 @@ ALSO = {
     "labs": "blood test result value range reference report high low lab",
     "schedule": "medicine medication dose times calendar ics reminder pills tablets when to take",
     "refill": "pack run out left remaining tablets pills supply renew prescription reminder",
-    "med": "medicine drug tablet pill what is it for substance class brand label leaflet uses indication box",
+    "med": "medicine drug tablet pill what is it for substance class brand label leaflet uses indication box register polish",
+    "find": "where to go night holiday out of hours clinic department helpline patient rights owed old medicines disposal first aid kit "
+            "car poland region country arranged",
     "sidefx": "side effect effects adverse reaction could this be my medicine symptom caused by tablets label",
     "interact": "interaction interactions mix together combine take with drug medicine tablets safe to take clash",
     "watch": "new medicine supplement started prescribed check against list on file interaction",

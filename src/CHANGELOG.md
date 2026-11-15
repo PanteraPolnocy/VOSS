@@ -43,7 +43,15 @@ Product labels:
 - `med`: what a medicine is, by substance or by brand name: its class, what its label says it is for, and any other section on request. `sidefx`: a symptom looked for in a label's side effects, warnings and text for patients. Both say that these are American labels which FDA has not verified, and that the person's own leaflet is the authority.
 - A medicine is never guessed from its name. All 37,460 brand names on the labels are kept, and a name is found whole, by part of it ("tylenol"), with a strength or a form around it, or by two substances for the product that holds both ("acetaminophen with codeine"). The answer says what the name was read as and which words were not used. A name printed on packs of different medicines ("Pain Relief", and more famous ones) gets a list of them with what each is sold as, and is read as none.
 - Packs for which FDA lists no substances, contraceptive pills among them, are kept where their generic name reads as a list of known substances. 276 labels that do not are left out and counted.
-- European and Polish product information is not in it yet.
+- European product information is not in it. For Poland the register says what a product is, and links to its leaflet.
+
+The Poland pack:
+- `region-pl.db`: the national register of medicines, 20,353 of them, with the name, the substance as the register names it, strength, form, route, ATC code and whether a pack needs a prescription. CC BY 4.0, read on the open data portal on 15 November 2026.
+- `med` asks the register first: the name on a Polish box means what the Polish register says it means. An American label follows where there is one under the same name.
+- `find`: ten facts about getting care in Poland (the emergency numbers, night and holiday care, the emergency department, the patient helpline, a patient's rights, where old medicines go, the first-aid kit in a car, how a medicine may be sold, which ICD revision paperwork uses). Each is in the skill's own words, with the law quoted by article or the official page named.
+- Law is quoted word for word, from the Sejm's own service, and the build looks the words up again each time. Nothing is copied from NFZ's pages or from gov.pl, whose texts are under copyright or a share-alike licence: single facts are taken, and stated afresh.
+- `triage --country PL` adds Poland's own numbers to the world's list.
+- Waiting times for treatment are left out on purpose: they change every week. Supersedes the waiting times in the plan.
 
 ## 0.7.0 - 14 November 2026
 

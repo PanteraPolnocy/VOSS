@@ -29,6 +29,7 @@ python tools/build_icd11.py --fetch       downloads WHO's release file and build
 python tools/build_icd11.py --verify      checks that icd11.db still gives WHO's file back, byte for byte
 python tools/build_ddinter.py --fetch     downloads DDInter's files and the medicine names, and builds ddinter.db again
 python tools/build_labels.py --fetch      downloads openFDA's label files (1.8 GB) and builds labels-us.db again
+python tools/build_region_pl.py --fetch   downloads Poland's register of medicines, the acts and the pages, and builds region-pl.db again
 ```
 
 ## The public build, the private build and the leak check
@@ -53,6 +54,8 @@ The banner shows the oldest `built`; a file's age is counted from its oldest `re
 Each database has a builder in `tools/` (`build_core.py` is the first) that names every address it downloads from, keeps the downloads in `downloads/` (which git ignores) with a note of the day beside each, and can be run again by anyone. `tools/dbtools.py` holds what the builders share. Before a source goes in, read its terms on its own page, and write what you found and the date into `SOURCES.md`. If the terms do not clearly allow the data to be passed on in a public repository and inside the packed skill, it stays out: ship the builder without the data, and say so.
 
 `icd11.db` has rules of its own, because WHO's licence allows no adaptation. Nothing in it may be reworded, shortened, re-ordered, translated or mapped to another code system, and nothing may be added to an entry that is not marked as not WHO's. Do not add a translated title, an ICD-10 column or a "plain English" gloss to that file, however useful it looks: put such a thing somewhere else, under its own source and licence, or leave it out.
+
+A fact about a country (a telephone number, an opening hour, what the law asks for) goes into its region pack's builder as one entry of `FACTS`, in your own words, with what it rests on. Law is quoted word for word, by article, and the builder must be able to find those words in the act again; where the act comes only as a PDF, say that you read it by hand, and when. From a page that is under copyright or a share-alike licence take the fact and none of the words, and give the builder a few words the page must still hold. A fact nobody can point to a source for stays out.
 
 Long text is not stored row by row. The builder packs it into blocks, compresses each block with whichever of zlib, bz2 and lzma makes it smallest, and stores where each piece sits; `vosslib/store.py` reads it back. That is why a database here is a fraction of the size of its text.
 

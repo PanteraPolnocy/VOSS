@@ -1,6 +1,6 @@
 # Features
 
-Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, the interaction watch, the side-effect checker, and the mood portraits. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
+Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, the interaction watch, the side-effect checker, the mood portraits, and the Poland pack behind `find` and `med`. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
 
 ## Clinical
 

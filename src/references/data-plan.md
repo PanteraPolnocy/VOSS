@@ -22,8 +22,8 @@ What every database carries: a `meta` table with one row for each source (`sourc
 | DDInter 2.0 | drug-drug, drug-food and drug-disease interactions, therapeutic duplications | CC BY-NC-SA 4.0: attribution, non-commercial, share-alike | confirmed on DDInter's own terms page, 15 November 2026; its download files built into ddinter.db. The downloads hold drug-drug pairs with a grade and nothing else: see below |
 | RxNorm (NLM) | drug name normalisation | free API; licence of the bulk files to check (some RxNorm sources need a UMLS licence) | to check |
 | DailyMed / openFDA labels | US product labels | openFDA: CC0 1.0 unless a data set is marked otherwise, and the label data set is not; FDA asks for a credit line and that no endorsement be implied | checked on openFDA's own pages, 15 November 2026; built into labels-us.db |
-| Rejestr Produktów Leczniczych (Poland) | Polish medicines: substance, strength, Rx or OTC, ATC code | public search exists; bulk export format and terms of use to check | to check |
-| NFZ API Terminy Leczenia (Poland) | waiting-list sizes and first free appointment dates per provider | open data via dane.gov.pl; terms to check | to check |
+| Rejestr Produktów Leczniczych (Poland) | Polish medicines: substance, strength, Rx or OTC, ATC code | CC BY 4.0 on dane.gov.pl (data set 397), with the duty to say when the data was made and fetched; the whole register as one CSV file | checked 15 November 2026; built into region-pl.db |
+| NFZ API Terminy Leczenia (Poland) | waiting-list sizes and first free appointment dates per provider | CC BY 4.0 on dane.gov.pl (data set 1455) | checked 15 November 2026; left out: reported weekly, so a copy is wrong within days |
 | Emergency numbers | per-country numbers, with what each is for where the source says | Wikidata (CC0), property P2852 | checked 15 November 2026; built into core-pd.db |
 
 Facts worth keeping:
@@ -121,7 +121,7 @@ Keeping the files small. SQLite has no compression of its own, so the build does
 
 Feature commands (diary, brief, refill, result, trend, watch, firstaid, desk, translate, card, pet, recipe, scale, season, myth) and the sources they still need are in `features.md`.
 
-Built in 0.8.0: boot, theatre, term, code, med, interact, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill, watch and sidefx from the feature commands and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
+Built in 0.8.0: boot, theatre, term, code, med, interact, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill, watch and sidefx from the feature commands, `find` for the region pack, and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
 
 ## Build order (cheapest first)
 
@@ -130,7 +130,7 @@ Built in 0.8.0: boot, theatre, term, code, med, interact, labs, triage, visit, s
 3. ICD-11 (built, 0.8.0): WHO's Simple Tabulation, whole and unchanged. `tools/build_icd11.py`.
 4. DDInter (built, 0.8.0), its terms confirmed on its own page: the download files, with other names from Wikidata. `tools/build_ddinter.py`.
 5. Product labels (built, 0.8.0): the American ones, from openFDA. `tools/build_labels.py`.
-6. Poland pack, after confirming the register's and NFZ's terms.
+6. Poland pack (built, 0.8.0): the register of medicines, and ten facts about getting care, from the law and from official pages. `tools/build_region_pl.py`. Waiting times were left out.
 
 ## Source pages consulted (14 November 2026)
 
