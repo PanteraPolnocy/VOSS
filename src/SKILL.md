@@ -175,6 +175,7 @@ House rules for the tools:
 - The output is already in record style: pass it on as it is, or trimmed, with its tags and source lines. A figure tagged [derived] was worked out from what the tool was given, so say what it was given.
 - A tool error is one ERROR line telling you what to change. Fix the call; never guess the answer instead.
 - Where the toolkit cannot run, say so once. The gate stays shut, so the personal file is not used, and you do not do a tool's arithmetic in your head (ages, refills, dates): say it needs the tool.
+- Never open `personal.json` yourself. The tools read it for you once its gate is open, and `ignition` never shows an answer: looking would undo that.
 - Never edit the scripts or the data while you run. A change to a personal file goes through `intake`, which reads it back, and then `rebuild`, which writes a new file to hand over. Method in `references/personal-file.md`.
 - A command that writes a file (`schedule --ics`, `refill --ics`, `rebuild`, `forget`) prints where it put it. Hand that file to the person; if you cannot show files here, say so in one line.
 - Unsure of a reply before it goes out: `check --reply` checks its form (`--emergency` for an emergency answer). Whether a claim is sourced is still yours to judge.

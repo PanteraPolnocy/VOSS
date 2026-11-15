@@ -437,6 +437,42 @@ class DosesTests(Base):
             self.assertNotIn("VALARM", self.calendar(out)[1])
         self.assertEqual(run("schedule", "--med", "Metformin 500 mg: 08:00", "--ics", os.path.join(ROOT, "no-such-folder"))[0], 2)
 
+    def test_a_calendar_is_never_written_into_a_repository_or_the_skill(self):
+        med = ["schedule", "--med", "Metformin 500 mg: 08:00"]
+        self.assertIn("inside a git repository", fails(*(med + ["--ics", os.path.join(ROOT, "docs")])))
+        self.assertIn("inside a git repository", fails(*(med + ["--ics", os.path.join(ROOT, "docs", "mine.ics")])))
+        self.assertIn("inside the package Voss is running from", fails(*(med + ["--ics", os.path.join(SRC, "images")])))
+        self.assertIn("inside a git repository", fails("refill", "--med", "A: 08:00", "--left", "9", "--ics", ROOT))
+        self.assertFalse([n for n in os.listdir(os.path.join(ROOT, "docs")) if n.endswith(".ics")])
+        # 'auto', with nowhere named: the current folder is this repository, so it goes on to the Downloads folder
+        home = tempfile.mkdtemp(dir=OUTPUTS)
+        os.makedirs(os.path.join(home, "Downloads"))
+        keep = dict((k, os.environ.get(k)) for k in ("VOSS_OUTPUTS", "HOME", "USERPROFILE"))
+        here = os.getcwd()
+        try:
+            os.environ.pop("VOSS_OUTPUTS")
+            os.environ["HOME"] = os.environ["USERPROFILE"] = home
+            os.chdir(ROOT)
+            out = ok(*(med + ["--ics", "auto"]))
+            self.assertEqual(os.path.dirname(field(out, "CALENDAR")), os.path.join(home, "Downloads"))
+            shutil.rmtree(os.path.join(home, "Downloads"))
+            self.assertEqual(os.path.dirname(field(ok(*(med + ["--ics", "auto"])), "CALENDAR")), home)
+            with open(os.path.join(home, ".git"), "w") as f:
+                f.write("gitdir: elsewhere\n")
+            self.assertIn("nowhere fit for the calendar file", fails(*(med + ["--ics", "auto"])))
+            self.assertIn("nowhere fit to write a private file",
+                          fails("forget", "--id", "self", "--field", "allergies", "--confirm",
+                                field(ok("forget", "--id", "self", "--field", "allergies"), "CONFIRM")))
+        finally:
+            os.chdir(here)
+            for key, value in keep.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+        with open(os.path.join(ROOT, ".gitignore"), encoding="utf-8") as f:
+            self.assertIn("*.ics", f.read().split())
+
     def test_schedule_refuses_what_it_was_not_given(self):
         self.assertIn("no medicine was given", fails("schedule"))
         self.assertIn("no dose times were given", fails("schedule", "--med", "Ibuprofen 200 mg:"))
@@ -1180,7 +1216,7 @@ class BuildTests(Base):
             first = f.read()
         self.assertEqual(self.quiet(build.build_public, root)[0], [])
         with open(path, "rb") as f:
-            self.assertEqual(first, f.read(), "the same source must pack to the same bytes")
+            self.assertEqual(first, f.read(), "on one machine, the same source must pack to the same bytes")
 
     def test_private_files_never_reach_the_public_build(self):
         root = self.tree()
@@ -1238,6 +1274,23 @@ class BuildTests(Base):
         self.assertFalse(any("LICENSE" in p for p in problems), "the licence carries its holder's name")
         self.assertFalse(any("household.example.md" in p for p in problems), "the list of words is not itself a leak")
         self.assertTrue(any("tests/a-stray-copy.md" in p for p in problems), "but a second copy of it somewhere public is")
+
+    def test_the_author_may_sign_the_credit_line_and_nothing_else(self):
+        root = self.tree()
+        self.household(root)
+        credit = "- Voss, the VOSS-01 design and the pictures: Mira Quillfeather.\n"
+        readme = os.path.join(root, "README.md")
+        with open(readme, "a", encoding="utf-8", newline="\n") as f:
+            f.write("\n" + credit)
+        self.assertEqual(self.quiet(build.build_public, root)[0], [])
+        with open(readme, "a", encoding="utf-8", newline="\n") as f:
+            f.write("With thanks to Mira.\n")
+        with open(os.path.join(root, "tools", "notes.md"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(credit)
+        problems, _ = self.quiet(build.build_public, root)
+        self.assertEqual(len([p for p in problems if p.startswith("leak word in README.md line ")]), 1)
+        self.assertEqual(len([p for p in problems if p.startswith("leak word in tools/notes.md line 1")]), 2,
+                         "the same line in any other file is still a leak")
 
     def test_no_household_file_skips_only_the_leak_check(self):
         root = self.tree()

@@ -8,7 +8,7 @@ import hashlib
 import os
 from datetime import date, datetime, timedelta, timezone
 
-from .core import die, more, out_folder, rec
+from .core import die, more, out_folder, rec, unfit
 
 PRODID = "-//VOSS-01//Project Asclepius toolkit//EN"
 LINE_OCTETS = 75
@@ -111,8 +111,8 @@ def build(events, stamp=None):
 
 def add_option(p, what):
     p.add_argument("--ics", metavar="WHERE",
-                   help="write %s as a calendar file: 'auto' (the outputs folder if there is one, else the current folder), "
-                        "a folder, or a name ending .ics" % what)
+                   help="write %s as a calendar file: 'auto' (the outputs folder if there is one; else the current folder, "
+                        "or the Downloads folder where that one is a git working tree), a folder, or a name ending .ics" % what)
 
 
 def deliver(where, events, stem, stamp=None):
@@ -126,9 +126,16 @@ def deliver(where, events, stem, stamp=None):
             die("no such folder for the calendar file: %s" % folder)
     else:
         folder = out_folder(where)
+        if not folder and where.lower() == "auto":
+            die("nowhere fit for the calendar file was found: every folder tried is a git working tree or part of the "
+                "skill. Give --ics a folder outside them")
         if not folder:
             die("no such folder for the calendar file: %s (use 'auto', a folder, or a name ending .ics)" % where)
         path = os.path.join(folder, "voss-%s.ics" % stem)
+    # medicine names are health information: the same two places are refused as for a personal file
+    why = unfit(folder)
+    if why:
+        die("that folder is %s. Give --ics a folder outside it" % why)
     try:
         with open(path, "w", encoding="utf-8", newline="") as f:
             f.write(build(events, stamp))

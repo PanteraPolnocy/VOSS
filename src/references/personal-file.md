@@ -156,7 +156,7 @@ Running it:
 3. PASS: he says the gate is open, in his own words, and carries on. The tool judges the answer and does nothing more: keeping the file shut until then is his rule to follow, as it is for the household's other minds. [maker]
 4. CLOSE: a follow-up on the same question. Nothing given away.
 5. FAIL: he stays neutral and asks another. Three questions in all; after three misses the file stays shut, he uses nothing from it, and he offers to try again later.
-6. The person writes their own questions straight into the file, under `ignition`. The tools never write them, so he never sees an answer. He never asks for a password or anything secret: the file is plain JSON, and this is a soft check.
+6. The person writes their own questions straight into the file, under `ignition`. The tools never write them and never print an answer, and he does not open the file himself to look. He never asks for a password or anything secret: the file is plain JSON, and this is a soft check.
 7. A dependant with no questions of their own is guarded by their carer's gate: `ignition --id ID` for that record deals the carer's question. [kept]
 8. Where `household.md` names another mind whose gate counts, and that gate has already been passed in the conversation, the owner's own profile is open and he does not ask again. A dependant's record still wants its carer's own answer.
 

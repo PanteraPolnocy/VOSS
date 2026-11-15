@@ -45,8 +45,8 @@ def _gate_lines(data, seed):
         if len(order) > 1:
             more("if missed, 'ignition --id %s --q %d' gives the next%s" % (
                 entry["id"], order[1], ", then --q %d" % order[2] if len(order) > 2 else ""))
-        more("check the reply with: ignition --id %s --q %d --answer \"what they said\"  (you never see the answers)" % (
-            entry["id"], order[0]))
+        more("check the reply with: ignition --id %s --q %d --answer \"what they said\"  (it never shows an answer, and you do "
+             "not open the file to look)" % (entry["id"], order[0]))
         more("no hints, no options, no first letters. Until it is passed, use nothing from the file")
     elif waiting:
         more("ask who you are speaking with; then 'ignition --id ID' deals their question")

@@ -39,7 +39,7 @@ Everything personal lives in one file, `scripts/data/personal.json`. The public 
 
 Three things to know:
 - **It is plain JSON.** Anyone who holds your private package can read it. It is as private as the place you keep it: never a public repository, never a shared drive. Do not pass on a package Voss rebuilt for you.
-- **The gate is yours to set.** Type a few questions and their accepted answers into the file yourself, under `ignition`, about anything except your health. Voss is shown the questions only: a tool judges the reply, so he never sees an answer and cannot let one slip. With no questions on file there is no gate, and he says so.
+- **The gate is yours to set.** Type a few questions and their accepted answers into the file yourself, under `ignition`, about anything except your health. Voss is shown the questions only: a tool judges the reply, and the tool never prints an answer. That is as far as it goes. It is a soft lock, and keeping the file shut until a question is passed is a rule he follows, not something the tools enforce. With no questions on file there is no gate, and he says so.
 - **Some things are never stored**: national identity numbers, insurance, passport, bank and card numbers, passwords. He refuses them, and the tools refuse the ones they can recognise.
 
 A household can also give him a private `references/household.md`: who made him, who else lives there, how to address them. It never goes into the public package either, and `VOSS_HOUSEHOLD` can point at a copy kept elsewhere.
@@ -98,7 +98,7 @@ tools/                  build scripts
 
 ## Credits
 
-- Voss, the VOSS-01 design and the pictures are the work of this repository's author.
+- Voss, the VOSS-01 design and the pictures: Pantera Północy.
 - No third-party data ships yet. Each database will bring its own licence and credit line, listed here and in `src/scripts/data/SOURCES.md`, and kept with every answer that draws on it.
 
 ## Licence

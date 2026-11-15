@@ -1,4 +1,6 @@
-# Text is kept with plain line feeds everywhere, so the skill packs to the same bytes on every machine.
+# Text is kept with plain line feeds everywhere, so the skill packs to the same contents on every machine.
+# (Same files, same dates, same checksums. The compressed bytes of dist/voss.zip can still differ from one
+# system to the next, because zlib builds differ: after a build elsewhere git may show it as modified.)
 * text=auto eol=lf
 
 *.webp binary

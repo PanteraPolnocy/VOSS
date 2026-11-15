@@ -1,8 +1,9 @@
-"""The gate on a personal file: questions the person wrote, judged here so that Voss never sees an answer.
+"""The gate on a personal file: questions the person wrote, judged here so that no answer has to pass
+through Voss. Nothing in this module prints one.
 
-The tool asks and judges, and that is all it does. Keeping a file shut until its question has been passed
-is Voss's own rule to follow, and once a gate is open it stays open for the conversation. It is a soft
-lock: the file is plain JSON, and anyone who can open the package can read it.
+The tool asks and judges, and that is all it does. Keeping a file shut until its question has been passed,
+and not opening the file to look, are Voss's own rules to follow; once a gate is open it stays open for
+the conversation. It is a soft lock: the file is plain JSON, and anyone who can open the package can read it.
 
 A dependant with no questions of their own is guarded by the gate of the person who looks after them.
 """
@@ -156,7 +157,8 @@ def cmd_ignition(a):
         if len(order) > 1:
             more("if missed, 'ignition --id %s --q %d' gives the next%s" % (
                 guard["id"], order[1], ", then --q %d" % order[2] if len(order) > 2 else ""))
-        more("check the reply with: ignition --id %s --q %d --answer \"what they said\"  (you never see the answers)" % (guard["id"], order[0]))
+        more("check the reply with: ignition --id %s --q %d --answer \"what they said\"  (it never shows an answer, and you do "
+             "not open the file to look)" % (guard["id"], order[0]))
         rec("RULE", "no hints, no options, no first letters; accept loose wording in any language the person uses")
         return
     if not 1 <= a.q <= len(questions):

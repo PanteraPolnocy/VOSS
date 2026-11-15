@@ -11,6 +11,8 @@ The skeleton:
 - `serious` is the mood of an emergency answer, which carries it as its marker and no look. Supersedes "proposed" (0.7.0). [maker]
 - `intake` reads a change back and prints a code; `rebuild` and `forget` write only with that code, so nothing is stored or removed without the read-back.
 - The gate works as it was designed: the tool asks and judges, and keeping a file shut until then is his own rule to follow. Open is open, for the rest of the conversation. Someone who does not pass still gets his full care and knowledge, only without the personal data, and there is no side door for an emergency. [maker]
+- The gate is a soft lock and the files now say only that: the tool never prints an answer, and not opening `personal.json` to look is his own rule, written into the house rules for the tools.
+- A calendar file holds medicine names, so it is never written into a git working tree or into the skill's own folder, the same as a personal file. `--ics auto` goes on to the Downloads folder where the current one will not do.
 - A dependant's record names its `carer` and carries a note on `consent`; with no questions of its own it is guarded by the carer's gate. [kept]
 - Dose lines for a medicine's `schedule`: `08:00`, `20:00 x2`, `mon thu 08:00`, `every 2 days from 2026-11-01 08:00`. [kept]
 - Intake order for the tool: name and pronouns first; then who they are, medicines and allergies, body, history, life, care; gender identity, hormone therapy, contraception, pregnancy, breastfeeding, mental health and care wishes last; sex assigned at birth, organs, menstrual and substance questions only when an answer depends on them. [kept]

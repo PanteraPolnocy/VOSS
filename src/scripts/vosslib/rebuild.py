@@ -65,6 +65,9 @@ def write_out(new, a):
     else:
         folder = out_folder(where)
         path = os.path.join(folder or "", "personal.json" if as_json else PACKAGE_NAME)
+    if not folder and where.lower() == "auto":
+        die("nowhere fit to write a private file was found: every folder tried is a git working tree or part of the "
+            "skill. Give --out a folder outside them")
     if not folder or not os.path.isdir(folder):
         die("no such folder to write into: %s (use 'auto', a folder, or a name ending .zip or .json)" % where)
     replacing = core.same_path(path, personal.path())

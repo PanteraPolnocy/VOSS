@@ -42,12 +42,17 @@ IMAGE_EXT = (".webp", ".png", ".jpg", ".jpeg", ".gif")
 TEXT_EXT = (".md", ".py", ".json", ".txt", ".yml", ".yaml", ".toml", ".cfg", ".ini", ".html", ".css", ".js", ".csv", ".ics")
 # the licence is signed with its holder's name, and that is hers to sign
 LEAK_EXEMPT = ("LICENSE",)
+# so is the one line of the README that credits the author, in case somebody forks him. Nothing else in that
+# file is let off, and nothing at all in any other
+SIGNED_LINES = {"README.md": ("- Voss, the VOSS-01 design and the pictures: ",)}
 IGNORED = ("src/" + HOUSEHOLD, "src/" + PERSONAL, "src/images/private/")
 ENV_KEYS = ("VOSS_PERSONAL", "VOSS_HOUSEHOLD", "VOSS_DATA", "VOSS_OUTPUTS", "VOSS_NOW")
 # no single file in the repository may be larger than this: the owner's rule, kept a little under the size at
 # which the host starts to complain
 MAX_FILE_BYTES = 49 * 1000 * 1000
-STAMP = (2026, 11, 15, 12, 0, 0)        # one date for every entry, so the same source packs to the same bytes
+# one date for every entry, so the same source packs to the same contents. On one machine that means the same
+# bytes too; between systems the compressed bytes can differ, because zlib builds differ
+STAMP = (2026, 11, 15, 12, 0, 0)
 
 
 def read(path):
@@ -402,8 +407,13 @@ def scan_leaks(words, files):
             text = raw.decode("utf-8", "replace")
         else:
             continue
+        signed = SIGNED_LINES.get(name, ())
         for word, rx in patterns:
             for m in rx.finditer(text):
+                if signed:
+                    start = text.rfind("\n", 0, m.start()) + 1
+                    if text.startswith(signed, start) and "\n" not in text[start:m.end()]:
+                        continue
                 hits.append((name, text.count("\n", 0, m.start()) + 1, word))
     return sorted(set(hits))
 

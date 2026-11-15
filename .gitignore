@@ -15,6 +15,8 @@ voss-handoff*
 HANDOFF.md
 *.private.*
 personal.json
+# calendar files carry medicine names; the tools refuse to write one here, and this is the second lock
+*.ics
 
 # Downloaded source data for the databases (each build script names its downloads)
 downloads/

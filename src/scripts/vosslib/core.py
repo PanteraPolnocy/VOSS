@@ -263,12 +263,27 @@ def load_data(name, required=True):
 
 def out_folder(to):
     """The folder for a file that is to be handed to the person, or None if there is no such folder.
-    'auto' takes the first that exists: the VOSS_OUTPUTS environment variable, /mnt/user-data/outputs,
-    then the current folder."""
+    'auto' takes the folder VOSS_OUTPUTS names, if there is one. Otherwise it takes the first of these that
+    exists and is a fit place for a file about someone's health: /mnt/user-data/outputs, the current
+    folder, the person's Downloads folder, their home folder."""
     if str(to).lower() == "auto":
-        cands = [os.environ.get("VOSS_OUTPUTS"), "/mnt/user-data/outputs", os.getcwd()]
-        return next((c for c in cands if c and os.path.isdir(c)), None)
+        named = os.environ.get("VOSS_OUTPUTS")
+        if named and os.path.isdir(named):
+            return named
+        home = os.path.expanduser("~")
+        cands = ["/mnt/user-data/outputs", os.getcwd(), os.path.join(home, "Downloads"), home]
+        return next((c for c in cands if os.path.isdir(c) and not unfit(c)), None)
     return to if os.path.isdir(to) else None
+
+
+def unfit(folder):
+    """Why a folder is no place for a file with health information in it, or '' if it will do. A calendar of
+    medicine times is such a file, as much as a personal file is."""
+    if within(folder, SKILL):
+        return "inside the package Voss is running from, which he never changes"
+    if inside_repository(folder):
+        return "inside a git repository, and a file that holds health information never goes into one"
+    return ""
 
 
 def _canon(path):
