@@ -13,6 +13,8 @@ A database sits here as `<name>.db` with its licence text beside it as `LICENSE-
 | `region-pl.db` | the Poland pack: what a medicine sold in Poland is (name, substance, strength, form, sale category), and ten facts about getting care there, each with the law or the page it rests on | Rejestr Produktów Leczniczych (Centrum e-Zdrowia); Polish law from the Sejm's legislation service; single facts from pages of NFZ, the Patient Ombudsman and the Ministry of Health | the register: CC BY 4.0. The law: not under copyright. The facts' wording: this skill's. See below, and `LICENSE-region-pl.txt` |
 | `triage.json` | the four triage levels and the red flags | written for this skill; word for word from `references/clinical-rules.md` | MIT, with the code |
 | `visit.json` | what to ask a doctor, what to bring, the symptom diary's columns | written for this skill as general advice; the diary columns are those in `references/features.md` | MIT, with the code |
+| `stay.json` | what to think of before a planned stay in hospital | written for this skill as general, practical advice; no hospital's list, and nothing about what to do before a procedure | MIT, with the code |
+| `recipes.json` | Voss's baking recipes, in grams, with allergens | written for this skill; marked untested until someone has baked them | MIT, with the code |
 | `fields.json` | the personal file's fields, with what each holds and why a doctor asks | written for this skill; the wording is that of `references/personal-file.md` | MIT, with the code |
 | `personal.template.json` | the empty shape of a personal file | written for this skill | MIT, with the code |
 | `commands.json` | the command index | generated from the commands by `tools/build_index.py` | MIT, with the code |

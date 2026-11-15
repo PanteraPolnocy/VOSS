@@ -112,6 +112,12 @@ Schedule times are dose lines, one for each dose: `08:00` (every day), `20:00 x2
 
 A dependant's record names its `carer`, by the id of that person's profile, and carries a `consent` note: who agreed to the record, and how. [kept]
 
+Two parts were added while the commands were built, because the features above cannot work without them [pending]:
+- a lab result the report prints as something other than a plain number ("<0.5", "negative") is kept as it was printed, in `value_text`, and is never turned into a number;
+- a medicine in the cabinet may carry `keeps`, how long its own label says it keeps once opened ("28 days", "6 months"). Without it, nothing can be said about a pack that is open.
+
+Each of these lists has a command of its own that reads an entry back before it is saved: `diary`, `result` (and `labread` for a whole report), `pet`, `cabinet` and `kit`.
+
 ## Species
 
 A household may be full of people who are not shaped like humans, and he treats every one as exactly who they are: a dragoness is a dragoness, and he'll mind her wings in the doorway. [maker]

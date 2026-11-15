@@ -123,8 +123,15 @@ def fields():
     return schema()["fields"]
 
 
+def household(name=None):
+    """The lists a household keeps in common (pets, cabinet, kits), as the field list describes them: all of
+    them by name, or one."""
+    specs = dict((h["name"], h) for h in schema()["household"] if h.get("keys"))
+    return specs if name is None else specs[name]
+
+
 def field(name):
-    for spec in fields():
+    for spec in fields() + list(household().values()):
         if spec["name"] == name:
             return spec
     near = difflib.get_close_matches(str(name), [f["name"] for f in fields()], n=1, cutoff=0.6)
@@ -440,8 +447,24 @@ def check(data, today):
             _check_entry(kind, entry, where, known, out, today)
     for key in HOUSEHOLD_LISTS:
         value = data.get(key)
-        if value is not None and not (isinstance(value, list) and all(isinstance(r, dict) for r in value)):
+        if value is None:
+            continue
+        if not (isinstance(value, list) and all(isinstance(r, dict) for r in value)):
             out.append(("FIX", key, "must be a list of objects"))
+            continue
+        keys = household(key)["keys"]
+        for n, row in enumerate(value, 1):
+            where = "%s.%d" % (key, n)
+            plain = dict((k, v) for k, v in keys.items() if not isinstance(v, dict))
+            _check_key(plain, dict((k, v) for k, v in row.items() if k in plain or k not in keys), where, out)
+            # a kit holds a list of things, each with its own expiry
+            for inner, shape in keys.items():
+                if isinstance(shape, dict) and row.get(inner) is not None:
+                    if not (isinstance(row[inner], list) and all(isinstance(x, dict) for x in row[inner])):
+                        out.append(("FIX", "%s.%s" % (where, inner), "must be a list of objects"))
+                    else:
+                        for m, item in enumerate(row[inner], 1):
+                            _check_key(shape, item, "%s.%s.%d" % (where, inner, m), out)
     for n, row in enumerate(data.get("cabinet") or [], 1):
         if isinstance(row, dict) and not blankish(row) and row.get("belongs_to") not in seen and row.get("belongs_to") not in ("", None):
             out.append(("CHECK", "cabinet.%d.belongs_to" % n, "names no profile on file"))

@@ -159,6 +159,25 @@ def _leaflet(con, rows):
                 return
 
 
+def lookup(text):
+    """The register's entries for a product's name, the longest start of what was typed that is one; [] where
+    there is none, and None where no register is installed."""
+    info = installed()
+    if not info:
+        return None
+    con = library.connect(info["path"])
+    try:
+        words = [w for w in key(text).split("_") if w]
+        for end in range(len(words), 0, -1):
+            rows = con.execute("SELECT %s JOIN product_name n ON n.product = p.id WHERE n.folded = ? ORDER BY p.id" % PRODUCT,
+                               ("_".join(words[:end]),)).fetchall()
+            if rows:
+                return rows
+        return []
+    finally:
+        con.close()
+
+
 def same_substance(names):
     """For each name that is a product in the register, the substances the register gives it: {typed name:
     set of substance names}. For telling two boxes of the same medicine apart from two medicines."""
@@ -204,6 +223,30 @@ def _fact(con, info, row):
             used.append(source)
     for n, source in enumerate(used):
         (more if n else lambda text: rec("SOURCE", text))(library.tag(info, source))
+
+
+def say(fact_key, heading):
+    """One fact of the pack, for another command to print under a heading of its own. Returns False, and prints
+    nothing, where the pack is not installed or has no such fact."""
+    info = installed()
+    if not info:
+        return False
+    con = library.connect(info["path"])
+    try:
+        row = con.execute("SELECT says FROM fact WHERE key = ?", (fact_key,)).fetchone()
+        if not row:
+            return False
+        rec(heading, row[0])
+        for kind, name, place, read, how in con.execute(
+                "SELECT kind, name, place, read, how FROM fact_source WHERE fact = ? ORDER BY position", (fact_key,)):
+            more("rests on: %s%s [%s %s]" % (name, ", %s" % place if place else "",
+                                            "read by hand on" if how == "by hand" else "found in the act on" if kind == "law" else "stated there on",
+                                            read))
+        more("the wording is this skill's; 'find %s' has the law's own words [sourced: %s.db, built %s]" % (
+            fact_key, info["stem"], info["built"].isoformat()))
+        return True
+    finally:
+        con.close()
 
 
 def _matching(rows, words):

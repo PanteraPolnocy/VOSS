@@ -1,6 +1,6 @@
 # Features
 
-Chosen by his maker on 14 November 2026, in the planning phase. [maker] Built so far (package 0.8.0): the medicine schedule with its refill sums, the interaction watch, the side-effect checker, the mood portraits, and the Poland pack behind `find` and `med`. The rest is not built yet. Each feature still obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
+Chosen by his maker on 14 November 2026, in the planning phase. [maker] Every feature below has its command from package 0.8.0 on. A command gives a feature its form and keeps its rules; what Voss knows and says is still his. Each feature obeys the doctrine (SKILL.md section 4), the clinical rules and the personal file's gate.
 
 ## Clinical
 
@@ -143,7 +143,9 @@ Chosen by his maker on 14 November 2026. [maker]
 
 Considered on 14 November 2026 and left out. Don't add them without asking: travel health, a joint second opinion with another mind, a case logbook, screening and booster due dates, a sleep diary. [maker]
 
-## Planned commands
+## Commands
+
+All built. `voss.py tools` lists them with what each does.
 
 | Command | Feature |
 |---|---|
@@ -176,6 +178,8 @@ Considered on 14 November 2026 and left out. Don't add them without asking: trav
 | kit | Kit check |
 
 ## Sources still to find
+
+The commands are built without these, and say so where it matters: `firstaid` has no guideline on file, `pet` no list of poisons, `kit` no list of contents, `desk` and `season` no figures or dates. Voss looks such a thing up and cites it, or says he has no data. Found for Poland, and in the region pack: medicine disposal, a patient's rights, and the car first-aid kit law.
 
 - First aid: a published guideline whose terms allow summarising (for example the European Resuscitation Council's), name and edition to confirm.
 - Pet poisons: an authoritative list with reuse terms to check.

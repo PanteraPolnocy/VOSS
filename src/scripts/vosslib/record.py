@@ -149,6 +149,8 @@ def cmd_profile(a):
         spec = personal.field(a.field)
         if spec["type"] == "gate":
             die("the gate's questions and answers are never shown: 'ignition' says how many are on file")
+        if spec["type"] == "household":
+            die("%s is a list the household keeps in common, with a command of its own: cabinet, kit or pet" % spec["name"])
         if not _print_fields(entry, [spec["name"]], today):
             rec(spec["name"], "nothing on file")
         return
@@ -304,9 +306,9 @@ def _fill(spec, pairs, base, where, today):
 def _set(entry, spec, value, today):
     name, t = spec["name"], spec["type"]
     where = "--set %s" % name
-    if t in ("gate", "records"):
+    if t in ("gate", "records", "household"):
         die("%s is not set this way: %s" % (name, "the person types their own gate questions into the file" if t == "gate"
-                                             else "its own command keeps it, and that is not built yet"))
+                                             else "it is a list, and --add puts an entry in it"))
     if t == "objects":
         die("%s is a list: put an entry in with --add \"%s: ...\"" % (name, name))
     if t == "object":
@@ -364,11 +366,19 @@ def _add(entry, spec, value, today):
             die("%s: that is on file already" % where)
         entry[name] = have + new
         return "ADD", "%s: %s" % (name, ", ".join(new))
-    if t != "objects":
+    if t not in ("objects", "records"):
         die("%s is not a list: fill it with --set" % name)
     if not isinstance(value, dict):
         die("an entry in %s has parts: write it as  \"%s: %s\"" % (name, name, "; ".join("%s=..." % k for k in _flat(spec["keys"]))))
     row, said = _fill(spec, value, None, where, today)
+    if t == "records":
+        said = _check_record(name, row, said, where, today)
+        have = [r for r in (entry.get(name) if isinstance(entry.get(name), list) else []) if isinstance(r, dict) and not personal.blankish(r)]
+        if row in have:
+            die("%s: that entry is on file already" % where)
+        # in the order things happened, whenever they were written down
+        entry[name] = sorted(have + [row], key=lambda r: str(r.get("date") or ""))
+        return "ADD", "%s: %s" % (name, said)
     label = spec["label"]
     if personal.blankish(row.get(label)):
         die("%s needs its '%s' part" % (where, label))
@@ -382,6 +392,109 @@ def _add(entry, spec, value, today):
         kept.append(old)
     entry[name] = kept + [row]
     return "ADD", "%s: %s%s" % (name, said, " (replaces the entry on file under the same %s)" % label if replaced else "")
+
+
+def _check_record(name, row, said, where, today):
+    """What a row of a record must hold before it is kept. Returns the words for reading it back."""
+    if name == "symptom_diary":
+        if personal.blankish(row.get("what")):
+            die("%s needs its 'what' part: what the symptom was, in the person's words" % where)
+        if not row.get("date"):
+            row["date"] = today.isoformat()
+            said += "; date %s" % row["date"]
+        severity = row.get("severity")
+        if severity is not None and not (0 <= severity <= 10 and severity == int(severity)):
+            die("%s.severity is a whole number from 0 to 10" % where)
+    elif name == "lab_results":
+        if personal.blankish(row.get("test")):
+            die("%s needs its 'test' part: the name of the test, as the report prints it" % where)
+        if not row.get("date"):
+            die("%s needs its 'date' part: the day on the report" % where)
+        if (row.get("value") is None) == personal.blankish(row.get("value_text")):
+            die("%s needs the result once: value=5.1 for a plain number, or value_text=<0.5 (or 'negative') where the report "
+                "prints it another way" % where)
+        low, high = row.get("range_low"), row.get("range_high")
+        if low is not None and high is not None and low > high:
+            die("%s: the range runs backwards, the lower limit is above the upper one. Read the report again" % where)
+        if not personal.blankish(row.get("range_text")):
+            if low is not None or high is not None:
+                die("%s: give the range once, as range_low and range_high or as range_text" % where)
+            from . import clinic
+            clinic.parse_range(row["range_text"])
+    return said
+
+
+def _household(out, pid, spec, value, today):
+    """Put an entry in one of the lists the household keeps in common. Returns the line for reading it back."""
+    name = spec["name"]
+    where = "--add %s" % name
+    if not isinstance(value, dict):
+        die("an entry in %s has parts: write it as  \"%s: key=value; key=value\"" % (name, name))
+    have = [r for r in (out.get(name) if isinstance(out.get(name), list) else []) if isinstance(r, dict) and not personal.blankish(r)]
+    if name == "kits":
+        return _kit(out, have, value, where, today)
+    row, said = _fill(spec, value, None, where, today)
+    if personal.blankish(row.get("name")):
+        die("%s needs its 'name' part" % where)
+    if name == "cabinet":
+        if not row.get("belongs_to"):
+            row["belongs_to"] = pid
+            said += "; belongs_to %s" % pid
+        elif row["belongs_to"] not in personal.ids(out):
+            die("%s.belongs_to must be the id of someone on file" % where)
+        if row.get("keeps"):
+            core.period_of(row["keeps"], "%s.keeps" % where)
+        last = core.end_of(row.get("expiry"))
+        if row.get("opened") and last and core.parse_date(row["opened"]) > last:
+            die("%s: it was opened after its expiry date. Read the pack again" % where)
+
+        def same(old):
+            return all(fold(old.get(k) or "") == fold(row.get(k) or "") for k in ("name", "strength", "belongs_to"))
+    else:
+        if row.get("weight_kg") is not None and not 0 < row["weight_kg"] < 2000:
+            die("%s.weight_kg must be more than nothing" % where)
+
+        def same(old):
+            return fold(old.get("name") or "") == fold(row["name"])
+    replaced = any(same(old) for old in have)
+    out[name] = [old for old in have if not same(old)] + [row]
+    return "ADD", "%s: %s%s" % (name, said, " (replaces the entry on file under the same name)" if replaced else "")
+
+
+def _kit(out, have, value, where, today):
+    """One thing into a first-aid kit, or the day a kit was last looked through."""
+    allowed = ("where", "item", "expiry", "checked")
+    for part in value:
+        if part not in allowed:
+            die("%s has no part '%s': its parts are %s" % (where, part, ", ".join(allowed)))
+    place = fold(coerce("text", value.get("where") or "", "%s.where" % where, today))
+    if not place:
+        die("%s needs its 'where' part: home, car, or wherever the kit is kept" % where)
+    if "item" not in value and "checked" not in value:
+        die("%s needs an 'item' to put in the kit, or the day it was 'checked'" % where)
+    kits = [dict(k) for k in have]
+    kit = next((k for k in kits if fold(k.get("where") or "") == place), None)
+    if kit is None:
+        kit = {"where": place, "items": [], "checked": ""}
+        kits.append(kit)
+    said = ["where %s" % place]
+    if "item" in value:
+        item = {"item": coerce("text", value["item"], "%s.item" % where, today),
+                "expiry": coerce("partdate", value["expiry"], "%s.expiry" % where, today) if value.get("expiry") else ""}
+        if not item["item"]:
+            die("%s.item is empty" % where)
+        old = [i for i in (kit.get("items") or []) if isinstance(i, dict) and not personal.blankish(i)]
+        replaced = any(fold(i.get("item") or "") == fold(item["item"]) for i in old)
+        kit["items"] = [i for i in old if fold(i.get("item") or "") != fold(item["item"])] + [item]
+        said.append("item %s%s%s" % (item["item"], "; expiry %s" % item["expiry"] if item["expiry"] else "",
+                                     " (replaces the one on file under the same name)" if replaced else ""))
+    elif "expiry" in value:
+        die("%s.expiry belongs to an item: name the item" % where)
+    if "checked" in value:
+        kit["checked"] = coerce("date", value["checked"], "%s.checked" % where, today)
+        said.append("checked %s" % kit["checked"])
+    out["kits"] = kits
+    return "ADD", "kits: %s" % "; ".join(said)
 
 
 def gather(a):
@@ -433,12 +546,17 @@ def apply(data, pid, ops, today, new=False, carer=None, consent=None):
         entry = found[0][1]
     for verb, name, value in ops:
         spec = personal.field(name)
+        if spec["type"] == "household":
+            if verb != "add":
+                die("%s is a list the household keeps: --add puts an entry in it, and 'forget' takes one out" % name)
+            lines.append(_household(out, pid, spec, value, today))
+            continue
         if verb == "set":
             lines.append(_set(entry, spec, value, today))
         elif verb == "add":
             lines.append(_add(entry, spec, value, today))
         elif verb == "decline":
-            if spec["type"] in ("gate", "records", "reference"):
+            if spec["type"] in ("gate", "records", "reference", "household"):
                 die("%s is not something a person declines" % name)
             entry[name] = personal.DECLINED
             lines.append(("DECLINED", "%s (stored, so it is not asked again)" % name))
@@ -546,7 +664,7 @@ def cmd_intake(a):
     asked = 0
     for name in a.needs or []:
         spec = personal.field(name.strip().lower())
-        if spec["type"] in ("gate", "records", "reference"):
+        if spec["type"] in ("gate", "records", "reference", "household"):
             die("%s is not something to ask for" % spec["name"])
         if personal.answered(entry, spec["name"]):
             rec("ON FILE", "%s is answered already: 'profile --field %s' reads it back" % (spec["name"], spec["name"]))

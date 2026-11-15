@@ -107,6 +107,40 @@ def add_months(day, months):
     raise ValueError("no such month")
 
 
+_PERIOD_RE = re.compile(r"^(\d{1,4})\s*(day|days|week|weeks|month|months|year|years)$")
+
+
+def period_of(text, what):
+    """'28 days', '2 weeks', '6 months' or '1 year' as (count, 'days' or 'months'). How long a thing keeps is a
+    figure off its own label, so nothing looser than that is read."""
+    m = _PERIOD_RE.match(" ".join(str(text).lower().split()))
+    if not m or int(m.group(1)) == 0:
+        die("%s must be a count of days, weeks, months or years, as the label gives it: 28 days, 6 months" % what)
+    count, unit = int(m.group(1)), m.group(2).rstrip("s")
+    if unit == "week":
+        return count * 7, "days"
+    if unit == "year":
+        return count * 12, "months"
+    return count, unit + "s"
+
+
+def after(day, period):
+    """The day a period after a day: a month is a calendar month, as add_months counts it."""
+    count, unit = period
+    return add_months(day, count) if unit == "months" else day + timedelta(days=count)
+
+
+def end_of(part):
+    """The last day a date given in part could mean: 2026 is 31 December, 2026-03 is 31 March. None if it is
+    not a year, a year and month, or a date."""
+    text = str(part or "").strip()
+    if re.fullmatch(r"\d{4}", text):
+        return date(int(text), 12, 31)
+    if re.fullmatch(r"\d{4}-\d{2}", text) and 1 <= int(text[5:]) <= 12:
+        return add_months(date(int(text[:4]), int(text[5:]), 1), 1) - timedelta(days=1)
+    return parse_date(text) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text) else None
+
+
 def whole_years(born, on):
     """Completed years between two dates. Someone born on 29 February has their birthday on 1 March in other years."""
     years = on.year - born.year
@@ -329,6 +363,7 @@ GROUPS = [
     ("clinic", "Clinic"),
     ("medicines", "Medicines"),
     ("file", "The personal file"),
+    ("extras", "Extras"),
 ]
 
 

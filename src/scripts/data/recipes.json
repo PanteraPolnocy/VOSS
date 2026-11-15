@@ -1,0 +1,92 @@
+{
+  "note": "Voss's own baking recipes, written for this package. Vegetarian; eggs and dairy are welcome. Everything is weighed in grams, eggs included: they are weighed without their shells. The recipes were written with care, and nobody has yet baked them from this file: each stays marked untested until someone has, and says so.",
+  "recipes": [
+    {
+      "key": "shortbread",
+      "name": "Plain shortbread",
+      "tested": false,
+      "makes": {"count": 16, "what": "fingers"},
+      "tin": "a 20 cm square tin, lined with baking paper",
+      "oven": "160 C (140 C with a fan)",
+      "time": "35 to 40 minutes, until pale gold at the edges",
+      "ingredients": [
+        {"item": "plain wheat flour", "grams": 300, "allergens": ["gluten (wheat)"]},
+        {"item": "unsalted butter, cold and diced", "grams": 200, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 100},
+        {"item": "fine salt", "grams": 2}
+      ],
+      "method": [
+        "Rub the butter into the flour, sugar and salt until it looks like damp sand, then press it together.",
+        "Press it evenly into the tin, prick it all over with a fork, and chill it for 20 minutes.",
+        "Bake it. Cut it into fingers while it is warm, and leave it in the tin until it is cold."
+      ]
+    },
+    {
+      "key": "pound-cake",
+      "name": "Pound cake",
+      "tested": false,
+      "makes": {"count": 10, "what": "slices"},
+      "tin": "a loaf tin of about 1 litre, buttered and lined",
+      "oven": "170 C (150 C with a fan)",
+      "time": "55 to 65 minutes, until a skewer pushed into the middle comes out clean",
+      "ingredients": [
+        {"item": "unsalted butter, soft", "grams": 200, "allergens": ["milk"]},
+        {"item": "caster sugar", "grams": 200},
+        {"item": "eggs, beaten, weighed without their shells", "grams": 200, "allergens": ["egg"]},
+        {"item": "plain wheat flour", "grams": 200, "allergens": ["gluten (wheat)"]},
+        {"item": "baking powder", "grams": 6},
+        {"item": "fine salt", "grams": 2}
+      ],
+      "method": [
+        "Beat the butter and sugar until they are pale and light.",
+        "Beat in the egg a little at a time, with a spoonful of the flour if it starts to separate.",
+        "Fold in the flour, baking powder and salt, and scrape the batter into the tin.",
+        "Bake it. Leave it in the tin for 10 minutes, then turn it out onto a rack."
+      ]
+    },
+    {
+      "key": "soda-bread",
+      "name": "Soda bread",
+      "tested": false,
+      "makes": {"count": 1, "what": "loaf"},
+      "tin": "a baking tray, floured",
+      "oven": "200 C (180 C with a fan)",
+      "time": "40 to 45 minutes, until it sounds hollow when tapped underneath",
+      "ingredients": [
+        {"item": "plain wheat flour", "grams": 500, "allergens": ["gluten (wheat)"]},
+        {"item": "buttermilk", "grams": 400, "allergens": ["milk"]},
+        {"item": "bicarbonate of soda", "grams": 8},
+        {"item": "fine salt", "grams": 8}
+      ],
+      "method": [
+        "Stir the flour, bicarbonate of soda and salt together, then stir in the buttermilk until a soft dough forms. Do not knead it.",
+        "Shape it into a round on the tray and cut a deep cross in the top.",
+        "Bake it at once, and cool it on a rack."
+      ]
+    },
+    {
+      "key": "oat-biscuits",
+      "name": "Oat biscuits",
+      "tested": false,
+      "makes": {"count": 20, "what": "biscuits"},
+      "tin": "two baking trays, lined with baking paper",
+      "oven": "180 C (160 C with a fan)",
+      "time": "12 to 15 minutes, until golden at the edges and still soft in the middle",
+      "ingredients": [
+        {"item": "rolled oats", "grams": 150, "allergens": ["gluten (oats)"]},
+        {"item": "plain wheat flour", "grams": 150, "allergens": ["gluten (wheat)"]},
+        {"item": "unsalted butter, soft", "grams": 150, "allergens": ["milk"]},
+        {"item": "soft brown sugar", "grams": 100},
+        {"item": "egg, beaten, weighed without its shell", "grams": 50, "allergens": ["egg"]},
+        {"item": "bicarbonate of soda", "grams": 3},
+        {"item": "fine salt", "grams": 2}
+      ],
+      "method": [
+        "Beat the butter and sugar together, then beat in the egg.",
+        "Stir in the oats, flour, bicarbonate of soda and salt.",
+        "Roll the dough into balls, set them well apart on the trays, and flatten each a little.",
+        "Bake them. Leave them on the trays for 5 minutes, then move them to a rack."
+      ]
+    }
+  ]
+}

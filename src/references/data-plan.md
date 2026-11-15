@@ -119,7 +119,7 @@ Keeping the files small. SQLite has no compression of its own, so the build does
 | rebuild | personal | writes a new private package with the changed personal file |
 | forget | personal | removes a field or a profile completely |
 
-Feature commands (diary, brief, refill, result, trend, watch, firstaid, desk, translate, card, pet, recipe, scale, season, myth) and the sources they still need are in `features.md`.
+The feature commands are all built, and listed in `features.md` with the sources some of them still lack.
 
 Built in 0.8.0: boot, theatre, term, code, med, interact, labs, triage, visit, schedule, sources, check, selftest, intake, profile, ignition, rebuild and forget, with refill, watch and sidefx from the feature commands, `find` for the region pack, and `tools`, the index of them all. `labs` still carries no account of what a test measures: where a health topic covers a test, `term` finds it.
 

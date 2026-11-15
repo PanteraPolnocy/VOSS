@@ -125,6 +125,33 @@ def _confirmed(a, new, how):
     return True
 
 
+def save(a, pid, ops, today):
+    """Read a change back, or with the code that read-back printed, write it. This is the one way anything
+    gets into a personal file, whichever command is asking. Returns True once it is written."""
+    data = personal.need()
+    if pid not in personal.ids(data):
+        die("no profile with that id is on file%s" % (": on file are %s" % ", ".join(personal.ids(data)) if personal.ids(data) else ""))
+    new, lines = record.apply(data, pid, ops, today)
+    problems = [f for f in personal.check(new, today) if f[0] == "FIX"]
+    if problems:
+        for level, where, what in problems:
+            rec(level, "%s: %s" % (where, what))
+        die("the file would not be a valid personal file with that in it: nothing was stored")
+    if not _confirmed(a, new, "stored"):
+        rec("READ BACK", "for %s. Nothing is saved yet" % pid)
+        for key, text in lines:
+            rec(key, text)
+        code = record.code_of(new)
+        rec("CONFIRM", code)
+        rec("NEXT", "read that back in your own words. If they confirm all of it, run this again, the same, with --confirm %s. "
+                    "If they change anything, start again from here" % code)
+        return False
+    for key, text in lines:
+        rec(key, text)
+    write_out(new, a)
+    return True
+
+
 def cmd_rebuild(a):
     today = core.today()
     if not record.gather(a) and not a.new:
@@ -162,6 +189,9 @@ def _drop_field(entry, path, match, today):
         hits = []
         for n, row in enumerate(value if isinstance(value, list) else []):
             label = row.get(spec.get("label", "")) if isinstance(row, dict) else row
+            if t == "records" and isinstance(row, dict):
+                # the same symptom on another day is another entry: its day tells them apart
+                label = "%s %s" % (row.get("date") or "", label or "")
             if want and want in fold(label or ""):
                 hits.append((n, str(label)))
         if len(hits) != 1:
@@ -193,6 +223,44 @@ def _drop_field(entry, path, match, today):
     count = len(personal.rows(entry, name)) if isinstance(value, list) else 0
     del entry[name]
     return "%s%s" % (name, " (%s)" % core.plural(count, "entry", "entries") if count else "")
+
+
+def _drop_shared(out, name, match):
+    """One entry out of a list the household keeps in common: a medicine from the cabinet, a pet, a kit, or one
+    thing from a kit ('home plasters')."""
+    rows = [r for r in (out.get(name) or []) if isinstance(r, dict) and not personal.blankish(r)]
+    if not rows:
+        die("nothing is on file under %s" % name)
+    if not match:
+        die("%s is the household's list, not one person's: --match picks the one entry to forget" % name)
+    want = fold(match)
+    if name == "kits":
+        hits = []
+        for kit in rows:
+            place = fold(kit.get("where") or "")
+            if want == place:
+                hits.append((kit, None))
+            for item in kit.get("items") or []:
+                if isinstance(item, dict) and want in fold("%s %s" % (place, item.get("item") or "")):
+                    hits.append((kit, item))
+        whole = [h for h in hits if h[1] is None]
+        hits = whole or hits
+        if len(hits) != 1:
+            die("--match fits %s in kits: say %s" % ("nothing" if not hits else "more than one entry",
+                                                     "the kit and the thing, as they are on file" if not hits else "more of it"))
+        kit, item = hits[0]
+        if item is None:
+            out[name] = [r for r in rows if r is not kit]
+            return "the whole %s kit" % kit.get("where")
+        kit["items"] = [i for i in kit["items"] if i is not item]
+        out[name] = rows
+        return "one thing from the %s kit: %s" % (kit.get("where"), item.get("item"))
+    hits = [r for r in rows if want in fold("%s %s" % (r.get("name") or "", r.get("strength") or ""))]
+    if len(hits) != 1:
+        die("--match fits %s in %s: say %s" % ("nothing" if not hits else "more than one entry", name,
+                                               "it as it is on file" if not hits else "more of it"))
+    out[name] = [r for r in rows if r is not hits[0]]
+    return "one entry from %s: %s" % (name, " ".join(x for x in (hits[0].get("name"), hits[0].get("strength")) if x))
 
 
 def remove(data, a, today):
@@ -227,7 +295,10 @@ def remove(data, a, today):
     if a.match and len(a.field) != 1:
         die("--match picks one entry out of one list: give a single --field with it")
     for path in a.field:
-        lines.append(("REMOVE", _drop_field(entry, path.strip(), a.match, today)))
+        if path.strip().lower() in personal.HOUSEHOLD_LISTS:
+            lines.append(("REMOVE", _drop_shared(out, path.strip().lower(), a.match)))
+        else:
+            lines.append(("REMOVE", _drop_field(entry, path.strip(), a.match, today)))
     entry["updated"] = today.isoformat()
     return out, lines
 

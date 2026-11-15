@@ -75,13 +75,13 @@
     {"name": "settings", "section": "care", "type": "object", "keys": {"seasonal_checks": "bool", "desk_notices": "bool", "weekly_round": "bool", "wellbeing_checkin": {"on": "bool", "how_often": "text"}}, "what": "seasonal checks, desk notices, weekly round, wellbeing check-ins (and how often)", "why": "features they opted into"},
     {"name": "ignition", "section": "care", "type": "gate", "what": "identity questions and answers", "why": "the gate; the person types these in themselves"},
 
-    {"name": "symptom_diary", "section": "records", "type": "records", "keys": {"date": "date", "what": "text", "severity": "number", "helped": "text", "notes": "text"}, "what": "date, what, severity 0 to 10, what helped, notes", "why": "visit brief"},
-    {"name": "lab_results", "section": "records", "type": "records", "keys": {"date": "date", "test": "text", "value": "number", "unit": "text", "range_low": "number", "range_high": "number", "range_text": "text", "lab": "text", "flag": "text"}, "what": "date, test, value, unit, the range printed on that report, lab, flag", "why": "lab trends"}
+    {"name": "symptom_diary", "section": "records", "type": "records", "keys": {"date": "date", "what": "text", "severity": "number", "helped": "text", "notes": "text"}, "label": "what", "what": "date, what, severity 0 to 10, what helped, notes", "why": "visit brief"},
+    {"name": "lab_results", "section": "records", "type": "records", "keys": {"date": "date", "test": "text", "value": "number", "value_text": "text", "unit": "text", "range_low": "number", "range_high": "number", "range_text": "text", "lab": "text", "flag": "text"}, "label": "test", "what": "date, test, value, unit, the range printed on that report, lab, flag", "why": "lab trends"}
   ],
   "household": [
-    {"name": "pets", "what": "species, name, rough weight, vet", "why": "pet triage"},
-    {"name": "cabinet", "what": "home medicines: name, strength, expiry, opened", "why": "cabinet audit"},
-    {"name": "kits", "what": "home and car first-aid kits: contents and expiry dates", "why": "kit check"},
+    {"name": "pets", "type": "household", "keys": {"species": "text", "name": "text", "weight_kg": "number", "vet": "contact"}, "label": "name", "what": "species, name, rough weight, vet", "why": "pet triage"},
+    {"name": "cabinet", "type": "household", "keys": {"name": "text", "strength": "text", "expiry": "partdate", "opened": "date", "keeps": "text", "belongs_to": "text"}, "label": "name", "what": "home medicines: name, strength, expiry, opened", "why": "cabinet audit"},
+    {"name": "kits", "type": "household", "keys": {"where": "text", "items": {"item": "text", "expiry": "partdate"}, "checked": "date"}, "label": "where", "what": "home and car first-aid kits: contents and expiry dates", "why": "kit check"},
     {"name": "dependants", "what": "other people the person cares for, each with the same fields and their own consent", "why": "a child's weight for a label dose, a parent's medicine list"}
   ]
 }

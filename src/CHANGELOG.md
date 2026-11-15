@@ -53,6 +53,16 @@ The Poland pack:
 - `triage --country PL` adds Poland's own numbers to the world's list.
 - Waiting times for treatment are left out on purpose: they change every week. Supersedes the waiting times in the plan.
 
+The feature commands, all twenty-six of them:
+- What a person writes down: `diary` (symptoms), `result` and `labread` (lab results, one or a whole report), and `trend`, which reads each result against the range of its own report and says when the unit, the lab or the range changed.
+- What a household keeps an eye on: `cabinet` (expired, open too long, or the same substance twice under two names, with the register's help), `kit`, `pet` (always ends at a vet, never a dose), `round` (the weekly round) and `carer`.
+- Pages for somebody else to read, line by line as the person chooses: `card` (a page to print and text for a phone's medical ID), `passport`, `brief`, and `staykit` for a planned stay in hospital. Headings in English, Polish or both; the entries stay in the person's own words.
+- The forms Voss fills in: `assess` (three tiers, the must-not-miss, the closing line), `look`, `decode`, `translate`, `myth`, `teach`, `firstaid`, `boxread`, and the notices `desk`, `season` and `checkin`. Each refuses a record that breaks the clinical rules.
+- `recipe` and `scale`: four of his own recipes, in grams, marked untested, with exact arithmetic for another batch.
+- One way into the personal file for all of it: a command reads a change back and prints a code, and the same command with that code writes the new file. Pages are written the same way.
+- Added to the personal file [pending]: `value_text` for a lab result that is not a plain number, and `keeps` for how long a medicine keeps once opened.
+- No first-aid guideline, pet poison list, kit contents list or seasonal dates are in the data: no source with clear terms was found for them, so the commands say that nothing is on file.
+
 ## 0.7.0 - 14 November 2026
 
 The design, as it was handed over for building. The drafts of that day are folded in here, oldest first.

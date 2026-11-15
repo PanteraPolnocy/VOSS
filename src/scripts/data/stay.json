@@ -1,0 +1,29 @@
+{
+  "note": "What to think of before a planned stay in hospital. Written for this skill as general, practical advice: it is no hospital's own list, and it says nothing about what to do before a procedure. The ward's instructions come first.",
+  "pack_note": "general advice, written for this skill. If the ward sends a list of its own, that one comes first",
+  "pack": [
+    "an identity document, and the referral or the admission letter",
+    "the medicines taken at home, in their own packs, unless the ward says to leave them",
+    "glasses, hearing aids and dentures, with their cases, and a name on each",
+    "nightwear, slippers that grip, something warm, and a wash bag",
+    "a phone and its charger; leave valuables at home",
+    "something to read or to listen to, and earplugs",
+    "the name and number of the person to ring"
+  ],
+  "ask_note": "questions for the ward or the admissions office, before the day",
+  "ask": [
+    "when to arrive, where to report, and how long the stay is expected to last",
+    "whether to eat, drink or take the usual medicines beforehand, and until when: only the hospital can answer that",
+    "which of the usual medicines to bring, and which to leave at home",
+    "the visiting hours, and who may be told how things are going",
+    "what happens on the day of going home: who collects, what is handed over, and who to ring if something is wrong afterwards"
+  ],
+  "bring_note": "papers to hand over",
+  "bring": [
+    "a list of every medicine and supplement, with strengths and times",
+    "allergies, and what happened each time, written down",
+    "recent results, discharge letters, and the names of the doctors involved",
+    "the person's own questions, written down, with room for the answers"
+  ],
+  "rule": "what to do before a procedure (eating, drinking, medicines) is the hospital's to say and nobody else's. Where its instructions and this list differ, the hospital's stand"
+}

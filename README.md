@@ -22,7 +22,7 @@ Working now:
 - **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so.
 - **A check on his own replies**: typography, and his own rules of form.
 
-Not built yet: most of the features in [src/references/features.md](src/references/features.md). For anything the files do not hold, he looks it up with whatever tools the assistant has and cites it, or says he has no data.
+Every feature in [src/references/features.md](src/references/features.md) has its command. For anything the files do not hold (a first-aid guideline, what poisons a pet, seasonal dates), he looks it up with whatever tools the assistant has and cites it, or says he has no data.
 
 ## Requirements
 

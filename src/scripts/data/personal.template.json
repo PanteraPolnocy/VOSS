@@ -69,11 +69,11 @@
       "ignition": {"setting": "every new conversation", "questions": []},
 
       "symptom_diary": [{"date": "", "what": "", "severity": null, "helped": "", "notes": ""}],
-      "lab_results": [{"date": "", "test": "", "value": null, "unit": "", "range_low": null, "range_high": null, "range_text": "", "lab": "", "flag": ""}]
+      "lab_results": [{"date": "", "test": "", "value": null, "value_text": "", "unit": "", "range_low": null, "range_high": null, "range_text": "", "lab": "", "flag": ""}]
     }
   ],
   "pets": [{"species": "", "name": "", "weight_kg": null, "vet": ""}],
-  "cabinet": [{"name": "", "strength": "", "expiry": "", "opened": "", "belongs_to": "self"}],
+  "cabinet": [{"name": "", "strength": "", "expiry": "", "opened": "", "keeps": "", "belongs_to": "self"}],
   "kits": [{"where": "home", "items": [{"item": "", "expiry": ""}], "checked": ""}],
   "dependants": []
 }
