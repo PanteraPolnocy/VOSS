@@ -51,7 +51,9 @@ import zlib
 import dbtools
 from dbtools import DATA, DOWNLOADS, say
 from vosslib import core, desk, store
-from vosslib.labels import FORMS, JOINERS
+from vosslib.labels import ALWAYS, FORMS, JOINERS, NAME_KINDS, SYMPTOM_SECTIONS
+from vosslib.labels import KINDS as KNOWN_KINDS
+from vosslib.labels import TYPES as TYPE_NAMES
 
 STEM = "labels-us"
 INDEX_URL = "https://api.fda.gov/download.json"
@@ -97,6 +99,17 @@ KINDS = []
 for _field, _kind in SECTIONS:
     if _kind not in KINDS:
         KINDS.append(_kind)
+# a section is stored under its number in the reader's list, so the two lists have to be one list
+if tuple(KINDS) != tuple(KNOWN_KINDS):
+    sys.exit("the sections this script keeps are not the ones vosslib/labels.py knows: put the two lists right")
+# how the text is packed. What 'med' prints unasked goes label by label into small blocks, and what 'sidefx'
+# searches goes label by label into middling ones, so each of those answers opens one block. The sections that
+# are only read when asked for go kind by kind into large blocks, where a text sits beside a hundred like it
+HEAD_BLOCK = 1 << 20
+SEARCHED_BLOCK = 1 << 22
+BODY_BLOCK = 1 << 23
+SEARCHED = tuple(k for k in SYMPTOM_SECTIONS if k not in ALWAYS)
+SET_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 # words that say which salt or form a substance is in, and not which substance
 SALTS = frozenset("""acetate acetonide anhydrous aspartate benzoate besylate bitartrate bromide butyrate calcium carbonate chloride
 citrate decanoate dihydrate dihydrochloride dimesylate dipropionate disodium edisylate esylate fumarate furoate gluconate
@@ -303,7 +316,13 @@ def says_more(folded, own):
 
 
 def effective(text):
-    return "%s-%s-%s" % (text[:4], text[4:6], text[6:8]) if re.fullmatch(r"\d{8}", text or "") else ""
+    """The day a label took effect, as the number FDA gives: 20260301. Nothing else counts as a date."""
+    return int(text) if re.fullmatch(r"\d{8}", text or "") else 0
+
+
+def set_id(text):
+    """A set id as sixteen bytes where it is the usual kind, which is all of them so far; as it stands otherwise."""
+    return bytes.fromhex(text.replace("-", "")) if SET_ID.fullmatch(text or "") else text
 
 
 # ---- other names, from the file the interaction data uses
@@ -443,47 +462,63 @@ def build(a):
                                  LICENCE, CREDIT)
         src_names = dbtools.add_source(con, "Wikidata: other names for medicines (labels and aliases of items with an ATC code, P267)",
                                        "https://www.wikidata.org/wiki/Property:P267", names_day, "CC0 1.0, a public domain dedication", "")
-        con.execute("CREATE TABLE label (id INTEGER PRIMARY KEY, type TEXT NOT NULL, route TEXT NOT NULL, substances TEXT NOT NULL, "
-                    "parts INTEGER NOT NULL, generic TEXT NOT NULL, brand TEXT NOT NULL, maker TEXT NOT NULL, class TEXT NOT NULL, "
-                    "application TEXT NOT NULL, set_id TEXT NOT NULL, effective TEXT NOT NULL, labels INTEGER NOT NULL, "
-                    "source INTEGER NOT NULL)")
+        # a row is small on purpose. type: its place in labels.TYPES; route, maker and class: a row of 'word', since
+        # a few thousand of them serve every label; what is in a label is in label_substance and is not said twice
+        con.execute("CREATE TABLE label (id INTEGER PRIMARY KEY, type INTEGER NOT NULL, route INTEGER NOT NULL, parts INTEGER NOT NULL, "
+                    "maker INTEGER NOT NULL, class INTEGER NOT NULL, set_id BLOB NOT NULL, effective INTEGER NOT NULL, "
+                    "labels INTEGER NOT NULL, source INTEGER NOT NULL)")
+        con.execute("CREATE TABLE word (id INTEGER PRIMARY KEY, text TEXT NOT NULL)")
         # a name belongs to a substance, and a substance to every label it is in: stored once each
         con.execute("CREATE TABLE substance (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
-        con.execute("CREATE TABLE substance_name (folded TEXT NOT NULL, substance INTEGER NOT NULL, shown TEXT NOT NULL, kind TEXT NOT NULL, "
+        # kind: its place in labels.NAME_KINDS
+        con.execute("CREATE TABLE substance_name (folded TEXT NOT NULL, substance INTEGER NOT NULL, shown TEXT NOT NULL, kind INTEGER NOT NULL, "
                     "source INTEGER NOT NULL, PRIMARY KEY (folded, substance)) WITHOUT ROWID")
         con.execute("CREATE TABLE label_substance (substance INTEGER NOT NULL, label INTEGER NOT NULL, PRIMARY KEY (substance, label)) "
                     "WITHOUT ROWID")
         # the brand names of a label. place: 1 for the one most labels of the group carry, and so on down
         con.execute("CREATE TABLE label_name (folded TEXT NOT NULL, label INTEGER NOT NULL, shown TEXT NOT NULL, "
                     "place INTEGER NOT NULL, PRIMARY KEY (folded, label)) WITHOUT ROWID")
-        con.execute("CREATE TABLE section (label INTEGER NOT NULL, kind TEXT NOT NULL, block INTEGER NOT NULL, start INTEGER NOT NULL, "
+        # kind: its place in labels.KINDS
+        con.execute("CREATE TABLE section (label INTEGER NOT NULL, kind INTEGER NOT NULL, block INTEGER NOT NULL, start INTEGER NOT NULL, "
                     "length INTEGER NOT NULL, PRIMARY KEY (label, kind)) WITHOUT ROWID")
+        words = {}
+
+        def word(text):
+            if text not in words:
+                words[text] = len(words) + 1
+                con.execute("INSERT INTO word VALUES (?, ?)", (words[text], text))
+            return words[text]
         numbers = {}
         for number, part in enumerate(substances, 1):
             numbers[part] = number
             con.execute("INSERT INTO substance VALUES (?, ?)", (number, part))
-            add_name(con, "substance_name", part, number, part, "substance", src)
+            add_name(con, part, number, part, "substance", src)
             if base_name(part):
-                add_name(con, "substance_name", base_name(part), number, part, "substance", src)
+                add_name(con, base_name(part), number, part, "substance", src)
             for other, lang in extra.get(part, ()):
-                add_name(con, "substance_name", other, number, other, "also called (%s)" % lang, src_names)
-        texts = dbtools.Texts(con, a.codec)
+                add_name(con, other, number, other, "also called (%s)" % lang, src_names)
+        texts = dbtools.Texts(con, a.codec, HEAD_BLOCK)
         counts = dict((k, 0) for k in TYPES.values())
         names = 0
         # in the order of the names, so that one substance's labels sit together and squeeze together
-        for number, key in enumerate(sorted(best, key=lambda k: (k[1], k[0], k[2])), 1):
+        order = sorted(best, key=lambda k: (k[1], k[0], k[2]))
+
+        def pack_sections(number, key, kinds):
+            sections = json.loads(zlib.decompress(best[key][2]).decode("utf-8"))
+            for name in kinds:
+                if name in sections:
+                    block, start, length = texts.add(sections[name])
+                    con.execute("INSERT INTO section VALUES (?, ?, ?, ?, ?)", (number, KINDS.index(name), block, start, length))
+
+        for number, key in enumerate(order, 1):
             kind, parts, route = key
             _, facts, packed, brands, labels_seen, group_class = best[key]
             counts[kind] += 1
-            con.execute("INSERT INTO label VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (number, kind, route, "; ".join(parts), len(parts), facts["generic"], facts["brand"], facts["maker"],
-                         facts["class"] or group_class, facts["application"], facts["set_id"], effective(facts["effective"]),
+            con.execute("INSERT INTO label VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (number, TYPE_NAMES.index(kind), word(route), len(parts), word(facts["maker"]),
+                         word(facts["class"] or group_class), set_id(facts["set_id"]), effective(facts["effective"]),
                          labels_seen, src))
-            sections = json.loads(zlib.decompress(packed).decode("utf-8"))
-            for name in KINDS:
-                if name in sections:
-                    block, start, length = texts.add(sections[name])
-                    con.execute("INSERT INTO section VALUES (?, ?, ?, ?, ?)", (number, name, block, start, length))
+            pack_sections(number, key, ALWAYS)
             own = set()
             for part in parts:
                 con.execute("INSERT INTO label_substance VALUES (?, ?)", (numbers[part], number))
@@ -498,9 +533,16 @@ def build(a):
                     kept += con.execute("INSERT OR IGNORE INTO label_name VALUES (?, ?, ?, ?)",
                                         (folded, number, brand, kept + 1)).rowcount
             names += kept
+        texts.new_blocks(SEARCHED_BLOCK)
+        for number, key in enumerate(order, 1):
+            pack_sections(number, key, SEARCHED)
+        texts.new_blocks(BODY_BLOCK)
+        for name in [k for k in KINDS if k not in ALWAYS and k not in SEARCHED]:
+            for number, key in enumerate(order, 1):
+                pack_sections(number, key, (name,))
         raw, packed_size = texts.close()
         size = dbtools.finish(con, path, core.today(), facts=(
-            ("format", 1), ("labels", len(best)), ("labels-read", seen), ("prescription", counts["prescription"]),
+            ("format", 2), ("labels", len(best)), ("labels-read", seen), ("prescription", counts["prescription"]),
             ("over-the-counter", counts["over the counter"]), ("substances", len(substances)), ("brand-names", names),
             ("left-out-no-substances", len(left_out)), ("named-through-wikidata", len(extra)), ("terms-read", terms_day.isoformat())))
     except BaseException:
@@ -524,10 +566,10 @@ def build(a):
     return path
 
 
-def add_name(con, table, name, owner, shown, kind, source):
+def add_name(con, name, owner, shown, kind, source):
     folded = core.key(name)
-    if folded and table == "substance_name":
-        con.execute("INSERT OR IGNORE INTO substance_name VALUES (?, ?, ?, ?, ?)", (folded, owner, shown, kind, source))
+    if folded:
+        con.execute("INSERT OR IGNORE INTO substance_name VALUES (?, ?, ?, ?, ?)", (folded, owner, shown, NAME_KINDS.index(kind), source))
 
 
 def main(argv=None):

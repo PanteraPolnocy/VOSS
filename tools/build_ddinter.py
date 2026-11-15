@@ -40,7 +40,7 @@ import urllib.parse
 
 import dbtools
 from dbtools import DATA, DOWNLOADS, say
-from vosslib import core
+from vosslib import core, interactions
 
 STEM = "ddinter"
 SITE = "https://ddinter2.scbdd.com"
@@ -295,8 +295,9 @@ on it, if you:
   - pass on anything you make from it under this same licence.
 
 What was changed in the making of this file: DDInter's download files (one for each of eight groups of
-the ATC classification) were merged into one table of pairs; a pair listed in two files is stored once;
-the severity grade is stored as a number (3 Major, 2 Moderate, 1 Minor, 0 Unknown). No pair and no grade
+the ATC classification) were merged into one list of pairs; a pair listed in two files is stored once;
+the severity grade is stored as a number (3 Major, 2 Moderate, 1 Minor, 0 Unknown); and the pairs are
+stored packed, each medicine with the numbers of the medicines it is paired with. No pair and no grade
 was added, removed or altered.
 
 What this file does not hold. DDInter's downloads carry pairs and grades only: no account of why two
@@ -340,26 +341,32 @@ def build(a):
                                        "https://www.wikidata.org/wiki/Property:P267", names_day, "CC0 1.0, a public domain dedication", "")
         # reach: 0 where the files prove the medicine is in none of the groups that have a download
         con.execute("CREATE TABLE drug (id INTEGER PRIMARY KEY, name TEXT NOT NULL, reach INTEGER NOT NULL)")
-        con.execute("CREATE TABLE drug_name (folded TEXT NOT NULL, drug INTEGER NOT NULL, shown TEXT NOT NULL, kind TEXT NOT NULL, "
+        # kind: 0 for DDInter's own name, then one for each language of the other names, as interactions.NAME_KINDS has them
+        con.execute("CREATE TABLE drug_name (folded TEXT NOT NULL, drug INTEGER NOT NULL, shown TEXT NOT NULL, kind INTEGER NOT NULL, "
                     "source INTEGER NOT NULL, PRIMARY KEY (folded, drug)) WITHOUT ROWID")
-        con.execute("CREATE TABLE pair (a INTEGER NOT NULL, b INTEGER NOT NULL, level INTEGER NOT NULL, PRIMARY KEY (a, b)) WITHOUT ROWID")
+        # a medicine and everything it is paired with, packed: a table of the pairs is seven times the size
+        con.execute("CREATE TABLE partners (drug INTEGER PRIMARY KEY, data BLOB NOT NULL)")
         added = 0
         for number in sorted(drugs):
             name = drugs[number]
             con.execute("INSERT INTO drug VALUES (?, ?, ?)", (number, name, 1 if reach[number] else 0))
-            con.execute("INSERT OR IGNORE INTO drug_name VALUES (?, ?, ?, 'name', ?)", (core.key(name), number, name, src))
+            con.execute("INSERT OR IGNORE INTO drug_name VALUES (?, ?, ?, 0, ?)", (core.key(name), number, name, src))
             if base_name(name):
-                con.execute("INSERT OR IGNORE INTO drug_name VALUES (?, ?, ?, 'name', ?)", (core.key(base_name(name)), number, name, src))
+                con.execute("INSERT OR IGNORE INTO drug_name VALUES (?, ?, ?, 0, ?)", (core.key(base_name(name)), number, name, src))
         for number in sorted(extra):
             for other, lang in extra[number]:
                 cur = con.execute("INSERT OR IGNORE INTO drug_name VALUES (?, ?, ?, ?, ?)",
-                                  (core.key(other), number, other, "also called (%s)" % lang, src_names))
+                                  (core.key(other), number, other, interactions.NAME_KINDS.index("also called (%s)" % lang), src_names))
                 added += cur.rowcount
-        con.executemany("INSERT INTO pair VALUES (?, ?, ?)", [(p[0], p[1], level) for p, level in sorted(pairs.items())])
-        con.execute("CREATE INDEX pair_b ON pair (b)")
+        with_whom = {}
+        for (first, second), level in pairs.items():
+            with_whom.setdefault(first, {})[second] = level
+            with_whom.setdefault(second, {})[first] = level
+        con.executemany("INSERT INTO partners VALUES (?, ?)",
+                        [(number, interactions.pack_partners(with_whom[number])) for number in sorted(with_whom)])
         counts = dict((word, sum(1 for v in pairs.values() if v == n)) for word, n in LEVELS.items())
         size = dbtools.finish(con, path, core.today(), facts=(
-            ("format", 1), ("groups", "".join(groups)), ("drugs", len(drugs)), ("pairs", len(pairs)), ("major", counts["Major"]),
+            ("format", 2), ("groups", "".join(groups)), ("drugs", len(drugs)), ("pairs", len(pairs)), ("major", counts["Major"]),
             ("moderate", counts["Moderate"]), ("minor", counts["Minor"]), ("unknown", counts["Unknown"]),
             ("named-through-wikidata", matched), ("out-of-reach", sum(1 for v in reach.values() if not v)),
             ("terms-read", terms_day.isoformat())))

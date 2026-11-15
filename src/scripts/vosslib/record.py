@@ -18,7 +18,6 @@ from . import core, gate, personal
 from .core import command, die, fold, more, rec
 
 PREGNANCY_DAYS = 30
-REVIEW_MONTHS = 12
 _HEAD_RE = re.compile(r"^\s*([a-z_]+)\s*([=:])(.*)$", re.S)
 _KEY_RE = re.compile(r"^[a-z_]+(\.[a-z_]+)?$")
 _PHONE_RE = re.compile(r"^\+?[\d ()\-]{5,24}$")
@@ -96,11 +95,8 @@ def _end_of(part):
 def stale_notes(entry, today):
     """Dated things on file that have gone stale. They are asked again when they next matter, never dropped."""
     notes = []
-    # a weight has no clock of its own: the day the profile was last changed is the measure for all of it
-    changed = core.parse_date(entry.get("updated") or "")
-    if changed and core.add_months(changed, REVIEW_MONTHS) < today:
-        notes.append("the whole profile: last changed %s, over a year ago. Ask whether it still stands, the weight first, "
-                     "before anything depends on it" % changed.isoformat())
+    # only what carries a date of its own goes stale. A weight has none, and an old profile is never flagged as
+    # a whole: the day it was last changed is shown, and that is all
     for name in ("pregnancy", "breastfeeding"):
         block = entry.get(name)
         if isinstance(block, dict) and str(block.get("status") or "").strip():

@@ -22,12 +22,18 @@ from . import core, library, store
 from .core import command, die, key, more, rec
 
 STEM = "labels-us"
-REGION = "region-pl"         # the register of the country the person lives in, where its pack is installed
 WHAT = "what a medicine is and what its label says"
-LABEL = "id, type, route, substances, parts, generic, brand, maker, class, application, set_id, effective, labels, source"
+# The file numbers what it can: a type, a section and a kind of name are kept as their place in these lists
+TYPES = ("prescription", "over the counter")
+NAME_KINDS = ("substance", "also called (en)", "also called (pl)")
 KINDS = ("boxed warning", "purpose", "active ingredient", "uses", "do not use", "warnings", "side effects", "interactions",
          "pregnancy and other groups", "for patients")
+# what 'med' prints without being asked, and what 'sidefx' searches. The builder packs each set side by side,
+# label after label, so that either answer costs one block and not one for every section; the rest sit apart,
+# each kind in large blocks of its own
 ALWAYS = ("boxed warning", "purpose", "active ingredient", "uses")
+LABEL = ("SELECT DISTINCT l.id, l.type, r.text, l.parts, m.text, c.text, l.set_id, l.effective, l.labels, l.source "
+         "FROM label l JOIN word r ON r.id = l.route JOIN word m ON m.id = l.maker JOIN word c ON c.id = l.class ")
 SYMPTOM_SECTIONS = ("boxed warning", "side effects", "warnings", "for patients")
 FORMS = frozenset("mg mcg ug g kg ml l iu units unit micrograms microgram milligrams milligram grams gram percent tablet tablets "
                   "tab tabs capsule capsules caps cap pill pills inhaler puffer spray drops drop syrup solution suspension cream "
@@ -135,7 +141,39 @@ def _together(con, brands, rows, how, sides):
 
 
 def _labels(con, where, values):
-    return con.execute("SELECT DISTINCT %s FROM label l %s" % (", ".join("l." + c for c in LABEL.split(", ")), where), values).fetchall()
+    """Label rows, each in the shape the rest of this module reads: (number, type, route, substances, how many
+    substances, -, -, maker, class, -, set id, date, labels on file, source). The three empty places held FDA's
+    generic name, a first brand name and an application number, which nothing printed; the file no longer
+    carries them."""
+    found = con.execute(LABEL + where, values).fetchall()
+    made = _made_of(con, [f[0] for f in found])
+    return [(number, TYPES[kind], route, made.get(number, ""), parts, "", "", maker, group, "", _set_id(set_id), _day(effective),
+             filed, source) for number, kind, route, parts, maker, group, set_id, effective, filed, source in found]
+
+
+def _made_of(con, ids):
+    """{label: its substances, as FDA names them, in the order of their names}."""
+    names = {}
+    for at in range(0, len(ids), 500):
+        some = ids[at:at + 500]
+        for label, name in con.execute("SELECT x.label, s.name FROM label_substance x JOIN substance s ON s.id = x.substance "
+                                       "WHERE x.label IN (%s)" % ",".join("?" * len(some)), some):
+            names.setdefault(label, []).append(name)
+    return dict((label, "; ".join(sorted(found))) for label, found in names.items())
+
+
+def _set_id(value):
+    """A label's set id as FDA writes it. The file keeps the usual kind as sixteen bytes."""
+    if isinstance(value, bytes) and len(value) == 16:
+        h = value.hex()
+        return "%s-%s-%s-%s-%s" % (h[:8], h[8:12], h[12:16], h[16:20], h[20:])
+    return str(value or "")
+
+
+def _day(number):
+    """20260301 as 2026-03-01; nothing for no date."""
+    text = str(number or "")
+    return "%s-%s-%s" % (text[:4], text[4:6], text[6:8]) if len(text) == 8 else ""
 
 
 def _by_number(con, ids):
@@ -148,13 +186,13 @@ def _by_number(con, ids):
 
 def _own_name(con, folded):
     """A substance under the name FDA gives it, with or without the word for its salt."""
-    return _substance(con, folded, "n.kind = 'substance'")
+    return _substance(con, folded, "n.kind = 0")
 
 
 def _other_name(con, folded):
     """A substance under another name for it, from Wikidata. It comes after the brand names on the labels:
     a brand can be one thing in the United States and another elsewhere, and these labels are American."""
-    return _substance(con, folded, "n.kind <> 'substance'")
+    return _substance(con, folded, "n.kind <> 0")
 
 
 def _substance(con, folded, which):
@@ -166,7 +204,7 @@ def _substance(con, folded, which):
     rows = _labels(con, "JOIN label_substance x ON x.label = l.id WHERE x.substance IN (%s)" % ",".join("?" * len(ids)), ids)
     first = hits[0]
     how = "" if key(first[2]) == key(first[1]) else " [found under \"%s\"%s]" % (
-        first[2], "" if first[3] == "substance" else ", " + first[3].replace("also called", "another name for it, from Wikidata"))
+        first[2], "" if not first[3] else ", " + NAME_KINDS[first[3]].replace("also called", "another name for it, from Wikidata"))
     return rows, "%s%s" % (" or ".join(sorted(set(h[1] for h in hits))[:3]), how), True, {}, True
 
 
@@ -252,21 +290,50 @@ def _by_part(sold):
 def _share_a_substance(con, rows):
     """Whether one name would find every one of these labels as a substance. A salt counts as its base, so
     ibuprofen and ibuprofen sodium are one medicine here."""
-    if len(rows) < 2:
-        return True
+    return len(rows) < 2 or bool(_shared(con, rows))
+
+
+def _shared(con, rows):
+    """The substance names every one of these labels has, folded: FDA's own, with and without the word for a salt."""
     names = {}
     ids = [r[0] for r in rows]
     for at in range(0, len(ids), 500):
         some = ids[at:at + 500]
         for label, folded in con.execute("SELECT x.label, n.folded FROM label_substance x JOIN substance_name n ON n.substance = "
-                                         "x.substance WHERE n.kind = 'substance' AND x.label IN (%s)" % ",".join("?" * len(some)), some):
+                                         "x.substance WHERE n.kind = 0 AND x.label IN (%s)" % ",".join("?" * len(some)), some):
             names.setdefault(label, set()).add(folded)
     shared = None
     for label in ids:
         shared = names.get(label, set()) if shared is None else shared & names.get(label, set())
         if not shared:
-            return False
-    return True
+            break
+    return shared or set()
+
+
+def known_as(given):
+    """What the American labels know each of these names as, for telling two packs of one medicine from two
+    medicines: ({name: (the substance names every label under it shares, every name the file has for those
+    substances)}, what the file says about itself). Both sets are folded. A name the file does not have, or has
+    on packs of different medicines, is left out: nothing is made of it. ({}, None) with no labels installed.
+
+    These are American names. A brand can be one medicine in the United States and another elsewhere, so what
+    this finds is a reason to read the pack, never the last word on it."""
+    info = library.have(STEM)
+    if not info:
+        return {}, None
+    con, out = library.connect(info["path"]), {}
+    try:
+        for name in given:
+            rows, how, unused, one, names = resolve(con, name)
+            shared = _shared(con, rows) if rows and one and _says_nothing(unused) else set()
+            if shared:
+                every = set(folded for (folded,) in con.execute(
+                    "SELECT DISTINCT o.folded FROM substance_name n JOIN substance_name o ON o.substance = n.substance "
+                    "WHERE n.kind = 0 AND n.folded IN (%s)" % ",".join("?" * len(shared)), sorted(shared)))
+                out[name] = (shared, every)
+        return out, info
+    finally:
+        con.close()
 
 
 def _says_nothing(words):
@@ -329,7 +396,7 @@ def choose(rows, a):
 
 
 def _sections(con, label):
-    return dict((kind, (block, start, length)) for kind, block, start, length in
+    return dict((KINDS[kind], (block, start, length)) for kind, block, start, length in
                 con.execute("SELECT kind, block, start, length FROM section WHERE label = ?", (label,)))
 
 
@@ -405,33 +472,20 @@ def _print_text(text, limit, everything):
 
 
 def cmd_med(a):
-    # the name on a box means what the register of the country it was sold in says it means: that comes first
-    local = False
-    if a.id is None and a.name and library.have(REGION):
-        from . import region
-        local = region.products(" ".join(a.name), a.max)
-        if local and not library.have(STEM):
-            return
-        if local:
-            print()
     con, info = library.need(STEM, WHAT)
     try:
         reader = store.Reader(con)
         library.warn_if_stale(info, core.today())
         if a.id is not None:
-            row = con.execute("SELECT %s FROM label WHERE id = ?" % LABEL, (a.id,)).fetchone()
-            if row is None:
+            rows = _labels(con, "WHERE l.id = ?", (a.id,))
+            if not rows:
                 die("no label has that number: 'med NAME' finds one")
-            main, rest, how, dropped = [row], [], "", []
+            main, rest, how, dropped = rows[:1], [], "", []
         else:
             if not a.name:
                 die("name the medicine: med metformin (or a brand name, or --id N from a list)")
             rows, how, dropped, one, names = resolve(con, " ".join(a.name))
             if not rows:
-                if local:
-                    rec("LABEL", "no American label is on file under that name, so there is none to set beside the register. "
-                                 "Ask again with the substance's English name")
-                    return
                 rec("MEDICINE", "nothing on file under that name")
                 rec("RULE", "that is a gap in this file, which holds American labels only: a medicine sold elsewhere under "
                             "another name may not be in it. Look it up with the tools you have and cite it, or say you have no data")

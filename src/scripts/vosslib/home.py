@@ -48,25 +48,22 @@ def _expiry(text, today):
 # ---- the medicine cabinet
 
 def _same_substance(names):
-    """([(a, b, the substance both hold)], the names that could not be compared, the register's own account of
-    itself or None). Only names the country's register knows can be compared with one another."""
-    try:
-        from . import region
-        known = region.same_substance(names)
-        info = region.installed()
-    except Exception:
-        known, info = {}, None
+    """([(a, b, the substance both hold)], the names that could not be compared, the label file's own account of
+    itself or None). Two names are compared through the American labels, which is where a brand name leads to
+    its substance: a name those do not know, or know as several medicines, is compared with nothing."""
+    from . import labels
+    known, info = labels.known_as(names)
     if not info:
         return [], list(names), None
-    parts = dict((name, set(p.strip() for common in commons for p in common.split("+"))) for name, commons in known.items())
     pairs = []
-    listed = sorted(parts)
+    listed = sorted(known)
     for i, a in enumerate(listed):
         for b in listed[i + 1:]:
-            both = sorted(parts[a] & parts[b])
+            both = known[a][0] & known[b][0]
             if both and fold(a) != fold(b):
-                pairs.append((a, b, "; ".join(both)))
-    return pairs, [n for n in names if n not in parts], info
+                # the plainest of the names they share: "ibuprofen", not "ibuprofen sodium"
+                pairs.append((a, b, min(both, key=lambda n: (len(n), n)).replace("_", " ")))
+    return pairs, [n for n in names if n not in known], info
 
 
 def cmd_cabinet(a):
@@ -111,30 +108,23 @@ def cmd_cabinet(a):
             names.append(str(row["name"]))
     pairs, unknown, info = _same_substance(names)
     for first, second, substance in pairs:
-        rec("TWICE", "%s and %s: the register gives both the substance %s [sourced: %s.db, built %s]" % (
+        rec("TWICE", "%s and %s: both hold %s, going by the American labels [sourced: %s.db, built %s]" % (
             first, second, substance, info["stem"], info["built"].isoformat()))
     if len(names) > 1:
         if info is None:
-            rec("NOT CHECKED", "whether two of these are the same substance under two names: no register of medicines is "
+            rec("NOT CHECKED", "whether two of these are the same substance under two names: no file of medicines is "
                                "installed. Read the active ingredient on each pack")
         elif unknown:
-            rec("NOT CHECKED", "%s: not in the register under that name, so not compared with the rest. Read the active "
-                               "ingredient on the pack" % "; ".join(unknown))
-    _disposal()
+            rec("NOT CHECKED", "%s: not in the American labels under that name, or on packs of different medicines there, so "
+                               "not compared with the rest. Read the active ingredient on the pack" % "; ".join(unknown))
+        if pairs:
+            more("a brand name can be another medicine outside the United States: the active ingredient printed on each pack "
+                 "settles it")
+    rec("DISPOSAL", "nothing on file for any country: look up how old medicines are taken back where the person lives, and "
+                    "cite it. Never down the drain or into the bin unless the source says so")
     rec("RULE", "an expiry date is the maker's, and the tool only counts days to it. A medicine past its date, or open "
                 "too long, goes back and not into use. Two packs of one substance are easy to take twice: say so, and "
                 "leave what to do about it to the pharmacist")
-
-
-def _disposal():
-    try:
-        from . import region
-        said = region.say("old-medicines", "DISPOSAL")
-    except Exception:
-        said = False
-    if not said:
-        rec("DISPOSAL", "nothing on file for this country: look up how old medicines are taken back there, and cite it. "
-                        "Never down the drain or into the bin unless the source says so")
 
 
 # ---- the first-aid kits
@@ -166,13 +156,8 @@ def cmd_kit(a):
         more("to add to one: kit --id ID --where home --item \"plasters\" --expiry 2027-05")
     rec("CONTENTS", "no published list of what a kit should hold is on file. Look one up from a named body, such as a Red "
                     "Cross society or the national health service, and give its name and date: do not make one up")
-    try:
-        from . import region
-        said = region.say("car-first-aid-kit", "CAR")
-    except Exception:
-        said = False
-    if not said:
-        rec("CAR", "nothing on file about what this country's law asks for in a car: look it up and cite it")
+    rec("CAR", "nothing on file about what any country's law asks for in a car: look it up for where the car is driven, and "
+               "cite it")
     rec("RULE", "a kit is for the first minutes, not for treatment. What has expired is replaced, not used")
 
 
@@ -336,7 +321,7 @@ def cmd_carer(a):
 
 
 def register(sub):
-    p = command(sub, "medicines", "cabinet", cmd_cabinet,
+    p = command(sub, "household", "cabinet", cmd_cabinet,
                 "the medicines kept at home: what has expired, what was opened too long ago, what is there twice under two names",
                 ["cabinet", 'cabinet --id self --name "Eye drops" --expiry 2027-06 --opened 2026-11-01 --keeps "28 days"'])
     p.add_argument("--id", help="who is adding the entry (default: the only profile on file)")
@@ -348,8 +333,8 @@ def register(sub):
     p.add_argument("--belongs-to", dest="belongs_to", metavar="ID", help="whose it is (default: whoever is adding it)")
     rebuild.out_options(p)
 
-    p = command(sub, "desk", "kit", cmd_kit,
-                "the first-aid kits at home and in the car: what is in them, what has expired, and what the law asks for in a car",
+    p = command(sub, "household", "kit", cmd_kit,
+                "the first-aid kits at home and in the car: what is in them and what has expired, by the dates on file",
                 ["kit", "kit --where car", 'kit --id self --where home --item "plasters" --expiry 2027-05', "kit --id self --where car --checked today"])
     p.add_argument("--id", help="who is adding the entry (default: the only profile on file)")
     p.add_argument("--where", help="which kit: home, car")
@@ -358,7 +343,7 @@ def register(sub):
     p.add_argument("--checked", help="the day the kit was last looked through")
     rebuild.out_options(p)
 
-    p = command(sub, "clinic", "pet", cmd_pet,
+    p = command(sub, "household", "pet", cmd_pet,
                 "the pets on file, and the record of a pet's trouble: how soon a vet should hear of it, and never a dose",
                 ["pet", 'pet --species cat --problem "limping since this morning" --when today',
                  'pet --species dog --problem "ate a bar of chocolate" --when now --poison',
@@ -373,7 +358,7 @@ def register(sub):
     p.add_argument("--poison", action="store_true", help="something that may be a poison is involved: always a call now")
     rebuild.out_options(p)
 
-    p = command(sub, "desk", "round", cmd_round,
+    p = command(sub, "household", "round", cmd_round,
                 "the weekly round, where it is switched on: refills, visits, expiries and what has gone stale, in one short message",
                 ["round --id self", "round --id self --asked --days 30"])
     p.add_argument("--id", help="whose round (default: the only profile on file)")
@@ -381,7 +366,7 @@ def register(sub):
     p.add_argument("--days", type=int, default=ROUND_DAYS, help="how far ahead to look (default %d)" % ROUND_DAYS)
     p.add_argument("--now", help="the person's local date and time, if this machine's clock differs: 2026-11-15T10:30")
 
-    p = command(sub, "file", "carer", cmd_carer,
+    p = command(sub, "household", "carer", cmd_carer,
                 "the people in someone's care: their consent, their medicines and visits, and a word for the carer",
                 ["carer --id self"])
     p.add_argument("--id", help="the carer's own profile (default: the only profile on file)")

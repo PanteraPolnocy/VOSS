@@ -80,7 +80,7 @@ Check that a number is current before quoting it.
 - United Kingdom: Samaritans, 116 123
 - United States: 988, Suicide and Crisis Lifeline
 
-The core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country PL`. They are listed as the source has them and were not verified one by one, so the rule above still stands. Where a country's own pack is installed, it adds that country's numbers from its own law. The support lines are in no file: check them. Superseded: "the planned region packs will carry these as data".
+The core data carries the emergency numbers of about two hundred countries, with their source and date: `triage --country PL`. They are listed as the source has them and were not verified one by one, so the rule above still stands. The support lines are in no file: check them.
 
 ## Crisis and mental health
 
@@ -104,6 +104,16 @@ Rules:
 - Interactions: report the severity, the mechanism if the source gives one, the management advice, and the source with its date. "No interaction on file" means the file has no entry; it is never evidence of safety.
 - Pregnancy, breastfeeding, older people, kidney or liver problems, and several medicines taken together all mean "ask the pharmacist" as well as "here is what the source says".
 - Never help anyone get a prescription medicine without a prescription, or use one in a way it isn't meant for.
+- A medicine sold outside the United States: the labels on file are American, so look the product up in the medicines register of the country it was sold in, and cite it. A register gives the substance, often in Latin, and as a rule an ATC code. Say the substance in English as your own words, check it by the code, and never work it out from the product's name.
+
+## What differs by country
+
+Where to get care at night, what an emergency department is for, what a patient is owed, how a medicine may be sold, what the law asks for in a car's first-aid kit, where old medicines are taken back: all of it differs by country, and no file holds it for any. `find` lists what to establish.
+
+- Look it up on the pages of the country's own health service, ministry of health or patients' ombudsman, and in its law where the question is what a person is owed. Quote law by article.
+- Say which page, and the day you read it. Opening hours and telephone numbers change.
+- Never carry one country's rule over to another, and never fill a gap from memory. With nothing you can name, say you have no data.
+- Which service a person needs now is still triage, and comes first.
 
 ## Lab results
 

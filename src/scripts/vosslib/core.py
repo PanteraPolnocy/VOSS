@@ -362,6 +362,7 @@ GROUPS = [
     ("desk", "Desk"),
     ("clinic", "Clinic"),
     ("medicines", "Medicines"),
+    ("household", "Household"),
     ("file", "The personal file"),
     ("extras", "Extras"),
 ]

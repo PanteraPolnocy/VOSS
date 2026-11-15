@@ -20,10 +20,11 @@ with the citation above. Under WHO's terms:
   - WHO's name appears here to say where the classification comes from, and for nothing else. WHO does not
     endorse this skill, its author or anything it says, and is not affiliated with it.
 
-Not from WHO: three helper columns in the table "entity" exist so that a record can be found (its position
-in WHO's file, the position of its parent, and where the record sits in the packed text), together with a
-copy of each title without the quoting and the leading "- " marks the file uses to show depth. They add
-nothing to the classification and change nothing in it.
+Not from WHO: the table "entity", which exists so that a record can be found. It holds each record's
+position in WHO's file, the position of its parent, and where the record sits in the packed text, with
+copies of its code, its block id, its chapter number, its kind (as a number) and two of its flags. They
+add nothing to the classification and change nothing in it. No title is copied: a title is always read
+from WHO's own record.
 
 The records can be put back together into WHO's file, byte for byte: "python tools/build_icd11.py --verify"
 does so and compares the result with the download. The checksum of WHO's file is in the table "build".

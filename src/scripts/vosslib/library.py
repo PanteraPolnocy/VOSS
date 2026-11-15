@@ -15,15 +15,15 @@ from .core import DATA, command, die, more, parse_date, rec
 
 # stem, what it holds, months before a warning (None: no fixed age), and the limit in words, as SOURCES.md lists it
 EXPECTED = (
-    ("core-pd", "MedlinePlus health topic summaries and emergency numbers", 6, "6 months"),
+    ("core-pd", "MedlinePlus health topic summaries and emergency numbers", 12, "12 months"),
     ("icd11", "ICD-11 codes and titles, verbatim", None, "when WHO publishes a new annual release"),
-    ("ddinter", "DDInter 2.0 interactions", 12, "12 months, or when a new DDInter release appears"),
-    ("labels-us", "product labels of medicines sold in the United States", 6, "6 months"),
+    ("ddinter", "DDInter 2.0 interactions", 24, "24 months, or when a new DDInter release appears"),
+    ("labels-us", "product labels of medicines sold in the United States", 12, "12 months"),
 )
-REGION_PREFIX = "region-"
-REGION_LIMIT = (1, "1 month")
+# the layout this version reads, which a builder writes into 'build' as "format". A file laid out for another
+# version would be read wrongly without anyone noticing, so it is not read at all
+FORMATS = {"core-pd": 1, "icd11": 2, "ddinter": 2, "labels-us": 2}
 META_COLUMNS = ("source", "url", "retrieved", "licence")
-LIMIT_TAG = "[pending]"
 
 
 def folder():
@@ -46,9 +46,12 @@ def limit_for(stem):
     for name, what, months, words in EXPECTED:
         if name == stem:
             return months, words, what
-    if stem.startswith(REGION_PREFIX):
-        return REGION_LIMIT[0], REGION_LIMIT[1], "region pack: registers, services and numbers for one country"
     return None, "", None
+
+
+def format_of(stem):
+    """The layout this version reads for a database, or None for a file it does not know."""
+    return FORMATS.get(stem)
 
 
 def connect(path):
@@ -91,6 +94,12 @@ def read(path):
         info["built"] = parse_date(row[0]) if row and row[0] else None
         if info["built"] is None:
             info["problems"].append("does not say when it was built")
+        elif format_of(stem) is not None:
+            row = con.execute("SELECT value FROM build WHERE key = ?", ("format",)).fetchone()
+            if row is None or str(row[0]) != str(format_of(stem)):
+                info["problems"].append("is laid out for another version of this toolkit (format %s, where this one reads "
+                                        "format %d): use the database that came with this version" % (
+                                            row[0] if row else "not given", format_of(stem)))
     except sqlite3.Error:
         info["problems"].append("cannot be read as a database")
     finally:
@@ -177,11 +186,11 @@ def age_note(info, today):
     if known is None:
         return False, "%s; no limit is set for this file" % age
     if months is None:
-        return False, "%s; replace it %s %s (the tool cannot see that from here)" % (age, words, LIMIT_TAG)
+        return False, "%s; replace it %s (the tool cannot see that from here)" % (age, words)
     stale = core.add_months(day, months) < today
     if stale:
-        return True, "%s: STALE, the limit is %s %s. Say so before any answer from it" % (age, words, LIMIT_TAG)
-    return False, "%s; warn after %s %s" % (age, words, LIMIT_TAG)
+        return True, "%s: STALE, the limit is %s. Say so before any answer from it" % (age, words)
+    return False, "%s; warn after %s" % (age, words)
 
 
 def status(infos):
@@ -227,9 +236,7 @@ def cmd_sources(a):
             more("age: %s" % age_note(info, today)[1])
     for stem, what, _, words in EXPECTED:
         if stem not in seen:
-            rec("NOT HERE", "%s.db: %s (limit: %s %s)" % (stem, what, words, LIMIT_TAG))
-    if not any(s.startswith(REGION_PREFIX) for s in seen):
-        rec("NOT HERE", "no region pack (%sXX.db): no registers, services or numbers for any country" % REGION_PREFIX)
+            rec("NOT HERE", "%s.db: %s (limit: %s)" % (stem, what, words))
     rec("BUILT IN", "the triage levels and red flags, the visit lists and the personal file's field list are written "
                     "for this skill: scripts/data/SOURCES.md says where each comes from")
     rec("RULE", "nothing is fetched while the tools run. An answer that needs a source the files do not hold is a "

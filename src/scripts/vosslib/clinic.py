@@ -56,9 +56,6 @@ def numbers(text):
             (more if n else lambda text: rec("SOURCE", text))(library.tag(info, source))
         more("the numbers are listed as the source has them, and were not verified one by one: where there is time and it "
              "matters, check")
-        if library.have("region-" + code.lower()):
-            from . import region            # the country's own list, where its pack is installed
-            region.numbers(code)
     finally:
         con.close()
 
@@ -93,6 +90,40 @@ def cmd_triage(a):
         else:
             rec("NUMBERS", "by country: 'triage --country PL' takes a two-letter code or a name, and prints that country's "
                            "numbers with their source")
+
+
+# ---- finding care
+
+# what a person needs to know about getting care where they live. No file holds it for any country, so this is
+# the list of what to find out, and the tool prints it: the finding out is a lookup, with the page named
+CARE = (
+    ("in an emergency", "the number to call"),
+    ("at night, at a weekend or on a holiday", "where to go with what is not an emergency and cannot wait for the surgery to open: "
+                                              "who may use it, whether it needs a referral, what it costs"),
+    ("the emergency department", "what it is for and what it is not, and that it sees people in the order of urgency"),
+    ("by telephone", "an advice or information line of the health service, if there is one, and its hours"),
+    ("what a patient is owed", "information, consent, a look at their own records, a complaint, and who answers for each"),
+    ("old medicines", "where they are taken back"),
+)
+
+
+def cmd_find(a):
+    subject = one_line(" ".join(a.words), "the words", 200) if a.words else ""
+    rec("FIND", "%snothing is on file about how care is arranged in any country: this is a lookup, to be cited" % (
+        "%s: " % subject if subject else ""))
+    rec("LOOK UP", "for the country the person is in, on the pages of its health service, its ministry of health or its "
+                   "patients' ombudsman; and in its law, by article, where the question is what a person is owed")
+    for head, what in CARE:
+        more("- %s: %s" % (head, what))
+    rec("SAY", "what you found, on which page, and on what day you read it. Opening hours and telephone numbers change, and "
+               "what holds in one country does not hold in the next. Where you found nothing you can name, say you have "
+               "no data")
+    if a.country:
+        numbers(a.country)
+    else:
+        more("'find --country CC' adds the emergency numbers on file for a country")
+    rec("RULE", "which service a person needs now is a triage question, and comes first. A red flag is the emergency number, "
+                "whatever a page says about opening hours")
 
 
 # ---- visit
@@ -282,6 +313,12 @@ def register(sub):
     p.add_argument("--level", type=int, help="one level only, 1 to 4")
     p.add_argument("--flags", action="store_true", help="the red-flag checklist only")
     p.add_argument("--country", metavar="CC", help="the emergency numbers of one country: a two-letter code or its name")
+
+    p = command(sub, "clinic", "find", cmd_find,
+                "where to get care in a country: no file holds that, so this is what to look up and how to cite it",
+                ["find", "find night care --country PL"])
+    p.add_argument("words", nargs="*", help="what is wanted, in a word or two: it heads the record")
+    p.add_argument("--country", metavar="CC", help="add the numbers 'triage' has on file for this country: a two-letter code or its name")
 
     p = command(sub, "clinic", "visit", cmd_visit,
                 "getting ready for a doctor's visit: what to ask, what to bring, and a symptom diary to fill in",

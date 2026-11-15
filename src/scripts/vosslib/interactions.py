@@ -22,6 +22,8 @@ from .core import command, die, key, more, rec
 STEM = "ddinter"
 WHAT = "interactions between medicines"
 GRADES = {3: "Major", 2: "Moderate", 1: "Minor", 0: "listed, with no grade given"}
+# what kind of name a medicine was found under, as the file numbers them
+NAME_KINDS = ("name", "also called (en)", "also called (pl)")
 LEVELS = {"major": 3, "moderate": 2, "minor": 1, "unknown": 0}
 GROUP_WORDS = {"A": "the gut and metabolism", "B": "the blood", "C": "the heart and circulation", "D": "the skin",
                "G": "the urinary and reproductive system, and sex hormones", "H": "hormones", "J": "infections",
@@ -48,8 +50,9 @@ def resolve(con, text):
     words = [w for w in key(text).split("_") if w]
     dropped = []
     while words:
-        rows = con.execute("SELECT n.drug, d.name, n.shown, n.kind FROM drug_name n JOIN drug d ON d.id = n.drug "
-                           "WHERE n.folded = ? ORDER BY n.kind = 'name' DESC, d.name", ("_".join(words),)).fetchall()
+        rows = [(number, name, shown, NAME_KINDS[kind]) for number, name, shown, kind in con.execute(
+            "SELECT n.drug, d.name, n.shown, n.kind FROM drug_name n JOIN drug d ON d.id = n.drug "
+            "WHERE n.folded = ? ORDER BY n.kind = 0 DESC, d.name", ("_".join(words),))]
         if rows:
             # the entry's own name beats another substance's alias
             own = [r for r in rows if r[3] == "name"]
@@ -73,10 +76,50 @@ def near(con, text):
     return out[:3]
 
 
-def grade(con, a, b):
+def pack_partners(partners):
+    """One medicine's partners as a few bytes: {partner: grade} -> bytes. They go in order of their numbers, each
+    as the step from the one before with the grade in its two lowest bits, seven bits to a byte. A hundred and
+    sixty thousand pairs take half a megabyte that way, where a table of them took three and a half."""
+    out, last = bytearray(), 0
+    for number in sorted(partners):
+        value = ((number - last) << 2) | partners[number]
+        last = number
+        while value > 0x7F:
+            out.append((value & 0x7F) | 0x80)
+            value >>= 7
+        out.append(value)
+    return bytes(out)
+
+
+def unpack_partners(data):
+    """The other way: bytes -> {partner: grade}."""
+    out, last, value, shift = {}, 0, 0, 0
+    for byte in bytes(data):
+        value |= (byte & 0x7F) << shift
+        if byte & 0x80:
+            shift += 7
+            continue
+        last += value >> 2
+        out[last] = value & 3
+        value, shift = 0, 0
+    return out
+
+
+def partners(con, number, kept=None):
+    """Every entry that one entry is paired with in the file, with the grade: {entry: grade}. kept: a dict to
+    hold what was read, so that a medicine checked against twenty others is read once."""
+    if kept is not None and number in kept:
+        return kept[number]
+    row = con.execute("SELECT data FROM partners WHERE drug = ?", (number,)).fetchone()
+    found = unpack_partners(row[0]) if row else {}
+    if kept is not None:
+        kept[number] = found
+    return found
+
+
+def grade(con, a, b, kept=None):
     """The grade DDInter gives a pair of entries, or None if the pair is not in the file."""
-    row = con.execute("SELECT level FROM pair WHERE a = ? AND b = ?", (min(a, b), max(a, b))).fetchone()
-    return None if row is None else row[0]
+    return partners(con, a, kept).get(b)
 
 
 def _fact(con, name, default=""):
@@ -133,7 +176,7 @@ def _order(pair):
 
 def _pairs(con, left, right):
     """Every pair of one entry from each list, once: [(grade or None, name, name, out of the file's reach)]."""
-    seen, out = set(), []
+    seen, out, kept = set(), [], {}
     numbers = sorted(set(x[1] for x in left + right))
     reach = dict(con.execute("SELECT id, reach FROM drug WHERE id IN (%s)" % ",".join("?" * len(numbers)), numbers)) if numbers else {}
     for typed_a, a, name_a in left:
@@ -142,7 +185,7 @@ def _pairs(con, left, right):
             if a == b or typed_a == typed_b or (min(a, b), max(a, b)) in seen:
                 continue
             seen.add((min(a, b), max(a, b)))
-            level = grade(con, a, b)
+            level = grade(con, a, b, kept)
             out.append((level, name_a, name_b, level is None and not reach.get(a) and not reach.get(b)))
     return sorted(out, key=_order)
 
@@ -180,8 +223,8 @@ def _on_file(a):
 def _one(con, info, found, level, limit):
     """Everything on file for one medicine: how many pairs at each grade, and the names at one of them."""
     for shown, number, name in found:
-        rows = con.execute("SELECT d.name, p.level FROM pair p JOIN drug d ON d.id = CASE WHEN p.a = ? THEN p.b ELSE p.a END "
-                           "WHERE p.a = ? OR p.b = ? ORDER BY d.name", (number, number, number)).fetchall()
+        names = dict(con.execute("SELECT id, name FROM drug"))
+        rows = sorted((names.get(other, "entry %d" % other), level) for other, level in partners(con, number).items())
         counts = dict((n, sum(1 for r in rows if r[1] == n)) for n in GRADES)
         rec("MEDICINE", "%s: %s on file (%d major, %d moderate, %d minor, %d with no grade)" % (
             name, core.plural(len(rows), "interaction"), counts[3], counts[2], counts[1], counts[0]))

@@ -29,7 +29,9 @@ MAX_WAIT = 120
 pauses = 0                      # how often a server has asked for a pause, so a caller can slow down
 NOTE = ".from.json"
 # big enough for a block's pieces to share their words, small enough that reading one piece stays a matter of
-# milliseconds. Measured on the MedlinePlus summaries: about 4.3 times smaller, some 15 ms to read
+# milliseconds. Measured on the MedlinePlus summaries: about 4.3 times smaller, some 15 ms to read. A builder
+# with long text that is seldom read can ask for larger blocks: they squeeze harder, and cost about 6 ms a
+# megabyte to open
 BLOCK_BYTES = 1 << 19
 MAX_FILE_BYTES = 49 * 1000 * 1000
 
@@ -196,6 +198,11 @@ class Texts:
         self.size += len(raw)
         self.seen[key] = where
         return where
+
+    def new_blocks(self, block_bytes):
+        """What is added from here on goes into blocks of another size. The block in hand is closed first."""
+        self.flush()
+        self.block_bytes = block_bytes
 
     def flush(self):
         if not self.parts:

@@ -17,13 +17,12 @@ The split is deliberate. **The database talks, and Voss explains it.** A dose, a
 - **Medicines**: what a medicine is and what its label says, from about 9,200 American product labels; whether a symptom is among the side effects a label lists; which medicines are known to interact, with the grade the source gives each pair; a schedule you were given, written as a calendar file; how long a pack lasts, counted exactly; and the medicines kept at home, with what has expired or is there twice under two names.
 - **Seeing a doctor**: what to ask and what to bring, a symptom diary, one page for the visit made from it, a doctor's letter turned into a list of things to do with dates for the calendar, and what to think of before a planned stay in hospital.
 - **Pages to hand over**: a medical ID to print or to put on a phone's emergency screen, and a health summary for a new doctor or one abroad. You choose every line. The headings come in English, Polish or both.
-- **Poland**: what a medicine sold there is, by the name on the box, from the national register; and how care is arranged (the emergency numbers, night and holiday care, the emergency department, the patient helpline, a patient's rights), each fact with the law or the official page it rests on.
 - **A personal file**, kept private: what you chose to tell him, behind a gate of your own questions, read back before anything is saved, and forgotten completely when you say so.
 - **The household**: the first-aid kits, the pets (how soon a vet should hear of it, and never a dose), the people someone looks after, and a weekly round of what is due, for those who switch it on.
 - **And the rest**: a check on a translation of a medical paper, a health claim weighed against sources, a short lesson on how the body works, and his own baking recipes, in grams.
 - **A check on his own replies**: typography, and his own rules of form.
 
-Some things are in no file, because no source turned up whose terms allow its content to be passed on: a first-aid guideline, what poisons a pet, what a first-aid kit should hold, seasonal dates. For those he looks things up with whatever tools the assistant has and cites them, or says he has no data. Every feature is described in [src/references/features.md](src/references/features.md).
+Some things are in no file: a first-aid guideline, what poisons a pet, what a first-aid kit should hold, seasonal dates, and anything that belongs to one country, such as where to get care at night, what a patient is owed, or a national register of medicines. For those he looks things up with whatever tools the assistant has and cites them, or says he has no data. Every feature is described in [src/references/features.md](src/references/features.md).
 
 ## Requirements
 
@@ -35,7 +34,7 @@ Some things are in no file, because no source turned up whose terms allow its co
 1. Take `dist/voss.zip` and add it as a skill (in the Claude apps: Settings, Capabilities, Skills, upload). In Claude Code, unzip it into `~/.claude/skills/voss/`.
 2. Say "Voss", or ask him something. He boots, shows his banner, and says what data is installed.
 
-The package is about 24 MB, nearly all of it the five databases. Each of them is optional. If the place you upload to wants something smaller, or you have no use for one, delete the `.db` file and its `LICENSE-*.txt` from `scripts/data/` and zip the folder again: the commands that read it say that nothing is installed, and everything else carries on.
+Unpacked, the skill is about 24.5 MB, nearly all of it the four databases, and it is kept under 30 MB on purpose: that is the most a skill may weigh when it is uploaded through the API. Each database is optional. If you have no use for one, delete the `.db` file and its `LICENSE-*.txt` from `scripts/data/` and zip the folder again: the commands that read it say that nothing is installed, and everything else carries on.
 
 ## The personal file
 
@@ -58,10 +57,11 @@ A household can also give him a private `references/household.md`: who made him,
 
 | Group | Commands |
 |---|---|
-| Desk | `boot`, `theatre`, `check`, `selftest`, `sources`, `kit`, `round`, `translate`, `teach`, `desk`, `season`, `checkin`, `tools` |
-| Clinic | `triage`, `visit`, `labs`, `term`, `code`, `find`, `trend`, `pet`, `brief`, `staykit`, `assess`, `look`, `decode`, `myth`, `firstaid` |
-| Medicines | `schedule`, `refill`, `interact`, `watch`, `med`, `sidefx`, `cabinet`, `boxread` |
-| The personal file | `diary`, `result`, `labread`, `carer`, `card`, `passport`, `ignition`, `profile`, `intake`, `rebuild`, `forget` |
+| Desk | `boot`, `theatre`, `check`, `selftest`, `sources`, `translate`, `teach`, `desk`, `season`, `checkin`, `tools` |
+| Clinic | `triage`, `find`, `visit`, `labs`, `term`, `code`, `trend`, `brief`, `staykit`, `assess`, `look`, `decode`, `myth`, `firstaid` |
+| Medicines | `schedule`, `refill`, `interact`, `watch`, `med`, `sidefx`, `boxread` |
+| Household | `cabinet`, `kit`, `pet`, `round`, `carer` |
+| The personal file | `diary`, `result`, `labread`, `card`, `passport`, `ignition`, `profile`, `intake`, `rebuild`, `forget` |
 | Extras | `recipe`, `scale` |
 
 ```
@@ -72,8 +72,8 @@ $ python scripts/voss.py code BA41.0
 $ python scripts/voss.py med metformin
 $ python scripts/voss.py sidefx --med metformin --symptom nausea
 $ python scripts/voss.py interact warfarin ibuprofen
-$ python scripts/voss.py find night care
-$ python scripts/voss.py boxread --name "Apap" --strength "500 mg" --substance "Paracetamolum"
+$ python scripts/voss.py find night care --country PL
+$ python scripts/voss.py boxread --name Advil --strength "200 mg" --substance ibuprofen
 $ python scripts/voss.py labs --test "Potassium" --value 5,4 --unit mmol/L --range "3.5-5.1" --flag H
 $ python scripts/voss.py schedule --med "Metformin 500 mg: 08:00, 20:00" --ics auto
 $ python scripts/voss.py refill --med "Metformin 500 mg: 08:00, 20:00" --pack 60 --opened 2026-11-01
@@ -106,7 +106,7 @@ $ python scripts/voss.py card --id self --lines name,allergies,medicines,contact
 - **What you keep is what you said.** A diary, a result, an expiry date: he stores your words and your figures, and cannot know whether they are right. A figure he could not read off a photo is left out, never guessed.
 - **`schedule` and `refill` repeat a schedule; they never set one.** The refill sum assumes every dose was taken, because it cannot know otherwise. `cabinet` counts days to the date the maker printed, and knows nothing of whether a medicine is still good.
 - **A page you hand over can be read by whoever holds it**, and a medical ID on a lock screen by anyone who picks the phone up. You choose each line for that reason.
-- **Only Poland has a pack.** For any other country's medicines and services he looks things up and cites them, or says he has no data.
+- **Nothing on file is about one country.** Where to get care, what a patient is owed, a medicine sold outside the United States: he looks those up and cites them, or says he has no data.
 - **The gate is a soft lock.** It keeps a file from being read aloud to the wrong person. It does not encrypt anything. Someone who does not pass it still gets everything else he knows, only not the file.
 - **A copy grows old.** Every answer from a database carries the day its source was retrieved, and past a limit the tools say the file is stale before they answer.
 
@@ -144,14 +144,12 @@ tools/                  build.py packs the skill; build_core.py and its kind fet
 - International Classification of Diseases, Eleventh Revision (ICD-11), World Health Organization (WHO) 2019 https://icd.who.int/browse11. Licensed under the Creative Commons Attribution-NoDerivatives 3.0 IGO licence (CC BY-ND 3.0 IGO). It is here whole and unchanged. WHO does not endorse this skill.
 - Product labels: Data provided by the U.S. Food and Drug Administration (https://open.fda.gov). CC0. FDA does not endorse this skill, and has not verified the labels.
 - Interactions between medicines: DDInter 2.0 (https://ddinter2.scbdd.com/). Tian Y, Yi J, Wang N, Wu C, et al. DDInter 2.0: an enhanced drug interaction resource with expanded data coverage, new interaction types, and improved user interface. Nucleic Acids Research 53(D1):D1356, doi:10.1093/nar/gkae726. CC BY-NC-SA 4.0. Other names for the medicines: Wikidata, CC0.
-- Medicines sold in Poland. Source: Rejestr Produktów Leczniczych, Centrum e-Zdrowia (https://rejestry.ezdrowie.gov.pl), the state at the end of the day before it was fetched. CC BY 4.0. Centrum e-Zdrowia does not endorse this skill.
-- Facts about care in Poland: Polish law as published in Dziennik Ustaw, quoted by article, from the Sejm's legislation service (https://api.sejm.gov.pl/eli); and single facts read on pages of NFZ, the Patient Ombudsman and the Ministry of Health, in this skill's own words.
 - Each database carries its own licence text (`src/scripts/data/LICENSE-*.txt`) and is listed in [src/scripts/data/SOURCES.md](src/scripts/data/SOURCES.md), with the day its licence was last checked. A credit line stays with every answer that draws on it.
 
 ## Licence
 
 MIT for the code and for everything written for this skill. See `LICENSE`.
 
-The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0, and `labels-us.db` is CC0. `region-pl.db` holds the Polish register of medicines under CC BY 4.0, which asks for the credit and for the day the data was made and fetched, and Polish law, which is not under copyright. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system. `ddinter.db` is CC BY-NC-SA 4.0: it may be passed on with DDInter's credit and under the same licence, and **not for commercial purposes**. If you use this skill commercially, delete `scripts/data/ddinter.db` first; everything else keeps working, and the tools say that no interaction data is installed.
+The databases are not covered by that licence: each stays under its source's own terms, set out in the `LICENSE-<name>.txt` beside it. `core-pd.db` is public domain and CC0, and `labels-us.db` is CC0. `icd11.db` is CC BY-ND 3.0 IGO: it may be passed on unchanged, with WHO's citation, and may not be adapted, translated or mapped to another code system. `ddinter.db` is CC BY-NC-SA 4.0: it may be passed on with DDInter's credit and under the same licence, and **not for commercial purposes**. That condition belongs to that one file. It does not reach the code or the other databases, which sit beside it under their own terms. If you use this skill commercially, delete `scripts/data/ddinter.db` first; everything else keeps working, and the tools say that no interaction data is installed.
 
 ![Voss](/src/images/voss-reference-sheet.webp)

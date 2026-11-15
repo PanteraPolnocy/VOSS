@@ -7,7 +7,7 @@ translate  a check on a translation: every figure of the original must be in it,
 myth       a health claim and its verdict, with the sources and their dates.
 teach      the frame of a short lesson on how the body works.
 firstaid   the frame of first-aid coaching: the emergency number first, then short lines.
-boxread    what was read off a medicine box, set beside what the register says the product is.
+boxread    what was read off a medicine box, set beside what the American labels know the name as.
 desk, season, checkin
            notices a person has to switch on before any is given.
 
@@ -370,32 +370,24 @@ def cmd_boxread(a):
             more("%s: %s" % (key, one_line(value, "--" + key, 120)))
     for line in a.says or []:
         more("the pack says: %s" % one_line(line, "--says", 300))
-    try:
-        from . import region
-        rows = region.lookup(name)
-        info = region.installed()
-    except Exception:
-        rows, info = None, None
+    from . import labels
+    known, info = labels.known_as([name])
     if info is None:
-        rec("REGISTER", "no register of medicines is installed, so the box is not checked against one")
-    elif not rows:
-        rec("REGISTER", "nothing under that name. That is a gap in the register's copy, or a name read wrongly: read it again")
+        rec("LABELS", "no file of medicines is installed, so the name is not set beside one")
+    elif name not in known:
+        rec("LABELS", "not on file under that name, or on packs of different medicines: there is nothing to set the box "
+                      "beside. That is a gap in the American labels, and says nothing against the box")
     else:
-        substances = sorted(set(r[2] for r in rows if r[2]))
-        strengths = sorted(set(r[3] for r in rows if r[3]))
-        rec("REGISTER", "%s is on it: %s [sourced: %s.db, built %s]" % (rows[0][1], "; ".join(substances) or "no substance name given",
-                                                                    info["stem"], info["built"].isoformat()))
+        shared, every = known[name]
+        rec("LABELS", "in the United States that name is %s [sourced: %s.db, built %s]" % (
+            "; ".join(sorted(n.replace("_", " ") for n in shared)), info["stem"], info["built"].isoformat()))
         if a.substance and "substance" not in unreadable:
-            want = fold(a.substance)
-            agrees = any(want in fold(s) or fold(s) in want for s in substances)
-            rec("SUBSTANCE", "the register agrees with the box" if agrees else
-                "the register gives another substance than the one read off the box: read the box again, and if it still "
-                "differs, the box in the person's hand wins and the pharmacist is asked")
-        if a.strength and "strength" not in unreadable:
-            want = re.sub(r"\s+", "", a.strength.lower().replace(",", "."))
-            agrees = any(want == re.sub(r"\s+", "", s.lower().replace(",", ".")) for s in strengths)
-            rec("STRENGTH", "the register lists that strength for this name" if agrees else
-                "the register does not list that strength under this name (it lists %s): read the box again" % ("; ".join(strengths[:8]) or "none"))
+            want = core.key(a.substance)
+            agrees = any(want == n or (len(want) >= 5 and (want in n or n in want)) for n in every)
+            rec("SUBSTANCE", "the American labels agree with the box" if agrees else
+                "the American labels have another substance under that name than the one read off the box. Read the box "
+                "again. A name can be another medicine outside the United States: the box in the person's hand wins, "
+                "and the pharmacist is asked")
     rec("RULE", "the box in the person's hand wins over any file. A smudged strength or name is never guessed. For what the "
                 "medicine is for: 'med %s'; a dose comes from the leaflet in that box, or from the pharmacist" % name)
 
@@ -500,9 +492,9 @@ def register(sub):
     p.add_argument("--id", help="whose file to take the country from, once their gate is open")
 
     p = command(sub, "medicines", "boxread", cmd_boxread,
-                "what was read off a medicine box, set beside what the register says the product is; nothing smudged is guessed",
-                ['boxread --name "Apap" --strength "500 mg" --substance "Paracetamolum"',
-                 'boxread --name "Apap" --unreadable strength'])
+                "what was read off a medicine box, set beside what the American labels know the name as; nothing smudged is guessed",
+                ['boxread --name "Advil" --strength "200 mg" --substance ibuprofen',
+                 'boxread --name "Advil" --unreadable strength'])
     p.add_argument("--name", help="the name on the box")
     p.add_argument("--strength", help="the strength on the box")
     p.add_argument("--substance", help="the active substance on the box")

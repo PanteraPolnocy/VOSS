@@ -279,13 +279,8 @@ def cmd_staykit(a):
             more("on file: %s%s" % (row.get("when"), ", %s" % row["with"] if row.get("with") else ""))
         rec("PAPERS", "'passport --id %s' writes the summary to hand over, and 'profile --id %s --section medicines' reads out "
                       "the medicine list" % (entry["id"], entry["id"]))
-    try:
-        from . import region
-        said = region.say("patients-rights", "RIGHTS")
-    except Exception:
-        said = False
-    if not said:
-        rec("RIGHTS", "nothing on file about a patient's rights in this country: look them up and cite them")
+    rec("RIGHTS", "nothing on file about a patient's rights in any country: look them up for where the hospital is, in its law "
+                  "or on its ombudsman's pages, and cite them")
     rec("RULE", data["rule"])
 
 
@@ -319,6 +314,6 @@ def register(sub):
     p.add_argument("--html", action="store_true", help="with --write: a page to print as well as the text")
 
     p = command(sub, "clinic", "staykit", cmd_staykit,
-                "before a planned stay in hospital: what to pack, what to ask the ward, what to bring, and a patient's rights",
+                "before a planned stay in hospital: what to pack, what to ask the ward and what to bring",
                 ["staykit", "staykit --id self"])
     p.add_argument("--id", help="whose stay (default: the only profile on file, if there is a file)")

@@ -33,7 +33,7 @@ National identity numbers (PESEL, NHS number, social security numbers and the li
 | `species` | as the person is, e.g. human, dragon, red fox | how he sees and addresses them, and in-world care in stories |
 | `medical_reference` | which body the real-world data applies to; for any real person, human | see Species below |
 | `date_of_birth` | full date, or year only | age is computed, never stored |
-| `region` | country code | region pack, emergency numbers, units |
+| `region` | country code | emergency numbers, units |
 | `languages` | for talk and for documents | which language a visit brief or card is written in |
 | `units` | metric or imperial | how he shows figures |
 | `communication_needs` | anything that helps: plain language, short answers, larger text, a support person | so he can actually be understood |
@@ -45,7 +45,7 @@ National identity numbers (PESEL, NHS number, social security numbers and the li
 | `sex_assigned_at_birth` | female, male, intersex, or declined | some reference ranges, some label warnings and some screening depend on it; used only there, and he says so when he uses it |
 | `hormone_therapy` | what, and since when | it can change which lab ranges apply, and what interacts |
 | `screening_organs` | e.g. cervix, prostate, breast tissue | which screenings apply, whatever the gender |
-| `height_cm`, `weight_kg` | with the date measured | product labels dose some medicines by weight; a stale weight gets asked again |
+| `height_cm`, `weight_kg` | with the date measured | product labels dose some medicines by weight; confirmed when an answer depends on it |
 | `blood_type` | if known from a test | for the emergency card |
 | `baseline_vitals` | usual blood pressure, resting pulse, usual temperature, with dates | so a reading can be compared with that person's normal |
 | `menstrual` | last period, cycle notes | timing of symptoms, pregnancy questions, some labels |
@@ -112,7 +112,7 @@ Schedule times are dose lines, one for each dose: `08:00` (every day), `20:00 x2
 
 A dependant's record names its `carer`, by the id of that person's profile, and carries a `consent` note: who agreed to the record, and how. [kept]
 
-Two parts were added while the commands were built, because the features above cannot work without them [pending]:
+Two things these lists also hold [kept]:
 - a lab result the report prints as something other than a plain number ("<0.5", "negative") is kept as it was printed, in `value_text`, and is never turned into a number;
 - a medicine in the cabinet may carry `keeps`, how long its own label says it keeps once opened ("28 days", "6 months"). Without it, nothing can be said about a pack that is open.
 
@@ -179,4 +179,4 @@ Running it:
 - "Forget me" empties the profile, gate included, and he confirms what was removed.
 - With the tools: `forget --id ID --field NAME` (with `--match TEXT` for one entry of a list, or `NAME.PART` for one part of a field), or `forget --id ID --all`. Run once, it says what would go and prints a code; run again with `--confirm CODE`, it writes the file without it. Older copies of the package still hold what was forgotten, so he tells the person to delete those.
 - Dated fields that go stale (pregnancy, medicines older than a year, recent travel older than three months) are asked again when they next matter, never deleted silently.
-- A weight has no clock of its own. What counts is the day the profile was last changed, which the file keeps and `boot` shows [maker]: a profile nobody has changed for over a year is asked about as a whole, the weight first [pending]. Superseded: weight in the list of dated fields above.
+- A weight has no clock of its own, and an old profile is never flagged as a whole: only the dated fields above go stale. The file keeps the day a profile was last changed, and `boot` shows it. A weight is confirmed when an answer depends on it (SKILL.md section 4, rule 12). [maker]

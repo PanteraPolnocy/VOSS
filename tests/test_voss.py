@@ -55,14 +55,14 @@ os.environ.pop("VOSS_BUILD_AGENT", None)
 
 import voss  # noqa: E402
 import vosslib  # noqa: E402
-from vosslib import clinic, core, desk, doses, forms, gate, ical, index, labels, library, personal, record, region, store, terms  # noqa: E402
+from vosslib import (clinic, codes, core, desk, doses, forms, gate, ical, index, interactions, labels, library, personal, record,  # noqa: E402
+                     store, terms)
 
 import build  # noqa: E402
 import build_core  # noqa: E402
 import build_ddinter  # noqa: E402
 import build_icd11  # noqa: E402
 import build_labels  # noqa: E402
-import build_region_pl  # noqa: E402
 import build_index  # noqa: E402
 import dbtools  # noqa: E402
 
@@ -140,7 +140,7 @@ def copy_fixture(change=None):
     return path
 
 
-def make_db(folder, stem, built="2026-11-10", retrieved="2026-11-09", meta=True, licence=True, source="A made-up source"):
+def make_db(folder, stem, built="2026-11-10", retrieved="2026-11-09", meta=True, licence=True, source="A made-up source", layout=None):
     """A tiny database in the shape the tools expect, for the tests only."""
     path = os.path.join(folder, stem + ".db")
     con = sqlite3.connect(path)
@@ -151,6 +151,8 @@ def make_db(folder, stem, built="2026-11-10", retrieved="2026-11-09", meta=True,
     con.execute("CREATE TABLE build (key TEXT PRIMARY KEY, value TEXT)")
     if built:
         con.execute("INSERT INTO build VALUES (?, ?)", ("built", built))
+    if library.format_of(stem) is not None:
+        con.execute("INSERT INTO build VALUES (?, ?)", ("format", str(library.format_of(stem) if layout is None else layout)))
     con.commit()
     con.close()
     if licence:
@@ -424,109 +426,6 @@ def sample_labels():
     return _sample["labels"]
 
 
-# The Poland pack. A register of medicines that do not exist, and acts and pages put together from what the
-# builder itself says it will look for in them: so the made-up files can never drift from the facts.
-def rpl_product(number, name, common, strength="5 mg", form="Tabletki", route="doustna", atc="M09AX99", holder="Kolano Pharma S.A.",
-                packs="05900000000011 \u00a6 Rp \u00a6 1\n30 tabl.", parts="", leaflet=None, leaflet_import=None, exported_from="",
-                kind="Ludzki"):
-    return {"id": str(number), "name": name, "common": common, "kind": kind, "route": route, "strength": strength, "form": form,
-            "atc": atc, "holder": holder, "packs": packs, "parts": parts or "%s %s" % (common, strength),
-            "leaflet": build_region_pl.LEAFLET % leaflet if leaflet else "",
-            "leaflet_import": build_region_pl.LEAFLET_IMPORT % leaflet_import if leaflet_import else "", "exported_from": exported_from}
-
-
-RPL_PRODUCTS = [
-    rpl_product(100000001, "Kolanex", "Wobblolum", leaflet=7),
-    rpl_product(100000002, "Kolanex", "Wobblolum", strength="10 mg"),
-    rpl_product(100000003, "Kolanex", "Wobblolum", holder="Importex Sp. z o.o.", exported_from="Czechy", leaflet_import=9),
-    rpl_product(100000004, "Kolanex Max", "Wobblolum + Creakazinum", strength="5 mg + 2 mg", form="Tabletki powlekane",
-                packs="05900000000042 \u00a6 OTC \u00a6 4\n10 tabl."),
-    rpl_product(100000005, "Kolano\u017cel", "Wobblolum", strength="10 mg/g", form="\u017bel", route="na sk\u00f3r\u0119", atc="M02AX99",
-                packs="05900000000059 \u00a6 OTC \u00a6 5\n1 tuba 50 g"),
-    rpl_product(100000006, "Duokolan", "Produkt z\u0142o\u017cony", strength="-", parts="Wobblolum 5 mg + Creakazinum 2 mg",
-                packs="05900000000066 \u00a6 Rpz \u00a6 6\n30 tabl."),
-    rpl_product(100000007, "Psilek", "Canidolum", kind="Weterynaryjny"),
-    rpl_product(100000008, "Zipperin", "Zipperinum", strength="-", form="Roztw\u00f3r do wstrzykiwa\u0144", route="do\u017cylna", atc="",
-                packs="05900000000080 \u00a6 Lz \u00a6 8\n1 fiol.\nRp \u00a6 EU/1/26/0001/001 \u00a6 9\n5 fiol."),
-    rpl_product(100000009, "Importol", "Zipperinum", holder="Importex Sp. z o.o.", exported_from="Czechy", leaflet_import=11),
-]
-
-
-def region_files(products=None, spoil=None, head=None):
-    """A downloads folder for the Poland pack; returns its path. spoil(acts, descriptions, pages, licence) may
-    change what goes into it, to show what stops a build."""
-    folder = tempfile.mkdtemp(dir=OUTPUTS)
-    columns = list(build_region_pl.COLUMNS.values()) if head is None else head
-    with open(os.path.join(folder, build_region_pl.REGISTER_FILE), "w", encoding="utf-8-sig", newline="") as f:
-        out = csv.writer(f, delimiter=";", quoting=csv.QUOTE_ALL)
-        out.writerow(columns + ["Typ procedury"])
-        for p in (RPL_PRODUCTS if products is None else products):
-            out.writerow([p.get(k, "") for k, name in build_region_pl.COLUMNS.items() if name in columns] + ["NAR"])
-    acts, descriptions, pages = {}, {}, {}
-    for _, source in build_region_pl.all_sources():
-        if source["kind"] == "page":
-            pages.setdefault(source["label"], [])
-            pages[source["label"]] += [w for w in source["must"] if w not in pages[source["label"]]]
-        elif not source.get("by_hand"):
-            units = acts.setdefault(source["eli"], {})
-            for uid, words in source["units"]:
-                units[uid] = words
-            for uid, _ in source["absent"]:
-                units.setdefault(uid, "nothing of the kind")
-            texts = [{"id": "DU/2001/1"}, {"id": source["eli"]}] if source.get("base") else []
-            descriptions[source.get("base") or source["eli"]] = {"inForce": "IN_FORCE", "references": {"Inf. o tek\u015bcie jednolitym": texts}}
-    licence = {"data": {"attributes": {"license_name": "CC BY 4.0"}}}
-    if spoil:
-        spoil(acts, descriptions, pages, licence)
-    for eli, units in acts.items():
-        with open(os.path.join(folder, build_region_pl.act_file(eli)), "w", encoding="utf-8") as f:
-            f.write("<html><body>%s</body></html>" % "".join(
-                '<div class="unit unit_any pro-text" id="%s"><h3>1.</h3><div>%s</div></div>\n' % (uid, words)
-                for uid, words in sorted(units.items())))
-    for act, description in descriptions.items():
-        with open(os.path.join(folder, build_region_pl.act_file(act, ".json")), "w", encoding="utf-8") as f:
-            json.dump(description, f)
-    for label, words in pages.items():
-        with open(os.path.join(folder, build_region_pl.page_file(label)), "w", encoding="utf-8") as f:
-            f.write("<html><head><title>A page</title><style>p { color: red }</style></head><body><p>%s</p></body></html>"
-                    % "</p>\n<p>".join(words))
-    with open(os.path.join(folder, build_region_pl.LICENCE_FILE), "w", encoding="utf-8") as f:
-        json.dump(licence, f)
-    return folder
-
-
-def build_region(out, folder, *extra):
-    """Run the real builder of the Poland pack on made-up files; returns what it printed."""
-    said = io.StringIO()
-    with contextlib.redirect_stdout(said):
-        build_region_pl.main(["--downloads", folder, "--out", out, "--least", "3", "--retrieved", "2026-11-10"] + list(extra))
-    return said.getvalue()
-
-
-def sample_region():
-    """The folder that holds the small Poland pack, built once for the whole run."""
-    if "region" not in _sample:
-        folder = os.path.join(OUTPUTS, "sample-region")
-        os.makedirs(folder)
-        clock()
-        _sample["region-said"] = build_region(folder, region_files())
-        _sample["region"] = folder
-    return _sample["region"]
-
-
-def data_of(*folders):
-    """One data folder that holds the databases of several: for what is asked of two files at once."""
-    name = "data-" + "-".join(os.path.basename(f) for f in folders)
-    if name not in _sample:
-        together = os.path.join(OUTPUTS, name)
-        os.makedirs(together)
-        for folder in folders:
-            for item in os.listdir(folder):
-                shutil.copy(os.path.join(folder, item), os.path.join(together, item))
-        _sample[name] = together
-    return _sample[name]
-
-
 class Base(unittest.TestCase):
     def setUp(self):
         clock()
@@ -618,23 +517,20 @@ class SourcesTests(Base):
         self.assertIn("core-pd.db (", out)
         self.assertIn("source: A made-up source | licence: public domain | retrieved 2026-11-09", out)
         self.assertIn("credit, to be kept with every answer from it: Source: a made-up source", out)
-        self.assertIn("age: retrieved 2026-11-09, 6 days ago; warn after 6 months [pending]", out)
+        self.assertIn("age: retrieved 2026-11-09, 6 days ago; warn after 12 months", out)
         self.assertIn("when WHO publishes a new annual release", out)
         self.assertEqual(field(ok("boot"), "BANNER"), "VOSS-01 | PROJECT ASCLEPIUS | CLINIC | data: 2026-10-01")
         self.assertIn("2 databases to answer from; the oldest was built 2026-10-01", ok("boot"))
 
     def test_stale_data_gets_a_warning(self):
         folder = self.data_folder()
-        make_db(folder, "core-pd", built="2026-11-10", retrieved="2026-05-14")
-        make_db(folder, "region-pl", built="2026-11-10", retrieved="2026-10-14")
+        make_db(folder, "core-pd", built="2026-11-10", retrieved="2025-11-14")
         make_db(folder, "ddinter", built="2026-11-10", retrieved="2025-11-16")
         out = ok("sources")
-        self.assertIn("retrieved 2026-05-14, 185 days ago: STALE, the limit is 6 months", out)
-        self.assertIn("retrieved 2026-10-14, 32 days ago: STALE, the limit is 1 month", out)
-        self.assertIn("retrieved 2025-11-16, 364 days ago; warn after 12 months", out)
+        self.assertIn("retrieved 2025-11-14, 366 days ago: STALE, the limit is 12 months", out)
+        self.assertIn("retrieved 2025-11-16, 364 days ago; warn after 24 months", out)
         boot = ok("boot")
-        self.assertIn("core-pd.db: retrieved 2026-05-14", boot)
-        self.assertIn("region-pl.db: retrieved 2026-10-14", boot)
+        self.assertIn("core-pd.db: retrieved 2025-11-14", boot)
         self.assertNotIn("ddinter.db: retrieved", boot)
 
     def test_a_file_that_cannot_account_for_itself_is_not_used(self):
@@ -642,7 +538,7 @@ class SourcesTests(Base):
         make_db(folder, "core-pd", meta=False)
         make_db(folder, "icd11", licence=False)
         make_db(folder, "ddinter", built=None)
-        with open(os.path.join(folder, "region-pl.db"), "wb") as f:
+        with open(os.path.join(folder, "labels-us.db"), "wb") as f:
             f.write(b"this is not a database at all")
         out = ok("sources")
         self.assertIn("NOT USABLE: it has no meta table with source, url, retrieved and licence", out)
@@ -1044,19 +940,15 @@ class ProfileTests(Base):
         self.assertIn("in the care of self; consent: note their parent agreed", ok("profile", "--id", "pip"))
         self.assertIn("date_of_birth 2020-05-17; aged 6", ok("profile", "--id", "pip"))
 
-    def test_a_profile_left_alone_for_a_year_is_asked_about_as_a_whole(self):
+    def test_an_old_profile_is_not_flagged_as_a_whole(self):
         def old(data):
-            data["profiles"][0]["updated"] = "2025-11-14"
+            data["profiles"][0]["updated"] = "2020-01-01"
         copy_fixture(old)
         out = ok("profile", "--id", "self")
-        self.assertIn("STALE      the whole profile: last changed 2025-11-14, over a year ago. Ask whether it still stands, "
-                      "the weight first", out)
+        self.assertIn("last changed 2020-01-01", out, "the day is shown, and that is all")
+        self.assertNotIn("the whole profile", out)
+        self.assertIn("STALE      medicines: 1 entry was told over a year ago", out, "what has a date of its own still goes stale")
         self.assertIn("last changed 2026-10-20.", ok("boot"))
-
-        def a_year_to_the_day(data):
-            data["profiles"][0]["updated"] = "2025-11-15"
-        copy_fixture(a_year_to_the_day)
-        self.assertNotIn("the whole profile", ok("profile", "--id", "self"))
 
     def test_ages(self):
         self.assertEqual(record.age_words("2000-02-29", date(2026, 2, 28)), "aged 25 [derived, today 2026-02-28]")
@@ -1713,7 +1605,7 @@ class BuildTests(Base):
         os.remove(os.path.join(src, "images", "voss-baking.webp"))
         with open(os.path.join(src, "scripts", "vosslib", "extra.py"), "w", encoding="utf-8") as f:
             f.write("# caf\u00e9\n")
-        make_db(os.path.join(src, "scripts", "data"), "region-zz", licence=False)
+        make_db(os.path.join(src, "scripts", "data"), "made-up", licence=False)
         with open(os.path.join(src, "scripts", "data", "half-built.db.part"), "wb") as f:
             f.write(b"left behind by a build that stopped")
         problems, _ = self.quiet(build.build_public, root)
@@ -1721,8 +1613,8 @@ class BuildTests(Base):
         for expect in ("versions disagree", "personal.template.json has 'call_me' filled in", ".gitignore does not list src/references/household.md",
                        "references/features.md line 1 col", "SKILL.md points at references/no-such-file.md",
                        "images/voss-smug.webp is not in images/manifest.json", "names voss-baking.webp, which is not in images/",
-                       "scripts/vosslib/extra.py has non-ASCII bytes", "scripts/data/region-zz.db has no LICENSE-region-zz.txt beside it",
-                       "scripts/data/SOURCES.md does not list region-zz.db among the files that are installed",
+                       "scripts/vosslib/extra.py has non-ASCII bytes", "scripts/data/made-up.db has no LICENSE-made-up.txt beside it",
+                       "scripts/data/SOURCES.md does not list made-up.db among the files that are installed",
                        "scripts/data/half-built.db.part is a half-built database", "selftest failed in the public build"):
             self.assertIn(expect, text)
         self.assertFalse(os.path.exists(os.path.join(root, "dist", "voss.zip")))
@@ -1779,8 +1671,7 @@ class PackageTests(Base):
                     if (not shipped and (name == "term" or "--country" in args)) or (
                             name == "code" and not os.path.isfile(os.path.join(REAL_DATA, "icd11.db"))) or (
                             name in ("interact", "watch") and not os.path.isfile(os.path.join(REAL_DATA, "ddinter.db"))) or (
-                            name in ("med", "sidefx") and not os.path.isfile(os.path.join(REAL_DATA, "labels-us.db"))) or (
-                            name == "find" and not os.path.isfile(os.path.join(REAL_DATA, "region-pl.db"))):
+                            name in ("med", "sidefx") and not os.path.isfile(os.path.join(REAL_DATA, "labels-us.db"))):
                         continue
                     if "CODE" in args:
                         probe = [a for a in args if a not in ("--json", "--package")]
@@ -2366,11 +2257,11 @@ class TermTests(CoreData):
         self.assertIn("cannot be answered from: it has no LICENSE-core-pd.txt beside it", fails("term", "knee"))
 
     def test_stale_data_says_so_before_the_answer(self):
-        clock("2027-05-11T09:00")
+        clock("2027-11-11T09:00")
         out = ok("term", "wk")
-        self.assertTrue(out.startswith("STALE      core-pd.db: retrieved 2026-11-10, 182 days ago: STALE, the limit is 6 months"), out)
+        self.assertTrue(out.startswith("STALE      core-pd.db: retrieved 2026-11-10, 366 days ago: STALE, the limit is 12 months"), out)
         self.assertTrue(ok("triage", "--country", "PL").startswith("STALE      core-pd.db"))
-        clock("2027-05-10T09:00")
+        clock("2027-11-10T09:00")
         self.assertTrue(ok("term", "wk").startswith("TERM "))
 
 
@@ -2449,10 +2340,13 @@ class IcdBuildTests(Base):
             self.assertEqual(build_icd11.rebuilt(con), original, "every byte of the source file, the byte order mark included")
             facts = dict(con.execute("SELECT key, value FROM build"))
             self.assertEqual((facts["release"], facts["records"], facts["licence-read"]), ("2026-01", "10", "2026-11-10"))
-            self.assertEqual(con.execute("SELECT title, parent, residual FROM entity WHERE code = 'ZA00.Y'").fetchone(),
-                             ("Other specified wobbly knee", 3, 1))
-            self.assertEqual(con.execute("SELECT title FROM entity WHERE code = 'ZA02'").fetchone()[0],
+            self.assertEqual(con.execute("SELECT parent, residual, kind FROM entity WHERE code = 'ZA00.Y'").fetchone(), (3, 1, 2))
+            reader = store.Reader(con)
+            self.assertEqual(codes._title(reader, codes.lookup(con, "ZA00.Y")), "Other specified wobbly knee")
+            self.assertEqual(codes._title(reader, codes.lookup(con, "ZA02")),
                              "Sj\u00f6gren-like dryness \u2013 of the tests", "not a character of a title is touched")
+            self.assertNotIn("title", [c[1] for c in con.execute("PRAGMA table_info(entity)")],
+                             "a title is in WHO's record and nowhere else")
         finally:
             con.close()
         self.assertEqual(build_icd11.verify(path, _sample["icd-file"]), "")
@@ -2464,7 +2358,8 @@ class IcdBuildTests(Base):
         with open(os.path.join(folder, "LICENSE-icd11.txt"), encoding="utf-8") as f:
             licence = f.read()
         for must in (build_icd11.CITATION, "https://creativecommons.org/licenses/by-nd/3.0/igo/", "NOT under the licence of the code",
-                     "There is no translation and no such table here", "WHO does not", "Not from WHO: three helper columns"):
+                     "There is no translation and no such table here", "WHO does not", "Not from WHO: the table \"entity\"",
+                     "No title is copied"):
             self.assertIn(must, licence)
 
     def test_a_record_out_of_place_is_caught(self):
@@ -2628,12 +2523,17 @@ class InteractionBuildTests(Base):
             self.assertIn(must, licence)
         con = library.connect(os.path.join(folder, "ddinter.db"))
         try:
-            self.assertEqual(con.execute("SELECT a, b, level FROM pair ORDER BY a, b").fetchall(),
+            listed = sorted((a, b, level) for a, data in con.execute("SELECT drug, data FROM partners")
+                            for b, level in interactions.unpack_partners(data).items())
+            self.assertEqual([p for p in listed if p[0] < p[1]],
                              [(1, 2, 3), (1, 3, 2), (1, 4, 1), (1, 5, 0), (1, 7, 2), (1, 8, 3), (2, 6, 0), (2, 7, 1), (2, 8, 0)],
                              "each pair once, the more serious grade kept")
+            self.assertEqual(sorted((b, a, level) for a, b, level in listed if a > b), [p for p in listed if p[0] < p[1]],
+                             "and each is found from either of its two medicines")
             self.assertEqual([n for (n,) in con.execute("SELECT name FROM drug WHERE reach = 0 ORDER BY name")], ["Dozapine", "Mopezil"],
                              "a medicine with no file that holds all its pairs is in none of the groups the files cover")
-            names = set(con.execute("SELECT folded, drug, kind FROM drug_name"))
+            names = set((folded, drug, interactions.NAME_KINDS[kind]) for folded, drug, kind in
+                        con.execute("SELECT folded, drug, kind FROM drug_name"))
             for row in (("wobblol", 1, "name"), ("wbl_1", 1, "also called (en)"), ("woblol", 1, "also called (pl)"),
                         ("kreakazyna", 2, "also called (pl)"), ("sniffex", 4, "name"), ("sniffex", 5, "name"), ("sniffex_topical", 5, "name")):
                 self.assertIn(row, names)
@@ -2799,8 +2699,10 @@ class InteractTests(Base):
         self.assertIn("there is no personal file here", fails("watch", "--new", "wobblol"))
 
     def test_stale_data_says_so_first(self):
-        clock("2027-11-11T09:00")
+        clock("2028-11-11T09:00")
         self.assertTrue(ok("interact", "wobblol", "creakazine").startswith("STALE      ddinter.db: retrieved 2026-11-10"))
+        clock("2028-11-10T09:00")
+        self.assertFalse(ok("interact", "wobblol", "creakazine").startswith("STALE"), "two years to the day is not yet past the limit")
 
 
 class LabelBuildTests(Base):
@@ -2826,16 +2728,19 @@ class LabelBuildTests(Base):
             self.assertIn(must, licence)
         con = library.connect(os.path.join(folder, "labels-us.db"))
         try:
-            rows = con.execute("SELECT id, type, route, substances, brand, maker, application, effective, labels, class FROM label").fetchall()
+            rows = sorted(labels._labels(con, "", ()))
             self.assertEqual([r[:4] for r in rows], [(1, "prescription", "oral", "CREAKAZINE; WOBBLOL HYDROCHLORIDE"),
                                                      (2, "over the counter", "topical", "WOBBLOL"),
                                                      (3, "prescription", "oral", "WOBBLOL HYDROCHLORIDE"),
                                                      (4, "over the counter", "topical", "ZIPPERINE")])
-            self.assertEqual(rows[2][4:], ("Steadyknee", "Original Pharma Inc", "NDA000002", "2026-03-01", 2, "Knee Steadier [EPC]"),
+            self.assertEqual(rows[2][4:], (1, "", "", "Original Pharma Inc", "Knee Steadier [EPC]", "", "set-2", "2026-03-01", 2, 1),
                              "of two labels for one medicine, the original maker's and the newer is kept")
-            self.assertEqual(rows[0][4:9], ("Duoknee", "Original Pharma Inc", "NDA000004", "2026-01-10", 2),
+            self.assertEqual((rows[0][7], rows[0][11], rows[0][12]), ("Original Pharma Inc", "2026-01-10", 2),
                              "a label with no list of substances and no route is counted with the product its generic name spells out")
-            kinds = [k for (k,) in con.execute("SELECT kind FROM section WHERE label = 3")]
+            self.assertEqual([c[1] for c in con.execute("PRAGMA table_info(label)")],
+                             ["id", "type", "route", "parts", "maker", "class", "set_id", "effective", "labels", "source"],
+                             "a row holds numbers; what is in a label is said once, in label_substance")
+            kinds = [labels.KINDS[k] for (k,) in con.execute("SELECT kind FROM section WHERE label = 3")]
             self.assertEqual(sorted(kinds), sorted(["boxed warning", "uses", "do not use", "warnings", "side effects", "interactions",
                                                     "pregnancy and other groups", "for patients"]))
             reader = store.Reader(con)
@@ -2851,7 +2756,20 @@ class LabelBuildTests(Base):
                              "every brand name is kept but the ones that say no more than the substance: 'Wobblol Hydrochloride', 'Wobblol Gel 1%'")
             self.assertEqual([n for (n,) in con.execute("SELECT shown FROM label_name WHERE label = 1 ORDER BY place")],
                              ["Duoknee", "Duoknee Starter Pack"])
-            names = set(con.execute("SELECT n.folded, s.name, n.kind FROM substance_name n JOIN substance s ON s.id = n.substance"))
+            names = set((folded, name, labels.NAME_KINDS[kind]) for folded, name, kind in con.execute(
+                "SELECT n.folded, s.name, n.kind FROM substance_name n JOIN substance s ON s.id = n.substance"))
+            # what 'med' prints unasked sits together, label by label; then what 'sidefx' searches, label by label;
+            # then the sections that are only read when asked for, kind by kind
+            placed = [(labels.KINDS[kind], label) for kind, label in
+                      con.execute("SELECT kind, label FROM section ORDER BY block, start, label, kind")]
+            head = [p for p in placed if p[0] in labels.ALWAYS]
+            searched = [p for p in placed if p[0] in labels.SYMPTOM_SECTIONS and p[0] not in labels.ALWAYS]
+            rest = [p for p in placed if p not in head and p not in searched]
+            self.assertEqual(placed, head + searched + rest)
+            self.assertTrue(head and searched and rest)
+            for group in (head, searched):
+                self.assertEqual([p[1] for p in group], sorted(p[1] for p in group))
+            self.assertEqual([labels.KINDS.index(p[0]) for p in rest], sorted(labels.KINDS.index(p[0]) for p in rest))
             for row in (("wobblol", "WOBBLOL", "substance"), ("wobblol", "WOBBLOL HYDROCHLORIDE", "substance"),
                         ("woblol", "WOBBLOL HYDROCHLORIDE", "also called (pl)"), ("kreakazyna", "CREAKAZINE", "also called (pl)")):
                 self.assertIn(row, names)
@@ -3150,275 +3068,27 @@ class MedTests(Base):
         self.assertEqual(desk.check_text(ok("sidefx", "--med", "wobblol", "--symptom", "nausea")), [])
 
 
-class RegionBuildTests(Base):
-    """tools/build_region_pl.py, run on a made-up register and on acts and pages that hold what it looks for."""
-
-    def test_the_database_it_writes(self):
-        folder = sample_region()
-        said = _sample["region-said"]
-        for line in ("8 medicines for people of 9 rows in the register; 8 names",
-                     "10 facts: 12 sources checked against the act or the page, 4 read by hand on 2026-11-15",
-                     "retrieved: register 2026-11-10; licence entry read 2026-11-10"):
-            self.assertIn(line, said)
-        self.assertNotIn("WARNING", said)
-        self.assertEqual(sorted(os.listdir(folder)), ["LICENSE-region-pl.txt", "region-pl.db"])
-        info = library.read(os.path.join(folder, "region-pl.db"))
-        self.assertEqual(info["problems"], [])
-        self.assertEqual([s["credit"] for s in info["sources"]], [build_region_pl.CREDIT, "", ""])
-        self.assertIn("CC BY 4.0", info["sources"][0]["licence"])
-        self.assertIn("not under copyright", info["sources"][1]["licence"])
-        self.assertIn("no text is taken from them", info["sources"][2]["licence"])
-        with open(os.path.join(folder, "LICENSE-region-pl.txt"), encoding="utf-8") as f:
-            licence = f.read()
-        for must in ("https://creativecommons.org/licenses/by/4.0/", "https://dane.gov.pl/pl/dataset/397", "Centrum e-Zdrowia does not endorse",
-                     "art. 4 of the Polish act of 4 February 1994", "No sentence was copied from those pages"):
-            self.assertIn(must, licence)
-        con = library.connect(os.path.join(folder, "region-pl.db"))
-        try:
-            rows = con.execute("SELECT p.id, p.name, c.text, p.strength, p.sale, p.parts, p.leaflet, p.imported FROM product p "
-                               "JOIN word c ON c.id = p.common ORDER BY p.id").fetchall()
-            self.assertEqual(rows[0], (100000001, "Kolanex", "Wobblolum", "5 mg", "Rp", "", 7, 0))
-            self.assertEqual(rows[2][5:], ("", 9, 1), "a parallel import has its own leaflet, and is marked")
-            self.assertEqual(rows[5][1:6], ("Duokolan", "Produkt z\u0142o\u017cony", "", "Rpz", "Wobblolum 5 mg + Creakazinum 2 mg"),
-                             "what is in it is spelt out only where the register gives no one name")
-            self.assertEqual(rows[6][1:5], ("Zipperin", "Zipperinum", "", "Rp; Lz"), "the categories of all its packs, in the law's order")
-            self.assertNotIn("Psilek", [r[1] for r in rows], "a veterinary medicine is not kept")
-            self.assertEqual(sorted(con.execute("SELECT folded FROM product_name")),
-                             [("duokolan",), ("importol",), ("kolanex",), ("kolanex",), ("kolanex",), ("kolanex_max",), ("kolanozel",), ("zipperin",)])
-            self.assertEqual(dict(con.execute("SELECT code, means FROM sale"))["Rpw"], "on prescription, holds narcotic or psychotropic substances")
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM fact").fetchone()[0], len(build_region_pl.FACTS))
-            how = dict(con.execute("SELECT fact || '/' || position, how || ' ' || read FROM fact_source"))
-            self.assertEqual(how["night-care/1"], "by hand 2026-11-15")
-            self.assertEqual(how["night-care/2"], "checked 2026-11-10")
-            self.assertEqual(con.execute("SELECT quote FROM fact_source WHERE kind = 'page' AND quote <> ''").fetchall(), [],
-                             "not a word of a page is kept")
-            numbers = con.execute("SELECT code, number, fact FROM number ORDER BY position").fetchall()
-            self.assertEqual(numbers[0], ("PL", "112", "emergency-numbers"))
-            self.assertIn(("PL", "800 190 590", "helpline"), numbers)
-        finally:
-            con.close()
-
-    def test_every_fact_names_what_it_rests_on(self):
-        keys = [fact["key"] for fact in build_region_pl.FACTS]
-        self.assertEqual(len(keys), len(set(keys)))
-        for fact in build_region_pl.FACTS:
-            self.assertTrue(fact["sources"], fact["key"])
-            self.assertEqual(desk.check_text(fact["says"]), [], fact["key"])
-            for source in fact["sources"]:
-                if source["kind"] == "page":
-                    self.assertTrue(source["must"] and source["url"].startswith("https://"), fact["key"])
-                elif source.get("by_hand"):
-                    self.assertTrue(source["quote"] and source["place"], fact["key"])
-                    self.assertEqual(desk.check_text(source["quote"]), [], "a quotation is in this skill's typography")
-                else:
-                    self.assertTrue(source["units"], fact["key"])
-        html = ('<div class="unit unit_arti pro-text false" id="arti_1"><h3>Art. 1.</h3><div>Og\u00f3\u0142em \u2013 tak.</div>'
-                '<div class="unit unit_pass" id="arti_1-pass_1"><h3>1.</h3><div>Pierwszy <b>ust\u0119p</b>.</div></div>'
-                '<div class="unit unit_pass" id="arti_1-pass_2"><h3>2.</h3><div>Drugi.</div></div></div>'
-                '<div class="unit unit_arti" id="arti_2"><h3>Art. 2.</h3><div>Inny.</div></div>')
-        self.assertEqual(build_region_pl.unit(html, "arti_1"), "Art. 1. Og\u00f3\u0142em - tak.", "its own words, the dash made plain")
-        self.assertEqual(build_region_pl.unit(html, "arti_1-pass_1"), "1. Pierwszy ust\u0119p .")
-        self.assertEqual(build_region_pl.unit(html, "arti_1", whole=True), "Art. 1. Og\u00f3\u0142em - tak. 1. Pierwszy ust\u0119p . 2. Drugi.")
-        self.assertIsNone(build_region_pl.unit(html, "arti_9"))
-        self.assertEqual(build_region_pl.sale_of("1 \u00a6 Lz \u00a6 2\n1 fiol.\n3 \u00a6 OTC \u00a6 4\nRp \u00a6 EU/1/2 \u00a6 5\nLz \u00a6 9"), ["OTC", "Rp", "Lz"])
-
-    def test_what_stops_a_build(self):
-        out = tempfile.mkdtemp(dir=OUTPUTS)
-
-        def stops(spoil=None, products=None, head=None, extra=()):
-            with self.assertRaises(SystemExit) as caught:
-                build_region(out, region_files(products, spoil, head), *extra)
-            self.assertEqual(os.listdir(out), [], "a build that stops leaves nothing behind")
-            return str(caught.exception)
-
-        def other_licence(acts, descriptions, pages, licence):
-            licence["data"]["attributes"]["license_name"] = "CC BY-NC 4.0"
-
-        def law_changed(acts, descriptions, pages, licence):
-            acts["DU/2024/502"]["bran_III-chpt_7-para_24-pass_1-pint_6"] = "(uchylony)"
-
-        def law_now_speaks(acts, descriptions, pages, licence):
-            acts["DU/2024/502"]["bran_III-chpt_2-para_11"] = "w apteczk\u0119 dora\u017anej pomocy"
-
-        def unit_gone(acts, descriptions, pages, licence):
-            del acts["DU/2024/1862"]["para_9-pint_3-lett_a"]
-
-        def repealed(acts, descriptions, pages, licence):
-            descriptions["DU/2024/1862"]["inForce"] = "NOT_IN_FORCE"
-
-        def page_changed(acts, descriptions, pages, licence):
-            pages["nfz-sudden"].remove("Nie trzeba skierowania")
-
-        self.assertIn("no longer gives the register's licence as CC BY 4.0 (it says \"CC BY-NC 4.0\")", stops(other_licence))
-        self.assertIn("the act DU/2024/502 no longer says \"apteczk\u0119 dora\u017anej pomocy\" where it did", stops(law_changed))
-        self.assertIn("the act DU/2024/502 has changed where it was silent", stops(law_now_speaks))
-        self.assertIn("the act DU/2024/1862 no longer says", stops(unit_gone))
-        self.assertIn("the act DU/2024/1862 is no longer in force", stops(repealed))
-        self.assertIn("no longer says \"Nie trzeba skierowania\"", stops(page_changed))
-        self.assertIn("only 1 medicines for people are in the register file", stops(products=RPL_PRODUCTS[:1]))
-        self.assertIn("the register file has no column \"Kod ATC\"", stops(head=[c for c in build_region_pl.COLUMNS.values() if c != "Kod ATC"]))
-        folder = region_files()
-        os.remove(os.path.join(folder, build_region_pl.page_file("rpp")))
-        with self.assertRaises(SystemExit) as caught:
-            build_region(out, folder)
-        self.assertIn("is not in the downloads folder: run with --fetch", str(caught.exception))
-        with self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()):
-            build_region_pl.main(["--downloads", region_files(), "--out", out, "--least", "3"])
-        self.assertIn("has no note of when it was downloaded", str(caught.exception))
-        self.assertEqual(os.listdir(out), [])
-
-    def test_a_newer_text_of_an_act_is_a_warning(self):
-        def newer(acts, descriptions, pages, licence):
-            descriptions["DU/2009/417"]["references"]["Inf. o tek\u015bcie jednolitym"].append({"id": "DU/2027/15"})
-        out = tempfile.mkdtemp(dir=OUTPUTS)
-        said = build_region(out, region_files(spoil=newer))
-        self.assertIn("WARNING   a newer consolidated text of DU/2009/417 has been announced (DU/2027/15): read it, and move the fact to it", said)
-        self.assertIn("region-pl.db", os.listdir(out))
-
-
-class FindTests(Base):
-    def setUp(self):
-        Base.setUp(self)
-        os.environ["VOSS_DATA"] = sample_region()
-
-    def test_what_is_on_file(self):
+class FindTests(CoreData):
+    def test_it_holds_no_data_and_says_what_to_look_up(self):
         out = ok("find")
-        self.assertIn("FIND       10 facts on file for Poland", out)
-        for line in ("Emergency numbers in Poland [emergency; 'emergency-numbers']", "A patient's rights [rights; 'patients-rights']",
-                     "RULE       these are facts about how care is organised, each with its source"):
+        for line in ("FIND       nothing is on file about how care is arranged in any country: this is a lookup, to be cited",
+                     "LOOK UP    for the country the person is in, on the pages of its health service",
+                     "- at night, at a weekend or on a holiday: where to go with what is not an emergency",
+                     "- what a patient is owed: information, consent, a look at their own records, a complaint",
+                     "- old medicines: where they are taken back",
+                     "SAY        what you found, on which page, and on what day you read it",
+                     "'find --country CC' adds the emergency numbers on file for a country",
+                     "RULE       which service a person needs now is a triage question, and comes first"):
             self.assertIn(line, out)
-        self.assertNotIn("SOURCE", out)
-
-    def test_a_fact_and_what_it_rests_on(self):
-        out = ok("find", "night", "care")
-        for line in ("FACT       Night and holiday care (nocna i \u015bwi\u0105teczna opieka zdrowotna) [care; 'night-care']",
-                     "open from 18:00 to 08:00 the next day from Monday to Friday",
-                     "the wording is this skill's. What it rests on:",
-                     "LAW        Ustawa z dnia 27 sierpnia 2004 r.", "art. 5 pkt 17a: \"nocna i \u015bwi\u0105teczna opieka zdrowotna - ",
-                     "[read by hand on 2026-11-15]",
-                     "PAGE       NFZ, \"Nag\u0142a choroba?", "[stated there on 2026-11-10; no words of the page are quoted]",
-                     "SOURCE     Polish law, as published in Dziennik Ustaw, from the Sejm's legislation service, retrieved 2026-11-10 "
-                     "[sourced: region-pl.db, built 2026-11-15]",
-                     "Official pages of NFZ, the Patient Ombudsman and the Ministry of Health, read for single facts, retrieved 2026-11-10",
-                     "RULE       a fact here says how things are arranged in Poland"):
-            self.assertIn(line, out)
-        self.assertEqual(out.count("FACT "), 1)
         self.assertEqual(desk.check_text(out), [])
         self.assertFalse([ln for ln in out.splitlines() if ln != ln.rstrip()])
-        out = ok("find", "emergency-numbers")
-        self.assertIn("NUMBERS    112 [every emergency service]; 999 [ambulance, medical dispatch]; 998 [State Fire Service]; 997 [police]", out)
-        self.assertIn("par. 9 pkt 1 lit. a, pkt 3 lit. a: \"112 - wsp\u00f3lny numer alarmowy", out)
-        self.assertIn("[found in the act on 2026-11-10]", out)
-        self.assertEqual(out.count("FACT "), 1, "its key finds a fact alone")
-
-    def test_finding_by_words_and_by_topic(self):
-        self.assertIn("A first-aid kit in a car", field(ok("find", "kit"), "FACT"))
-        self.assertIn("Getting rid of old medicines", field(ok("find", "old", "medicines"), "FACT"))
-        self.assertIn("Patient helpline", field(ok("find", "helpl"), "FACT"), "the start of a word will do")
-        out = ok("find", "--topic", "care")
-        self.assertEqual(out.count("FACT "), 3)
-        self.assertIn("MORE       1 more fact: narrow it down, or raise --max", out)
-        self.assertEqual(ok("find", "--topic", "care", "--max", "9").count("FACT "), 4)
-        self.assertIn("A patient's rights", ok("find", "--topic", "rights"))
-        self.assertIn("--topic is one of: care, emergency, kit, medicines, paperwork, rights", fails("find", "--topic", "weather"))
-        out = ok("find", "mysterol")
-        self.assertIn("FIND       nothing on file under those words", out)
-        self.assertIn("a cited lookup, or \"I have no data\"", out)
+        out = ok("find", "night", "care", "--country", "PL")
+        self.assertIn("FIND       night care: nothing is on file", out)
+        self.assertIn("NUMBERS    Poland (PL): 112", out)
+        self.assertLess(out.index("NUMBERS "), out.index("RULE "))
+        self.assertNotIn("REGION", ok("triage", "--country", "PL"), "no country has a file of its own")
         os.environ["VOSS_DATA"] = NO_DATA
-        self.assertIn("region-pl.db is not installed", fails("find"))
-
-    def test_the_countrys_own_numbers_beside_the_worlds(self):
-        os.environ["VOSS_DATA"] = data_of(sample_data(), sample_region())
-        out = ok("triage", "--country", "PL")
-        self.assertIn("NUMBERS    Poland (PL): 112; 999 [emergency medical services]", out)
-        self.assertIn("REGION     Poland's own, from its numbering plan and its health fund: 112 [every emergency service]; 999 [ambulance, "
-                      "medical dispatch]; 998 [State Fire Service]; 997 [police]; 800 190 590 [patient helpline of NFZ and the Patient "
-                      "Ombudsman, free, round the clock]", out)
-        self.assertIn("[sourced: region-pl.db, built 2026-11-15]", out)
-        self.assertLess(out.index("REGION "), out.index("ANSWER "))
-        self.assertNotIn("REGION", ok("triage", "--country", "GB"), "another country's pack says nothing of this one")
-        os.environ["VOSS_DATA"] = sample_data()
-        self.assertNotIn("REGION", ok("triage", "--country", "PL"))
-
-
-class RegisterTests(Base):
-    """What the country's register says a product is, through 'med'."""
-
-    def setUp(self):
-        Base.setUp(self)
-        os.environ["VOSS_DATA"] = sample_region()
-
-    def test_a_product_by_its_name(self):
-        out = ok("med", "kolanex")
-        for line in ("REGISTER   Kolanex [a medicine in Poland's register]: Wobblolum [the substance, as the register names it]; "
-                     "ATC M09AX99; 3 entries",
-                     "5 mg, Tabletki, doustna - Rp (on prescription) - Kolano Pharma S.A.",
-                     "10 mg, Tabletki, doustna - Rp (on prescription) - Kolano Pharma S.A.",
-                     "ALSO       other products whose name begins the same, each a product of its own: Kolanex Max",
-                     "LEAFLET    the Polish leaflet, from the register: https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/7/leaflet",
-                     "SOURCE     Rejestr Produkt\u00f3w Leczniczych: the register of medicines allowed on the market in Poland (Centrum e-Zdrowia), "
-                     "the state at the end of the day before it was retrieved, retrieved 2026-11-10 [sourced: region-pl.db, built 2026-11-15]",
-                     "CREDIT     " + build_region_pl.CREDIT,
-                     "RULE       the register says what a product is and how it may be sold. It gives no dose and no advice",
-                     "ask 'med' again with its English name; the register gives it in Latin"):
-            self.assertIn(line, out)
-        self.assertNotIn("Importex", out, "the holder of the permit is named before a parallel importer")
-        self.assertNotIn("MEDICINE", out, "with no American labels installed there is nothing more to say")
-        self.assertEqual(desk.check_text(out), [])
-        self.assertFalse([ln for ln in out.splitlines() if ln != ln.rstrip()])
-
-    def test_names_strengths_and_what_is_left_over(self):
-        self.assertIn("Kolanex Max [a medicine in Poland's register]: Wobblolum + Creakazinum", field(ok("med", "kolanex", "max"), "REGISTER"))
-        out = ok("med", "Kolanex 10 mg tabletki")
-        self.assertIn("Kolanex [a medicine in Poland's register]", field(out, "REGISTER"))
-        self.assertNotIn("CHECK", out)
-        self.assertIn("CHECK      only part of that name was used (\"mysterol\" was not): make sure this is the product meant",
-                      ok("med", "kolanex", "mysterol"))
-        out = ok("med", "KOLANO\u017bEL")
-        self.assertIn("10 mg/g, \u017bel, na sk\u00f3r\u0119 - OTC (given without a prescription) - Kolano Pharma S.A.", out)
-        out = ok("med", "duokolan")
-        self.assertIn("Produkt z\u0142o\u017cony [the substance, as the register names it]", out)
-        self.assertIn("Tabletki, doustna - Rpz (on prescription, for restricted use)", out)
-        self.assertIn("in it, as the register spells it out: Wobblolum 5 mg + Creakazinum 2 mg", out)
-        out = ok("med", "zipperin")
-        self.assertIn("Rp (on prescription); Lz (used only in hospital care)", out)
-        self.assertIn("Zipperinum [the substance, as the register names it]; 1 entry", out)
-        self.assertNotIn("LEAFLET", out, "no leaflet in the register, no line")
-        self.assertIn("LEAFLET    the Polish leaflet, from the register (a parallel import's): https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/"
-                      "medicinal-products/11/parallel-import-files/LEAFLET/public", ok("med", "importol"))
-
-    def test_a_substance_by_the_start_of_its_name(self):
-        out = ok("med", "wobblol")
-        self.assertIn("REGISTER   Wobblolum [a substance in Poland's register, as the register names it]; ATC M09AX99; 3 entries", out)
-        self.assertIn("sold as: Kolanex", out)
-        self.assertIn("Rp (on prescription): 3 entries", out)
-        self.assertIn("REGISTER   Wobblolum + Creakazinum [a substance in Poland's register, as the register names it]", out)
-        self.assertIn("sold as: Kolanex Max", out)
-        self.assertIn("Wobblolum [a substance in Poland's register, as the register names it]; ATC M02AX99; 1 entry", out)
-        self.assertEqual(desk.check_text(out), [])
-        for nothing in (["wobb"], ["mysterol"], ["500", "mg"]):
-            self.assertIn("labels-us.db is not installed", fails("med", *nothing), "the register has nothing: the American file is asked")
-        self.assertEqual(region.same_substance(["Kolanex", "kolanex max 5 mg", "Mysterol", "Kolano\u017cel"]),
-                         {"Kolanex": {"Wobblolum"}, "kolanex max 5 mg": {"Wobblolum + Creakazinum"}, "Kolano\u017cel": {"Wobblolum"}})
-
-    def test_beside_an_american_label(self):
-        os.environ["VOSS_DATA"] = data_of(sample_labels(), sample_region())
-        out = ok("med", "kolanex")
-        self.assertIn("REGISTER   Kolanex [a medicine in Poland's register]", out)
-        self.assertIn("LABEL      no American label is on file under that name, so there is none to set beside the register. Ask again "
-                      "with the substance's English name", out)
-        self.assertNotIn("nothing on file under that name", out)
-        out = ok("med", "wobblol")
-        register, label = out.split("\n\n", 1)
-        self.assertIn("REGISTER   Wobblolum [a substance in Poland's register", register)
-        self.assertIn("MEDICINE   WOBBLOL [over the counter; topical] (label 2) - read as WOBBLOL or WOBBLOL HYDROCHLORIDE", label)
-        self.assertIn("RULE       an American label, as the company filed it", label)
-        out = ok("med", "steadyknee")
-        self.assertNotIn("REGISTER", out, "a name the register does not have is the American file's alone")
-        self.assertIn("read as Steadyknee [a brand name in the United States]", out)
-        self.assertNotIn("REGISTER", ok("med", "--id", "1"), "a label asked for by its number is not a name to look up")
-        self.assertIn("MEDICINE   nothing on file under that name", ok("med", "mysterol"))
-        self.assertNotIn("REGISTER", ok("sidefx", "--med", "wobblol", "--rx", "--symptom", "nausea"))
+        self.assertIn("FIND       nothing is on file", ok("find"), "it needs no database to say so")
 
 
 def saved(*command):
@@ -3450,8 +3120,8 @@ def with_records(data):
     me["appointments"] = [{"when": "2026-11-20 09:30", "with": "the asthma nurse", "why": "review"},
                           {"when": "2027-03-01", "with": "the dentist", "why": ""}]
     data["cabinet"] = [
-        {"name": "Kolanex", "strength": "5 mg", "expiry": "2026-09", "opened": "", "keeps": "", "belongs_to": "self"},
-        {"name": "Kolanex Max", "strength": "", "expiry": "2026-12-05", "opened": "", "keeps": "", "belongs_to": "self"},
+        {"name": "Steadyknee", "strength": "5 mg", "expiry": "2026-09", "opened": "", "keeps": "", "belongs_to": "self"},
+        {"name": "Duoknee", "strength": "", "expiry": "2026-12-05", "opened": "", "keeps": "", "belongs_to": "self"},
         {"name": "Eye drops", "strength": "", "expiry": "2027-06", "opened": "2026-09-01", "keeps": "28 days", "belongs_to": "self"},
         {"name": "Cough syrup", "strength": "", "expiry": "2027-06", "opened": "2026-10-20", "keeps": "", "belongs_to": "rowan"}]
     data["kits"] = [{"where": "home", "checked": "2026-05-01", "items": [{"item": "plasters", "expiry": "2026-10"},
@@ -3548,8 +3218,8 @@ class ChangeTests(Base):
     def test_forgetting_from_those_lists(self):
         copy_fixture(with_records)
         self.assertIn("REMOVE     one entry from cabinet: Eye drops", ok("forget", "--id", "self", "--field", "cabinet", "--match", "eye"))
-        self.assertIn("--match fits more than one entry in cabinet", fails("forget", "--id", "self", "--field", "cabinet", "--match", "kolanex"))
-        self.assertIn("REMOVE     one entry from cabinet: Kolanex 5 mg", ok("forget", "--id", "self", "--field", "cabinet", "--match", "kolanex 5"))
+        self.assertIn("--match fits more than one entry in cabinet", fails("forget", "--id", "self", "--field", "cabinet", "--match", "knee"))
+        self.assertIn("REMOVE     one entry from cabinet: Steadyknee 5 mg", ok("forget", "--id", "self", "--field", "cabinet", "--match", "steadyknee 5"))
         self.assertIn("--match picks the one entry to forget", fails("forget", "--id", "self", "--field", "cabinet"))
         self.assertIn("REMOVE     one thing from the home kit: plasters", ok("forget", "--id", "self", "--field", "kits", "--match", "home plasters"))
         self.assertIn("REMOVE     the whole home kit", ok("forget", "--id", "self", "--field", "kits", "--match", "home"))
@@ -3673,23 +3343,29 @@ class HomeTests(Base):
 
     def test_what_the_cabinet_flags(self):
         out = ok("cabinet")
-        for line in ("CABINET    4 medicines at home on file", "Kolanex 5 mg; expires 2026-09; belongs to self",
-                     "EXPIRED    Kolanex 5 mg: its expiry date (2026-09) has passed [derived, today 2026-11-15]",
-                     "SOON       Kolanex Max: expires within 30 days (2026-12-05) [derived]",
+        for line in ("CABINET    4 medicines at home on file", "Steadyknee 5 mg; expires 2026-09; belongs to self",
+                     "EXPIRED    Steadyknee 5 mg: its expiry date (2026-09) has passed [derived, today 2026-11-15]",
+                     "SOON       Duoknee: expires within 30 days (2026-12-05) [derived]",
                      "OPENED     Eye drops: opened 2026-09-01, and its label gives it 28 days once opened: that ran out on 2026-09-29 [derived]",
                      "ASK        Cough syrup: opened 2026-10-20, and nothing on file says how long it keeps once opened",
-                     "NOT CHECKED whether two of these are the same substance under two names: no register of medicines is installed",
-                     "DISPOSAL   nothing on file for this country", "Never down the drain or into the bin unless the source says so",
+                     "NOT CHECKED whether two of these are the same substance under two names: no file of medicines is installed",
+                     "DISPOSAL   nothing on file for any country", "Never down the drain or into the bin unless the source says so",
                      "RULE       an expiry date is the maker's, and the tool only counts days to it"):
             self.assertIn(line, out)
         self.assertEqual(desk.check_text(out), [])
-        os.environ["VOSS_DATA"] = sample_region()
+        os.environ["VOSS_DATA"] = sample_labels()
         out = ok("cabinet")
-        self.assertIn("TWICE      Kolanex and Kolanex Max: the register gives both the substance Wobblolum [sourced: region-pl.db, built 2026-11-15]", out)
-        self.assertIn("NOT CHECKED Eye drops; Cough syrup: not in the register under that name, so not compared with the rest", out)
-        self.assertIn("DISPOSAL   Every municipality has to run collection points", out)
-        self.assertIn("rests on: Ustawa z dnia 13 wrze\u015bnia 1996 r.", out)
-        self.assertIn("'find old-medicines' has the law's own words [sourced: region-pl.db, built 2026-11-15]", out)
+        self.assertIn("TWICE      Duoknee and Steadyknee: both hold wobblol, going by the American labels [sourced: labels-us.db, built 2026-11-15]", out)
+        self.assertIn("NOT CHECKED Eye drops; Cough syrup: not in the American labels under that name, or on packs of different "
+                      "medicines there, so not compared with the rest", out)
+        self.assertIn("a brand name can be another medicine outside the United States", out)
+        self.assertEqual(desk.check_text(out), [])
+        known, info = labels.known_as(["Steadyknee 5 mg", "kneeze gel", "Knee Relief", "Mysterol", "wobblol"])
+        self.assertEqual(info["stem"], "labels-us")
+        self.assertEqual(sorted(known), ["Steadyknee 5 mg", "kneeze gel", "wobblol"],
+                         "a name on packs of different medicines is compared with nothing, and neither is one nobody knows")
+        self.assertEqual(known["Steadyknee 5 mg"][0], {"wobblol", "wobblol_hydrochloride"})
+        self.assertIn("woblol", known["wobblol"][1], "every name the file has for the substance, the Polish one too")
         use_personal(FIXTURE)
         out = ok("cabinet")
         self.assertIn("CABINET    1 medicine at home on file", out)
@@ -3701,13 +3377,9 @@ class HomeTests(Base):
                      "plasters; expires 2026-10 - EXPIRED [derived, today 2026-11-15]",
                      "saline pods; expires 2026-11-30 - expires within 30 days [derived]", "a triangular bandage",
                      "CONTENTS   no published list of what a kit should hold is on file", "do not make one up",
-                     "CAR        nothing on file about what this country's law asks for in a car"):
+                     "CAR        nothing on file about what any country's law asks for in a car"):
             self.assertIn(line, out)
         self.assertIn("KITS       0 first-aid kits on file kept there", ok("kit", "--where", "car"))
-        os.environ["VOSS_DATA"] = sample_region()
-        out = ok("kit")
-        self.assertIn("CAR        The regulation on vehicle equipment asks for a first-aid kit in a bus, a taxi", out)
-        self.assertIn("[found in the act on 2026-11-10]", out)
 
     def test_a_pets_trouble_always_ends_at_a_vet(self):
         out = ok("pet", "--name", "biscuit", "--problem", "limping since this morning", "--when", "today")
@@ -3737,8 +3409,8 @@ class HomeTests(Base):
         for line in ("ROUND      self, the 30 days from 2026-11-15 [they asked for it]",
                      "REFILL     Metformin 500 mg: by its schedule the pack runs out on 2026-12-01 [derived; 'refill --id self' has the sum]",
                      "VISIT      2026-11-20 09:30, the asthma nurse: review",
-                     "CABINET    Kolanex 5 mg: its expiry date has passed (2026-09) [derived]",
-                     "CABINET    Kolanex Max: expires within 30 days (2026-12-05) [derived]",
+                     "CABINET    Steadyknee 5 mg: its expiry date has passed (2026-09) [derived]",
+                     "CABINET    Duoknee: expires within 30 days (2026-12-05) [derived]",
                      "KIT        home kit, plasters: expired (2026-10) [derived]",
                      "STALE      medicines: 1 entry was told over a year ago",
                      "RULE       one short message, of what is here and no more"):
@@ -3845,12 +3517,10 @@ class PapersTests(Base):
                      "ASK        questions for the ward or the admissions office, before the day",
                      "only the hospital can answer that", "on file: 2026-11-20 09:30, the asthma nurse",
                      "PAPERS     'passport --id self' writes the summary to hand over",
-                     "RIGHTS     nothing on file about a patient's rights in this country",
+                     "RIGHTS     nothing on file about a patient's rights in any country",
                      "RULE       what to do before a procedure (eating, drinking, medicines) is the hospital's to say and nobody else's"):
             self.assertIn(line, out)
         self.assertEqual(desk.check_text(out), [])
-        os.environ["VOSS_DATA"] = sample_region()
-        self.assertIn("RIGHTS     The act sets them out chapter by chapter", ok("staykit", "--id", "self"))
         out = ok("staykit")
         self.assertIn("STAY       before a planned stay in hospital\n", out, "with two people on file and none named, it is nobody's in particular")
         self.assertNotIn("PAPERS", out)
@@ -4022,22 +3692,26 @@ class FormsTests(Base):
         self.assertIn("CALL       111, now, before anything else [NZ]", ok("firstaid", "--what", "cpr", "--id", "self"), "the country on file")
         self.assertIn("'term' with a word or two of the subject", ok("teach", "kidneys"))
         os.environ["VOSS_DATA"] = NO_DATA
-        out = ok("boxread", "--name", "Kolanex", "--strength", "5 mg", "--substance", "Wobblolum")
-        self.assertIn("BOX        Kolanex [as read off the pack]", out)
-        self.assertIn("REGISTER   no register of medicines is installed, so the box is not checked against one", out)
-        os.environ["VOSS_DATA"] = sample_region()
-        out = ok("boxread", "--name", "Kolanex", "--strength", "5 mg", "--substance", "wobblolum", "--says", "one tablet a day")
-        for line in ("REGISTER   Kolanex is on it: Wobblolum [sourced: region-pl.db, built 2026-11-15]", "SUBSTANCE  the register agrees with the box",
-                     "STRENGTH   the register lists that strength for this name", "the pack says: one tablet a day",
+        out = ok("boxread", "--name", "Steadyknee", "--strength", "5 mg", "--substance", "Wobblol")
+        self.assertIn("BOX        Steadyknee [as read off the pack]", out)
+        self.assertIn("LABELS     no file of medicines is installed, so the name is not set beside one", out)
+        os.environ["VOSS_DATA"] = sample_labels()
+        out = ok("boxread", "--name", "Steadyknee", "--strength", "5 mg", "--substance", "woblol", "--says", "one tablet a day")
+        for line in ("strength: 5 mg", "LABELS     in the United States that name is wobblol; wobblol hydrochloride [sourced: labels-us.db, built 2026-11-15]",
+                     "SUBSTANCE  the American labels agree with the box", "the pack says: one tablet a day",
                      "RULE       the box in the person's hand wins over any file"):
             self.assertIn(line, out)
-        out = ok("boxread", "--name", "Kolanex", "--strength", "50 mg", "--substance", "Zipperinum")
-        self.assertIn("SUBSTANCE  the register gives another substance than the one read off the box", out)
-        self.assertIn("STRENGTH   the register does not list that strength under this name (it lists 10 mg; 5 mg)", out)
-        out = ok("boxread", "--name", "Kolanex", "--unreadable", "strength")
+        self.assertEqual(desk.check_text(out), [])
+        out = ok("boxread", "--name", "Steadyknee", "--substance", "Zipperine")
+        self.assertIn("SUBSTANCE  the American labels have another substance under that name than the one read off the box", out)
+        self.assertIn("A name can be another medicine outside the United States", out)
+        out = ok("boxread", "--name", "Steadyknee", "--unreadable", "strength")
         self.assertIn("STRENGTH   could not be read. It is not guessed: ask the person to read it out", out)
-        self.assertIn("REGISTER   nothing under that name", ok("boxread", "--name", "Mysterol"))
-        self.assertIn("--unreadable is strength, substance or expiry", fails("boxread", "--name", "Kolanex", "--unreadable", "colour"))
+        for name in ("Mysterol", "Knee Relief"):
+            out = ok("boxread", "--name", name, "--substance", "wobblol")
+            self.assertIn("LABELS     not on file under that name, or on packs of different medicines", out)
+            self.assertNotIn("SUBSTANCE", out, "with nothing to set the box beside, nothing is said about it")
+        self.assertIn("--unreadable is strength, substance or expiry", fails("boxread", "--name", "Steadyknee", "--unreadable", "colour"))
 
     def test_notices_wait_to_be_switched_on(self):
         out = ok("desk", "--id", "self")
@@ -4170,10 +3844,10 @@ class ShippedDataTests(Base):
         con = library.connect(os.path.join(REAL_DATA, "labels-us.db"))
         try:
             counts = dict(con.execute("SELECT type, COUNT(*) FROM label GROUP BY type"))
-            self.assertGreater(counts["prescription"], 2000)
-            self.assertGreater(counts["over the counter"], 2000)
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM section WHERE kind NOT IN (%s)" % ",".join("?" * len(labels.KINDS)),
-                                         labels.KINDS).fetchone()[0], 0, "no section but the ones the tool knows, and so no dose")
+            self.assertGreater(counts[labels.TYPES.index("prescription")], 2000)
+            self.assertGreater(counts[labels.TYPES.index("over the counter")], 2000)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM section WHERE kind NOT BETWEEN 0 AND ?", (len(labels.KINDS) - 1,))
+                             .fetchone()[0], 0, "no section but the ones the tool knows, and so no dose")
             self.assertEqual(con.execute("SELECT COUNT(*) FROM label l WHERE NOT EXISTS (SELECT 1 FROM section s WHERE s.label = l.id)")
                              .fetchone()[0], 0)
         finally:
@@ -4200,36 +3874,17 @@ class ShippedDataTests(Base):
         with open(os.path.join(REAL_DATA, "LICENSE-labels-us.txt"), encoding="utf-8") as f:
             self.assertIn("https://creativecommons.org/publicdomain/zero/1.0/", f.read())
 
-    def test_the_poland_pack(self):
-        if "region-pl.db" not in self.files:
-            self.skipTest("region-pl.db does not ship in this copy")
-        con = library.connect(os.path.join(REAL_DATA, "region-pl.db"))
-        try:
-            self.assertGreater(con.execute("SELECT COUNT(*) FROM product").fetchone()[0], 15000)
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM fact").fetchone()[0], len(build_region_pl.FACTS))
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM fact_source WHERE kind = 'page' AND quote <> ''").fetchone()[0], 0,
-                             "facts are taken from the official pages, and never their words")
-            sold = set(code for (text,) in con.execute("SELECT DISTINCT sale FROM product") for code in text.split("; ") if code)
-            self.assertTrue(set(code for code, _ in build_region_pl.SALE) <= sold)
-        finally:
-            con.close()
-        out = ok("med", "apap")
-        self.assertIn("Paracetamolum [the substance, as the register names it]", field(out, "REGISTER"))
-        self.assertIn("OTC (given without a prescription)", out)
-        self.assertIn("CREDIT     " + build_region_pl.CREDIT, out)
-        self.assertIn("FIND       %d facts on file for Poland" % len(build_region_pl.FACTS), ok("find"))
-        self.assertIn("999 [ambulance, medical dispatch]", ok("find", "emergency-numbers"))
-        self.assertIn("REGION     Poland's own", ok("triage", "--country", "PL"))
-        with open(os.path.join(REAL_DATA, "LICENSE-region-pl.txt"), encoding="utf-8") as f:
-            self.assertIn("https://creativecommons.org/licenses/by/4.0/", f.read())
-
     def test_the_interaction_data(self):
         if "ddinter.db" not in self.files:
             self.skipTest("ddinter.db does not ship in this copy")
         con = library.connect(os.path.join(REAL_DATA, "ddinter.db"))
         try:
-            self.assertGreater(con.execute("SELECT COUNT(*) FROM pair").fetchone()[0], 100000)
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM pair WHERE a >= b OR level NOT IN (0, 1, 2, 3)").fetchone()[0], 0)
+            listed = dict((drug, interactions.unpack_partners(data)) for drug, data in con.execute("SELECT drug, data FROM partners"))
+            self.assertGreater(sum(len(found) for found in listed.values()) // 2, 100000)
+            self.assertEqual(int(dict(con.execute("SELECT key, value FROM build"))["pairs"]), sum(len(f) for f in listed.values()) // 2)
+            self.assertFalse([1 for a, found in listed.items() for b, level in found.items()
+                              if a == b or level not in (0, 1, 2, 3) or listed.get(b, {}).get(a) != level],
+                             "every pair stands with both its medicines, at one grade")
             self.assertGreater(con.execute("SELECT COUNT(*) FROM drug").fetchone()[0], 1500)
         finally:
             con.close()
@@ -4249,8 +3904,8 @@ class ShippedDataTests(Base):
         con = library.connect(path)
         try:
             counts = dict(con.execute("SELECT kind, COUNT(*) FROM entity GROUP BY kind"))
-            self.assertGreater(counts["category"], 30000)
-            self.assertEqual(con.execute("SELECT COUNT(*) FROM entity WHERE block IS NULL OR title = ''").fetchone()[0], 0)
+            self.assertGreater(counts[codes.KINDS.index("category")], 30000)
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM entity WHERE block IS NULL OR length < 1").fetchone()[0], 0)
             facts = dict(con.execute("SELECT key, value FROM build"))
             self.assertRegex(facts["release"], r"^\d{4}-\d{2}$")
             self.assertEqual(facts["licence-sha256"], build_icd11.LICENCE_SHA256)

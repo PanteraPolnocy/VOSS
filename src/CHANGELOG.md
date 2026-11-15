@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.1 - 15 November 2026
+
+- Region packs are gone, and the Poland pack with them: the national register of medicines, the facts about getting care there, and every tool's use of them. No file holds anything about one country. `med` reads the American labels only; for a product sold elsewhere he looks it up in that country's register and cites it. `find` stays as a frame: it lists what to establish for a country and how to cite it. Supersedes the Poland pack and region packs altogether (0.8.0).
+- `cabinet` tells two packs of one substance through the American labels, and `boxread` sets a name beside them. Both say that a brand can be another medicine outside the United States.
+- The databases are packed tighter. The skill is 24.5 MB unpacked where it was 38.6 MB, under the 30 MB a skill may weigh when it is uploaded through the API. Label text sits in blocks sized by how it is read, a label's row holds numbers, interaction pairs are packed by medicine, and ICD-11 keeps no second copy of a title. The usual answers take as long as before; a symptom search takes about 40 ms longer and a search through ICD-11 titles about 130 ms.
+- A database says which layout it has, and one laid out for another version of the toolkit is not answered from.
+- The stale limits are settled: 12 months for health topics and labels, 24 for interactions, ICD-11 until WHO's next release. Supersedes the 6 and 12 months proposed in 0.8.0.
+- An old profile is never flagged as a whole. Supersedes "a profile nobody has changed for over a year is asked about as a whole" (0.8.0).
+- Everything 0.9.0 proposed about his body, his senses and his tastes is accepted as written: 186 cm, about 110 kg, and the rest. So are `value_text` and `keeps` in the personal file, and the details of his look in the pictures.
+- A sixth group in the command index, Household: `cabinet`, `kit`, `pet`, `round`, `carer`.
+- The files say what holds now. Dates of decisions, and notes on who proposed or accepted what, are out of every file but this one. Supersedes "never delete a fact; mark it superseded" for every file except the changelog.
+
 ## 0.9.0 - 15 November 2026
 
 More of a person. Everything in this entry is a proposal, marked [pending] in the files, until his maker has ruled on it line by line. Nothing above the mark in his character sheet was changed.

@@ -5,8 +5,9 @@ label section) is not stored row by row: many pieces are packed into one block, 
 and a piece is found again by (block, start, length). SQLite has no compression of its own, so this is
 done here, with the standard library and nothing else.
 
-A block is unpacked once and kept while the call lasts. Reading one piece costs one block, a few
-milliseconds, however big the database is.
+A block is unpacked once and kept while the call lasts. Reading one piece costs one block, however big the
+database is: a few milliseconds for a small block, some tens for the large ones a builder uses for long
+text that is seldom read.
 """
 import zlib
 
@@ -25,7 +26,7 @@ except ImportError:
 
 RAW, ZLIB, BZ2, LZMA = "raw", "zlib", "bz2", "lzma"
 CODECS = (RAW, ZLIB, BZ2, LZMA)
-SMALLEST = "smallest"       # for a builder: try every codec this Python has and keep the smallest result
+SMALLEST = "smallest"       # for a builder: the smaller of zlib and lzma
 TABLE = "text_block"
 KEEP = 4                    # blocks held unpacked at once
 _MIN_DICT, _MAX_DICT = 1 << 16, 1 << 23
@@ -46,9 +47,11 @@ def _filters(size):
 
 
 def pack(raw, codec):
-    """(the codec used, the packed bytes). SMALLEST tries them all; anything that does not shrink stays raw."""
+    """(the codec used, the packed bytes). SMALLEST keeps the smaller of zlib and lzma; anything that does not
+    shrink stays raw. bz2 is read, and can be asked for by name, but is not tried: on this text it gains a per
+    cent or two on lzma at best, and takes three times as long to unpack."""
     if codec == SMALLEST:
-        tries = [pack(raw, c) for c in available()]
+        tries = [pack(raw, c) for c in (RAW, ZLIB, LZMA) if c in available()]
         return min(tries, key=lambda t: len(t[1]))
     if codec not in available():
         die("this Python cannot pack text with %s: it has %s" % (codec, ", ".join(available())))

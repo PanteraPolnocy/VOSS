@@ -22,10 +22,10 @@ like this one:
     suggest that WHO endorses this skill.
 
 So this script changes nothing. Every record of WHO's file goes into the database whole, character for
-character, and '--verify' proves it by putting the file back together. The handful of extra columns (a
-record's position, its parent's position, the title without the file's quoting and depth marks) are there
-so that a code can be found quickly; they add no content, and the licence text beside the database says
-they are not WHO's.
+character, and '--verify' proves it by putting the file back together. The table beside the records (a
+record's position, its parent's position, and its code, kind and chapter copied out so that it can be
+found) adds no content, and the licence text beside the database says it is not WHO's. A title is not
+copied anywhere: it is read from the record each time.
 
 WHO is preparing an updated licence. The build therefore checks that the licence document is still the
 one that was read, by its checksum, and stops if it is not: read the new one before the data goes out.
@@ -39,7 +39,7 @@ import zipfile
 
 import dbtools
 from dbtools import DATA, DOWNLOADS, say
-from vosslib import core, store
+from vosslib import codes, core, store
 
 STEM = "icd11"
 RELEASE_URL = "https://icdcdn.who.int/static/releasefiles/%s/SimpleTabulation-ICD-11-MMS-en.zip"
@@ -57,7 +57,7 @@ CITATION = ("International Classification of Diseases, Eleventh Revision (ICD-11
 COLUMNS = ("Foundation URI", "Linearization URI", "Code", "BlockId", "Title", "ClassKind", "DepthInKind", "IsResidual",
            "ChapterNo", "BrowserLink", "isLeaf", "Primary tabulation", "Grouping1", "Grouping2", "Grouping3", "Grouping4",
            "Grouping5", "CodingNote", "Parent")
-KINDS = ("chapter", "block", "category")
+KINDS = codes.KINDS
 MIN_RECORDS = 30000
 END = "\r\n"
 
@@ -86,13 +86,6 @@ def read_tabulation(path):
     return lines[0], lines[1:-1], hashlib.sha256(raw).hexdigest(), len(raw)
 
 
-def unquote(field):
-    """A field as the file quotes it: outer quotes off, doubled quotes single."""
-    if len(field) >= 2 and field[0] == field[-1] == '"':
-        return field[1:-1].replace('""', '"')
-    return field
-
-
 def parse(header, records):
     """Check the file is the shape this script knows, and pick out what a lookup needs: [dict], one per record."""
     names = header.lstrip("\ufeff").split("\t")
@@ -100,21 +93,19 @@ def parse(header, records):
         sys.exit("the tabulation's columns are not the ones this script knows: WHO has changed the file. Nothing was built")
     if len(records) < MIN_RECORDS:
         sys.exit("only %d records were read, where some 37,000 are expected: this is not the whole tabulation" % len(records))
-    rows, by_uri, codes = [], {}, set()
+    rows, by_uri, used = [], {}, set()
     for n, record in enumerate(records, 1):
         f = record.split("\t")
         if len(f) != len(COLUMNS):
             sys.exit("record %d has %d fields, not %d: the file is not the shape this script knows" % (n, len(f), len(COLUMNS)))
-        title = unquote(f[4])
-        depth_marks = re.match(r"(?:- )*", title).end()
-        row = {"id": n, "foundation": f[0], "uri": f[1], "code": f[2], "block_id": f[3], "title": title[depth_marks:],
+        row = {"id": n, "foundation": f[0], "uri": f[1], "code": f[2], "block_id": f[3], "title": codes.title_of(record),
                "kind": f[5], "residual": f[7] == "True", "chapter": f[8], "leaf": f[10] == "True", "parent_uri": f[18]}
         if row["kind"] not in KINDS or not row["uri"] or not row["title"]:
             sys.exit("record %d has no URI, no title or an unknown kind: the file is not the shape this script knows" % n)
         if row["kind"] == "category":
-            if not row["code"] or row["code"] in codes:
+            if not row["code"] or row["code"] in used:
                 sys.exit("record %d: a category without a code, or a code used twice" % n)
-            codes.add(row["code"])
+            used.add(row["code"])
         if row["foundation"]:
             by_uri[row["foundation"]] = n
         rows.append(row)
@@ -189,10 +180,11 @@ with the citation above. Under WHO's terms:
   - WHO's name appears here to say where the classification comes from, and for nothing else. WHO does not
     endorse this skill, its author or anything it says, and is not affiliated with it.
 
-Not from WHO: three helper columns in the table "entity" exist so that a record can be found (its position
-in WHO's file, the position of its parent, and where the record sits in the packed text), together with a
-copy of each title without the quoting and the leading "- " marks the file uses to show depth. They add
-nothing to the classification and change nothing in it.
+Not from WHO: the table "entity", which exists so that a record can be found. It holds each record's
+position in WHO's file, the position of its parent, and where the record sits in the packed text, with
+copies of its code, its block id, its chapter number, its kind (as a number) and two of its flags. They
+add nothing to the classification and change nothing in it. No title is copied: a title is always read
+from WHO's own record.
 
 The records can be put back together into WHO's file, byte for byte: "python tools/build_icd11.py --verify"
 does so and compares the result with the download. The checksum of WHO's file is in the table "build".
@@ -229,16 +221,17 @@ def build(a):
         source = dbtools.add_source(
             con, "ICD-11 for Mortality and Morbidity Statistics (MMS), release %s: the Simple Tabulation, World Health "
                  "Organization" % release, url, day, LICENCE, CITATION)
-        con.execute("CREATE TABLE entity (id INTEGER PRIMARY KEY, code TEXT NOT NULL, block_id TEXT NOT NULL, title TEXT NOT NULL, "
-                    "kind TEXT NOT NULL, residual INTEGER NOT NULL, leaf INTEGER NOT NULL, chapter TEXT NOT NULL, parent INTEGER, "
+        # kind: its place in codes.KINDS. There is no column for the title on purpose: it is in the record
+        con.execute("CREATE TABLE entity (id INTEGER PRIMARY KEY, code TEXT NOT NULL, block_id TEXT NOT NULL, kind INTEGER NOT NULL, "
+                    "residual INTEGER NOT NULL, leaf INTEGER NOT NULL, chapter TEXT NOT NULL, parent INTEGER, "
                     "block INTEGER NOT NULL, start INTEGER NOT NULL, length INTEGER NOT NULL, source INTEGER NOT NULL)")
         # records are kept in the file's own order, so the pieces of one block are neighbours and squeeze well;
         # nothing is stored once for two records, because each has its own URI
         texts = dbtools.Texts(con, a.codec)
         for row, record in zip(rows, records):
             block, start, length = texts.add(record)
-            con.execute("INSERT INTO entity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (row["id"], row["code"], row["block_id"], row["title"], row["kind"], int(row["residual"]),
+            con.execute("INSERT INTO entity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (row["id"], row["code"], row["block_id"], KINDS.index(row["kind"]), int(row["residual"]),
                          int(row["leaf"]), row["chapter"], row["parent"], block, start, length, source))
         raw, packed = texts.close()
         con.execute("CREATE INDEX entity_code ON entity (code) WHERE code != ''")
@@ -246,7 +239,7 @@ def build(a):
         con.execute("CREATE INDEX entity_parent ON entity (parent)")
         counts = dict((k, sum(1 for r in rows if r["kind"] == k)) for k in KINDS)
         file_size = dbtools.finish(con, path, core.today(), facts=(
-            ("format", 1), ("release", release), ("version-stamp", version_stamp(header)), ("header", header),
+            ("format", 2), ("release", release), ("version-stamp", version_stamp(header)), ("header", header),
             ("tabulation-sha256", checksum), ("tabulation-bytes", size), ("records", len(rows)),
             ("chapters", counts["chapter"]), ("blocks", counts["block"]), ("categories", counts["category"]),
             ("licence-read", licence_day.isoformat()), ("licence-sha256", LICENCE_SHA256)))

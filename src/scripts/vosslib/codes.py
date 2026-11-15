@@ -6,6 +6,8 @@ and WHO's citation, and that is all this module does with them. It does not rewo
 and it does not map a code to any other code system: WHO's licence allows neither, which is why there is
 no ICD-10 here and no table between the two.
 
+A title is read out of WHO's own record every time. The database keeps no second copy of it.
+
 A code names a category. It says nothing about any one person.
 """
 import re
@@ -15,11 +17,15 @@ from .core import command, die, key, more, rec
 
 STEM = "icd11"
 WHAT = "ICD-11 codes"
-ROW = "id, code, block_id, title, kind, residual, leaf, chapter, parent, block, start, length, source"
+KINDS = ("chapter", "block", "category")        # as the file numbers them
+ROW = ("id, code, block_id, CASE kind WHEN 0 THEN 'chapter' WHEN 1 THEN 'block' ELSE 'category' END, residual, leaf, chapter, "
+       "parent, block, start, length, source")
+ID, CODE, BLOCK_ID, KIND, RESIDUAL, LEAF, CHAPTER, PARENT, BLOCK, START, LENGTH, SOURCE = range(12)
 LIST_MAX = 15
 STOP = frozenset("a an and are code codes for icd icd11 in is of or the to what which with".split())
 ICD10_RE = re.compile(r"^[A-Z]\d{2}(?:\.\d{1,2})?$")
 LINK_RE = re.compile(r'https?://[^"\s]+')
+DEPTH_RE = re.compile(r"(?:- )*")
 RULE = ("code and title are WHO's, character for character: pass them on as printed. Do not reword or translate a "
         "title, and do not turn a code into one of another code system: WHO's licence allows neither")
 
@@ -30,16 +36,28 @@ def _unquote(field):
     return field
 
 
+def title_of(record):
+    """The title in one record of WHO's file, as it reads: without the quoting the file puts round it and the
+    "- " marks it uses to show depth. Not a character of the title itself is touched."""
+    fields = record.split("\t")
+    title = _unquote(fields[4]) if len(fields) > 4 else ""
+    return title[DEPTH_RE.match(title).end():]
+
+
+def _title(reader, row):
+    return title_of(reader.text(row[BLOCK], row[START], row[LENGTH]))
+
+
 def _label(row):
     """How an entry is named in a list: its code, its block id, or its chapter number."""
-    return row[1] or row[2] or "chapter %s" % row[7]
+    return row[CODE] or row[BLOCK_ID] or "chapter %s" % row[CHAPTER]
 
 
 def _kind(row):
-    if row[4] == "category":
-        words = "category" + (", a residual one (other specified or unspecified)" if row[5] else "")
-        return words + (", with no subdivisions" if row[6] else ", with subdivisions")
-    return "%s, a grouping without a code of its own" % row[4]
+    if row[KIND] == "category":
+        words = "category" + (", a residual one (other specified or unspecified)" if row[RESIDUAL] else "")
+        return words + (", with no subdivisions" if row[LEAF] else ", with subdivisions")
+    return "%s, a grouping without a code of its own" % row[KIND]
 
 
 def _row(con, where, value):
@@ -47,15 +65,15 @@ def _row(con, where, value):
 
 
 def _children(con, row):
-    return con.execute("SELECT %s FROM entity WHERE parent = ? ORDER BY id" % ROW, (row[0],)).fetchall()
+    return con.execute("SELECT %s FROM entity WHERE parent = ? ORDER BY id" % ROW, (row[ID],)).fetchall()
 
 
 def _ancestors(con, row):
     """From the chapter down to the entry's parent."""
     out, seen = [], set()
-    while row[8] is not None and row[8] not in seen:
-        seen.add(row[8])
-        row = _row(con, "id = ?", row[8])
+    while row[PARENT] is not None and row[PARENT] not in seen:
+        seen.add(row[PARENT])
+        row = _row(con, "id = ?", row[PARENT])
         if row is None:
             break
         out.append(row)
@@ -64,13 +82,14 @@ def _ancestors(con, row):
 
 def show(con, info, reader, row, limit):
     """One entry: code, title and URI as WHO has them, where it sits, and what is under it."""
-    fields = reader.text(row[9], row[10], row[11]).split("\t")
+    record = reader.text(row[BLOCK], row[START], row[LENGTH])
+    fields = record.split("\t")
     release = (con.execute("SELECT value FROM build WHERE key = 'release'").fetchone() or [""])[0]
     rec("CODE", "%s [ICD-11 MMS, release %s]" % (_label(row), release))
-    rec("TITLE", row[3])
+    rec("TITLE", title_of(record))
     rec("KIND", _kind(row))
     for n, up in enumerate(_ancestors(con, row)):
-        (more if n else lambda text: rec("IN", text))("%s  %s" % (_label(up), up[3]))
+        (more if n else lambda text: rec("IN", text))("%s  %s" % (_label(up), _title(reader, up)))
     if len(fields) > 17 and fields[17].strip():
         rec("NOTE", " ".join(_unquote(fields[17]).split()))
         more("WHO's coding note for this entry, as it stands in the release")
@@ -78,16 +97,16 @@ def show(con, info, reader, row, limit):
     if below:
         rec("UNDER IT", core.plural(len(below), "entry", "entries"))
         for child in below[:limit]:
-            more("%s  %s" % (_label(child), child[3]))
+            more("%s  %s" % (_label(child), _title(reader, child)))
         if len(below) > limit:
-            again = "--chapter %s" % row[7] if row[4] == "chapter" else _label(row)
+            again = "--chapter %s" % row[CHAPTER] if row[KIND] == "chapter" else _label(row)
             more("and %d more: 'code %s --max %d' lists them all" % (len(below) - limit, again, len(below)))
     rec("URI", fields[1] + ("  (foundation: %s)" % fields[0] if fields[0] else ""))
     link = LINK_RE.search(fields[9]) if len(fields) > 9 else None
     if link:
         rec("BROWSE", link.group(0))
-    rec("SOURCE", library.tag(info, row[12]))
-    rec("CREDIT", library.credit(info, row[12]))
+    rec("SOURCE", library.tag(info, row[SOURCE]))
+    rec("CREDIT", library.credit(info, row[SOURCE]))
 
 
 def lookup(con, text):
@@ -111,22 +130,38 @@ def nearest(con, text):
     return None
 
 
-def find(con, words):
-    """Entries whose titles hold every word, the shortest titles first: [rows]."""
+def find(con, reader, words):
+    """Entries whose titles hold every word, the shortest titles first: [(row, title)].
+
+    The titles are in WHO's records and nowhere else, so every record is looked at. A record that does not hold
+    the words as plain letters is passed over without being taken apart; only if nothing turns up that way is
+    each title read folded, since an accent in a title hides it from a plain search."""
     want = [w for w in key(" ".join(words)).split("_") if w and w not in STOP]
     if not want:
         die("say which words to look for in the titles: code --find type 2 diabetes")
-    sql = "SELECT %s FROM entity WHERE %s" % (ROW, " AND ".join("title LIKE ?" for _ in want))
-    rows = con.execute(sql, tuple("%" + w + "%" for w in want)).fetchall()
-    if not rows:
-        # an accent in a title hides it from a plain search: look through them all, folded
-        rows = con.execute("SELECT %s FROM entity" % ROW).fetchall()
-    hits = []
-    for row in rows:
-        have = key(row[3]).split("_")
-        if all(any(h == w or (len(w) >= 4 and h.startswith(w)) for h in have) for w in want):
-            hits.append((len(have), 0 if row[4] == "category" else 1, row[0], row))
-    return [h[3] for h in sorted(hits, key=lambda h: h[:3])]
+    places = con.execute("SELECT id, block, start, length FROM entity ORDER BY id").fetchall()
+    needles = [w.encode("utf-8") for w in want]
+    for plain in (True, False):
+        likely, number, low, skip = [], None, b"", False
+        for ident, block, start, length in places:
+            if plain:
+                if block != number:
+                    number, low = block, reader.block(block).lower()
+                    skip = not all(n in low for n in needles)       # a block without the words holds no such title
+                if skip or not all(n in low[start:start + length] for n in needles):
+                    continue
+            likely.append(ident)
+        hits = []
+        for at in range(0, len(likely), 500):
+            some = likely[at:at + 500]
+            for row in con.execute("SELECT %s FROM entity WHERE id IN (%s)" % (ROW, ",".join("?" * len(some))), some):
+                title = _title(reader, row)
+                have = key(title).split("_")
+                if all(any(h == w or (len(w) >= 4 and h.startswith(w)) for h in have) for w in want):
+                    hits.append((len(have), 0 if row[KIND] == "category" else 1, row[ID], row, title))
+        if hits:
+            break
+    return [(h[3], h[4]) for h in sorted(hits, key=lambda h: h[:3])]
 
 
 def cmd_code(a):
@@ -139,26 +174,26 @@ def cmd_code(a):
         if a.find:
             if a.codes or a.chapter:
                 die("--find looks through the titles: leave out the code and --chapter")
-            rows = find(con, a.find)
+            rows = find(con, reader, a.find)
             if not rows:
                 rec("CODE", "no title in this release holds those words")
                 rec("RULE", "that is a gap in the search, not in medicine: WHO's wording may differ from the words given. Try "
                             "another word for it, or look it up in WHO's own browser and cite it")
                 return
             rec("MATCHES", "%s whose titles hold those words" % core.plural(len(rows), "entry", "entries"))
-            for row in rows[:a.max]:
-                more("%s  %s" % (_label(row), row[3]))
+            for row, title in rows[:a.max]:
+                more("%s  %s" % (_label(row), title))
             if len(rows) > a.max:
                 more("and %d more: add a word, or raise --max" % (len(rows) - a.max))
             rec("NEXT", "'code CODE' prints one entry in full, with its URI. A title that matches some words is not a diagnosis")
-            rec("SOURCE", library.tag(info, rows[0][12]))
-            rec("CREDIT", library.credit(info, rows[0][12]))
+            rec("SOURCE", library.tag(info, rows[0][0][SOURCE]))
+            rec("CREDIT", library.credit(info, rows[0][0][SOURCE]))
             rec("RULE", RULE)
             return
         wanted = []
         if a.chapter:
             number = a.chapter.strip().upper()
-            row = _row(con, "kind = 'chapter' AND chapter = ?", number.zfill(2) if number.isdigit() else number)
+            row = _row(con, "kind = 0 AND chapter = ?", number.zfill(2) if number.isdigit() else number)
             if row is None:
                 die("there is no such chapter: they run 01 to 26, then V and X")
             wanted.append((a.chapter, row))
@@ -185,7 +220,7 @@ def cmd_code(a):
             else:
                 near = nearest(con, given)
                 if near is not None:
-                    more("the nearest entry above it: %s  %s" % (_label(near), near[3]))
+                    more("the nearest entry above it: %s  %s" % (_label(near), _title(reader, near)))
                 more("check the code against the document it came from; 'code --find WORDS' looks through the titles")
         if any(row is not None for _, row in wanted):
             rec("RULE", RULE)

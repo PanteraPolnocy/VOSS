@@ -20,8 +20,9 @@ on it, if you:
   - pass on anything you make from it under this same licence.
 
 What was changed in the making of this file: DDInter's download files (one for each of eight groups of
-the ATC classification) were merged into one table of pairs; a pair listed in two files is stored once;
-the severity grade is stored as a number (3 Major, 2 Moderate, 1 Minor, 0 Unknown). No pair and no grade
+the ATC classification) were merged into one list of pairs; a pair listed in two files is stored once;
+the severity grade is stored as a number (3 Major, 2 Moderate, 1 Minor, 0 Unknown); and the pairs are
+stored packed, each medicine with the numbers of the medicines it is paired with. No pair and no grade
 was added, removed or altered.
 
 What this file does not hold. DDInter's downloads carry pairs and grades only: no account of why two
